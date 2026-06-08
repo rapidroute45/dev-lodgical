@@ -1,0 +1,65 @@
+import { api } from "@/shared/utils/api.js";
+import { User } from "@/modules/auth/domain/entities/user.entity.js";
+import {
+  AuthError,
+  InvalidCredentialsError,
+  ValidationError,
+} from "@/modules/auth/domain/errors.js";
+
+function toDomainError(err) {
+  const status = err?.response?.status;
+  const message =
+    err?.response?.data?.message ||
+    err?.response?.data?.error ||
+    err?.message ||
+    "Something went wrong.";
+
+  if (status === 401) return new InvalidCredentialsError(message);
+  if (status === 400) return new ValidationError(message);
+  return new AuthError(message, { status });
+}
+
+export async function loginRequest({ email, password }) {
+  try {
+    const { data } = await api.post("/auth/login", { email, password });
+    return {
+      token: data.token,
+      user: User.fromApi(data.user),
+      message: data.message,
+    };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function registerRequest({ email, password, fullName, phone }) {
+  try {
+    const payload = { email, password, phone };
+    if (fullName) payload.fullName = fullName;
+    const { data } = await api.post("/auth/register", payload);
+    return {
+      user: User.fromApi(data.data),
+      message: data.message,
+    };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function fetchMeRequest() {
+  try {
+    const { data } = await api.get("/auth/me");
+    return User.fromApi(data.data);
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function updateProfileRequest(body) {
+  try {
+    const { data } = await api.patch("/auth/me", body);
+    return User.fromApi(data.data);
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}

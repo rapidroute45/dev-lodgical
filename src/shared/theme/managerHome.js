@@ -1,0 +1,20 @@
+/** Mirrors mobile `shared/theme/managerHome.ts`. */
+export const managerHome = {
+  background: "#F4F6FB",
+  surface: "#FFFFFF",
+  text: "#0F172A",
+  textMuted: "#64748B",
+  textLight: "#94A3B8",
+  primary: "#4F6BED",
+  primarySoft: "#EEF2FF",
+  border: "#E2E8F0",
+  infoGradientStart: "#EEF4FF",
+  infoGradientEnd: "#F8FAFF",
+  blue: "#3B82F6",
+  green: "#22C55E",
+  purple: "#8B5CF6",
+  orange: "#F59E0B",
+  red: "#EF4444",
+  pink: "#EC4899",
+  yellow: "#EAB308",
+};

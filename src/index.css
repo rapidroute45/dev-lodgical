@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Dispatch mobile palette — managerHome + auth themes */
+@theme {
+  --color-dispatch-bg: #f4f6fb;
+  --color-dispatch-surface: #ffffff;
+  --color-dispatch-text: #0f172a;
+  --color-dispatch-muted: #64748b;
+  --color-dispatch-light: #94a3b8;
+  --color-dispatch-primary: #4f6bed;
+  --color-dispatch-primary-soft: #eef2ff;
+  --color-dispatch-indigo: #5b6cff;
+  --color-dispatch-indigo-pressed: #4f5ee6;
+  --color-dispatch-border: #e2e8f0;
+  --color-dispatch-blue: #3b82f6;
+  --color-dispatch-green: #22c55e;
+  --color-dispatch-purple: #8b5cf6;
+  --color-dispatch-orange: #f59e0b;
+  --color-dispatch-red: #ef4444;
+
+  --color-auth-gradient-start: #e4ecff;
+  --color-auth-gradient-mid: #eef2ff;
+  --color-auth-badge-bg: #eff6ff;
+  --color-auth-badge-border: #bfdbfe;
+  --color-auth-badge-text: #3730a3;
+
+  /* brand-* aliases → dispatch primary (replaces old purple scale) */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #eef4ff;
+  --color-brand-200: #dbeafe;
+  --color-brand-300: #bfdbfe;
+  --color-brand-400: #5b6cff;
+  --color-brand-500: #4f6bed;
+  --color-brand-600: #4f6bed;
+  --color-brand-700: #4f5ee6;
+
+  --color-accent-400: #5b6cff;
+  --color-accent-500: #4f6bed;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  background-color: var(--color-dispatch-bg);
+  color: var(--color-dispatch-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
