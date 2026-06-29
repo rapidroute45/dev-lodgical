@@ -54,21 +54,21 @@ export function RouteOpsVerification({ route, scheduleId }) {
   const ot = route.overtimeHours ?? 0;
 
   return (
-    <div className="mt-4 rounded-xl border border-dispatch-border bg-white p-4">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-dispatch-muted">
+    <div className="ops-panel p-4">
+      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
         Ops verification
       </p>
-      <p className="mt-1 text-sm font-semibold text-dispatch-text">
+      <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text)" }}>
         {OPS_LABELS[opsStatus] ?? opsStatus}
       </p>
       {ot > 0 ? (
-        <p className="mt-1 text-xs text-amber-700">
+        <p className="mt-1 text-xs" style={{ color: "var(--amber)" }}>
           Overtime recorded: <strong>{ot} hr</strong>
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-2 text-xs text-dispatch-red">{error}</p>
+        <p className="mt-2 text-xs" style={{ color: "var(--rose)" }}>{error}</p>
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -77,7 +77,7 @@ export function RouteOpsVerification({ route, scheduleId }) {
             type="button"
             disabled={busy}
             onClick={() => void setOpsStatus("team_verified")}
-            className="rounded-lg bg-dispatch-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className="ops-btn ops-btn--accent px-3 py-2 text-xs font-bold disabled:opacity-60"
           >
             Verify & send to manager
           </button>
@@ -87,15 +87,14 @@ export function RouteOpsVerification({ route, scheduleId }) {
             type="button"
             disabled={busy}
             onClick={() => void setOpsStatus("manager_verified")}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className="ops-btn px-3 py-2 text-xs font-bold disabled:opacity-60"
+            style={{ boxShadow: "inset 0 0 0 1px rgba(52, 211, 153, 0.4)", color: "var(--green)" }}
           >
             Manager approve route
           </button>
         ) : null}
         {isManager && opsStatus === "manager_verified" ? (
-          <span className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-            Approved
-          </span>
+          <span className="ops-badge ops-badge--done">Approved</span>
         ) : null}
       </div>
     </div>

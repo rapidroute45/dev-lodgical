@@ -56,21 +56,25 @@ export function PayrollStoreRatesModal({ open, storeId, storeName, onClose }) {
   return (
     <ModalSheet open={open} title={storeName || "Store rates"} onClose={onClose}>
       {isLoading ? (
-        <p className="py-8 text-center text-sm text-dispatch-muted">Loading…</p>
+        <p className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</p>
       ) : (
         <div className="space-y-2">
           {error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="ops-banner ops-banner--error">
               {error}
             </div>
           ) : null}
-          <label className="flex items-center justify-between rounded-xl border border-dispatch-border px-3 py-3">
-            <span className="text-sm font-medium text-dispatch-text">Use default rates</span>
+          <label
+            className="flex items-center justify-between rounded-xl px-3 py-3"
+            style={{ border: "1px solid var(--border)" }}
+          >
+            <span className="text-sm font-medium" style={{ color: "var(--text)" }}>Use default rates</span>
             <input
               type="checkbox"
               checked={useDefaults}
               onChange={(e) => handleToggleDefaults(e.target.checked)}
-              className="h-4 w-4 rounded border-dispatch-border text-dispatch-primary"
+              className="h-4 w-4 rounded"
+              style={{ accentColor: "var(--accent)" }}
             />
           </label>
           <RateField label="Small route rate" value={small} onChange={setSmall} readOnly={useDefaults} />
@@ -80,7 +84,7 @@ export function PayrollStoreRatesModal({ open, storeId, storeName, onClose }) {
             type="button"
             onClick={() => void handleSave()}
             disabled={updateMutation.isPending}
-            className="mt-2 w-full rounded-xl bg-dispatch-primary py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="ops-btn ops-btn--accent mt-2 w-full justify-center py-3 font-bold"
           >
             {updateMutation.isPending ? "Saving…" : "Save"}
           </button>

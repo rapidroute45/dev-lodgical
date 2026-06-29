@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { MANAGER_ROLES } from "@/shared/utils/constants.js";
 import { useTeamsQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
@@ -7,7 +8,7 @@ import { useAvailableDriversQuery } from "@/modules/manager-home/infrastructure/
 import { formatDisplayDate, todayIsoDate } from "@/shared/utils/time.js";
 import { DateNavigator } from "../components/DateNavigator.jsx";
 import { SectionCard } from "../components/SectionCard.jsx";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 
 export function AvailableDriversScreen() {
   const { user } = useAuth();
@@ -19,6 +20,8 @@ export function AvailableDriversScreen() {
     data: availableData,
     isLoading: driversLoading,
     isError: driversError,
+    refetch,
+    isFetching,
   } = useAvailableDriversQuery(date, isManager);
 
   const driversByTeam = useMemo(() => {
@@ -34,32 +37,33 @@ export function AvailableDriversScreen() {
   const totalAvailable = availableData?.count ?? 0;
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-dispatch-text">
-            Available drivers
-          </h1>
-          <p className="text-sm text-dispatch-muted">
-            Active drivers with no route assignment
-          </p>
-        </div>
-        {!driversLoading && totalAvailable > 0 ? (
-          <span className="rounded-full bg-dispatch-primary-soft px-3 py-1 text-xs font-bold text-dispatch-primary">
-            {totalAvailable} available
-          </span>
-        ) : null}
+    <OpsTopBar date={date} setDate={setDate} onRefresh={refetch} refreshing={isFetching} />
+  );
+
+  const titleRow = (
+    <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+          Available drivers
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+          Active drivers with no route assignment
+        </p>
       </div>
-    </header>
+      {!driversLoading && totalAvailable > 0 ? (
+        <span className="ops-badge ops-badge--active">{totalAvailable} available</span>
+      ) : null}
+    </div>
   );
 
   if (!isManager) {
     return (
       <DashboardLayout topBar={topBar}>
         <div className={PAGE_CONTENT}>
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-12 text-center">
-            <p className="text-lg font-bold text-dispatch-text">Manager access required</p>
-            <p className="mt-2 text-sm text-dispatch-muted">
+          {titleRow}
+          <div className="ops-panel ops-fade px-8 py-14 text-center">
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>Manager access required</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
               Only dispatch managers and admins can view available drivers.
             </p>
           </div>
@@ -73,27 +77,29 @@ export function AvailableDriversScreen() {
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
+        {titleRow}
+
         <DateNavigator date={date} onDateChange={setDate} />
 
-        <p className="text-sm text-dispatch-muted">
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           Active drivers with no route assignment on{" "}
-          <span className="font-semibold text-dispatch-text">{formatDisplayDate(date)}</span>.
+          <span className="font-semibold" style={{ color: "var(--text)" }}>{formatDisplayDate(date)}</span>.
         </p>
 
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl bg-dispatch-border/30" />
+              <div key={i} className="ops-skel h-32 rounded-2xl" />
             ))}
           </div>
         ) : driversError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-8 text-center text-sm text-dispatch-red">
+          <div className="ops-banner ops-banner--error">
             Could not load available drivers.
           </div>
         ) : teams.length === 0 && totalAvailable === 0 ? (
-          <div className="rounded-2xl border border-dashed border-dispatch-border bg-dispatch-surface py-14 text-center">
-            <p className="font-bold text-dispatch-text">No available drivers</p>
-            <p className="mt-2 text-sm text-dispatch-muted">
+          <div className="ops-panel ops-fade px-8 py-14 text-center">
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>No available drivers</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
               All active drivers are assigned or have pending offers on this date.
             </p>
           </div>
@@ -112,7 +118,7 @@ export function AvailableDriversScreen() {
                   }
                 >
                   {drivers.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-dispatch-muted">
+                    <p className="py-4 text-center text-sm" style={{ color: "var(--text-muted)" }}>
                       No available drivers on this date.
                     </p>
                   ) : (
@@ -120,18 +126,18 @@ export function AvailableDriversScreen() {
                       {drivers.map((driver) => (
                         <li
                           key={driver.id}
-                          className="flex items-center gap-3 rounded-xl border border-dispatch-border bg-[#FAFBFC] p-3"
+                          className="ops-listcard flex items-center gap-3 p-3"
                         >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-dispatch-primary-soft text-dispatch-primary">
+                          <span className="ops-avatar flex h-10 w-10 shrink-0 items-center justify-center">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-dispatch-text">
+                            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
                               {driver.displayName ?? driver.fullName ?? driver.email}
                             </p>
-                            <p className="text-xs text-dispatch-muted">{driver.email}</p>
+                            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{driver.email}</p>
                           </div>
                         </li>
                       ))}
@@ -147,13 +153,13 @@ export function AvailableDriversScreen() {
                   {driversByTeam.get("unassigned").map((driver) => (
                     <li
                       key={driver.id}
-                      className="flex items-center gap-3 rounded-xl border border-dispatch-border bg-[#FAFBFC] p-3"
+                      className="ops-listcard flex items-center gap-3 p-3"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-dispatch-text">
+                        <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
                           {driver.displayName ?? driver.fullName ?? driver.email}
                         </p>
-                        <p className="text-xs text-dispatch-muted">{driver.email}</p>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>{driver.email}</p>
                       </div>
                     </li>
                   ))}

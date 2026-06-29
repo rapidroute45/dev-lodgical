@@ -19,11 +19,19 @@ function isSectionHeader(line) {
 }
 
 function tableDateLabel(line) {
-  if (line.description === "DELIVERY SERVICES" || line.description.startsWith("overtime")) {
+  if (
+    line.description === "DELIVERY SERVICES" ||
+    line.description === "Total time on routes"
+  ) {
     return line.date;
   }
   if (!line.date) return "";
   return formatShortDate(line.date);
+}
+
+function formatHours(hours) {
+  if (!hours || hours <= 0) return "";
+  return `${Number(hours).toFixed(2)}h`;
 }
 
 function buildLineRows(lineItems) {
@@ -40,24 +48,39 @@ function buildLineRows(lineItems) {
           <td class="cell-desc section">${line.description}</td>
           <td class="cell-pay"></td>
           <td class="cell-base"></td>
+          <td class="cell-hours"></td>
           <td class="cell-total section-total">${formatMoneyPdf(0)}</td>
         </tr>`;
       }
 
-      if (line.description === "Rural") {
+      if (line.description === "Rural" || line.description === "OT") {
         return `
         <tr style="${alt}">
           <td class="cell-date"></td>
           <td class="cell-desc">${line.description}</td>
           <td class="cell-pay"></td>
           <td class="cell-base"></td>
-          <td class="cell-total">${formatMoneyPdf(0)}</td>
+          <td class="cell-hours"></td>
+          <td class="cell-total">${line.total > 0 ? formatMoneyPdf(line.total) : formatMoneyPdf(0)}</td>
+        </tr>`;
+      }
+
+      if (line.description === "Total time on routes") {
+        return `
+        <tr style="${alt}">
+          <td class="cell-date">${tableDateLabel(line)}</td>
+          <td class="cell-desc section">${line.description}</td>
+          <td class="cell-pay">${line.pay > 0 ? String(line.pay) : ""}</td>
+          <td class="cell-base"></td>
+          <td class="cell-hours section">${formatHours(line.hoursSpent)}</td>
+          <td class="cell-total"></td>
         </tr>`;
       }
 
       const showTotal = line.total > 0 ? formatMoneyPdf(line.total) : "";
       const showBase = line.routeBase > 0 ? formatMoneyPdf(line.routeBase) : "";
       const showPay = line.pay > 0 ? String(line.pay) : "";
+      const showHours = formatHours(line.hoursSpent);
 
       return `
       <tr style="${alt}">
@@ -65,6 +88,7 @@ function buildLineRows(lineItems) {
         <td class="cell-desc">${line.description}</td>
         <td class="cell-pay">${showPay}</td>
         <td class="cell-base">${showBase}</td>
+        <td class="cell-hours">${showHours}</td>
         <td class="cell-total">${showTotal}</td>
       </tr>`;
     })
@@ -154,6 +178,7 @@ export function buildStoreInvoiceHtml(invoice) {
       }
       .data-table thead th.col-pay,
       .data-table thead th.col-base,
+      .data-table thead th.col-hours,
       .data-table thead th.col-total { text-align: center; }
       .data-table tbody td {
         border: 1px solid ${BORDER};
@@ -161,11 +186,12 @@ export function buildStoreInvoiceHtml(invoice) {
         vertical-align: middle;
         font-size: 11px;
       }
-      .cell-date { width: 14%; }
-      .cell-desc { width: 46%; }
-      .cell-pay { width: 10%; text-align: center; }
-      .cell-base { width: 14%; text-align: center; }
-      .cell-total { width: 16%; text-align: right; font-weight: 600; }
+      .cell-date { width: 12%; }
+      .cell-desc { width: 38%; }
+      .cell-pay { width: 8%; text-align: center; }
+      .cell-base { width: 12%; text-align: center; }
+      .cell-hours { width: 12%; text-align: center; }
+      .cell-total { width: 18%; text-align: right; font-weight: 600; }
       .section { font-weight: 700; }
       .section-total { font-weight: 700; }
       .footer-wrap {
@@ -286,6 +312,7 @@ export function buildStoreInvoiceHtml(invoice) {
           <th>Description of Work</th>
           <th class="col-pay">Pay</th>
           <th class="col-base">Route Base</th>
+          <th class="col-hours">Hours</th>
           <th class="col-total">Total</th>
         </tr>
       </thead>

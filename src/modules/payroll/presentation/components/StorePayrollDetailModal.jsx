@@ -94,18 +94,19 @@ export function StorePayrollDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-1 gap-2">
               <label className="flex-1">
-                <span className="mb-1 block text-[10px] font-semibold text-dispatch-muted">From</span>
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>From</span>
                 <input
                   type="date"
                   value={localStart}
                   min={isoDateDaysAgo(730)}
                   max={localEnd}
                   onChange={(e) => applyPeriodChange(e.target.value, localEnd < e.target.value ? e.target.value : localEnd)}
-                  className="w-full rounded-xl border border-dispatch-border px-2 py-2 text-sm"
+                  className="w-full rounded-xl px-2 py-2 text-sm"
+                  style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)", colorScheme: "dark" }}
                 />
               </label>
               <label className="flex-1">
-                <span className="mb-1 block text-[10px] font-semibold text-dispatch-muted">To</span>
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>To</span>
                 <input
                   type="date"
                   value={localEnd}
@@ -116,7 +117,8 @@ export function StorePayrollDetailModal({
                     if (iso > maxPayrollPeriodEndIso() || iso < localStart) return;
                     applyPeriodChange(localStart, iso);
                   }}
-                  className="w-full rounded-xl border border-dispatch-border px-2 py-2 text-sm"
+                  className="w-full rounded-xl px-2 py-2 text-sm"
+                  style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)", colorScheme: "dark" }}
                 />
               </label>
             </div>
@@ -125,7 +127,7 @@ export function StorePayrollDetailModal({
                 type="button"
                 onClick={() => setRatesOpen(true)}
                 title="Per-store billing rates"
-                className="mt-5 rounded-lg border border-dispatch-border px-2 py-2 text-xs font-semibold text-dispatch-primary hover:bg-dispatch-bg"
+                className="ops-btn ops-btn--accent mt-5 px-3 py-2 text-xs font-semibold"
               >
                 Rates
               </button>
@@ -133,63 +135,68 @@ export function StorePayrollDetailModal({
           </div>
 
           {isLoading ? (
-            <p className="py-8 text-center text-sm text-dispatch-muted">Loading…</p>
+            <p className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</p>
           ) : isError ? (
-            <p className="py-8 text-center text-sm text-red-600">Could not load store payroll.</p>
+            <p className="ops-banner ops-banner--error">Could not load store payroll.</p>
           ) : (
             <>
-              <div className="flex items-center justify-between rounded-xl bg-dispatch-primary px-4 py-3 text-white">
+              <div
+                className="flex items-center justify-between rounded-xl px-4 py-3"
+                style={{ background: "rgba(34, 211, 238, 0.08)", border: "1px solid rgba(34, 211, 238, 0.25)" }}
+              >
                 <div>
-                  <p className="text-xs font-semibold opacity-90">Total billing</p>
-                  <p className="text-2xl font-extrabold">{formatMoney(data?.totalAmount ?? 0)}</p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Total billing</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "var(--accent)" }}>{formatMoney(data?.totalAmount ?? 0)}</p>
                 </div>
-                <div className="text-right text-xs opacity-90">
+                <div className="text-right text-xs" style={{ color: "var(--text-muted)" }}>
                   {data?.completedRouteCount ?? 0} route
                   {(data?.completedRouteCount ?? 0) === 1 ? "" : "s"}
                   {data?.usesCustomRates ? (
-                    <p className="mt-1 rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold">Custom rates</p>
+                    <p className="ops-badge ops-badge--active mt-1 inline-flex text-[10px] font-bold">Custom rates</p>
                   ) : null}
                 </div>
               </div>
 
               {categorySummaries.map((summary) => (
-                <div key={summary.category} className="overflow-hidden rounded-xl border border-dispatch-border">
+                <div key={summary.category} className="overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
                   <button
                     type="button"
                     onClick={() =>
                       setExpandedCategory((c) => (c === summary.category ? null : summary.category))
                     }
-                    className="flex w-full items-center justify-between bg-dispatch-surface px-4 py-3 text-left"
+                    className="ops-row flex w-full items-center justify-between px-4 py-3 text-left"
+                    style={{ background: "rgba(255, 255, 255, 0.03)" }}
                   >
                     <div>
-                      <p className="text-sm font-bold text-dispatch-text">
+                      <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
                         {summary.label} · {summary.count} route{summary.count === 1 ? "" : "s"}
                       </p>
-                      <p className="text-xs text-dispatch-muted">{formatMoney(summary.total)}</p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{formatMoney(summary.total)}</p>
                     </div>
-                    <span className="text-dispatch-muted">
+                    <span style={{ color: "var(--text-muted)" }}>
                       {expandedCategory === summary.category ? "▲" : "▼"}
                     </span>
                   </button>
                   {expandedCategory === summary.category ? (
-                    <div className="border-t border-dispatch-border bg-dispatch-bg">
+                    <div style={{ borderTop: "1px solid var(--border)", background: "rgba(255, 255, 255, 0.02)" }}>
                       {summary.routes.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-dispatch-muted">No routes in this category.</p>
+                        <p className="px-4 py-3 text-sm" style={{ color: "var(--text-muted)" }}>No routes in this category.</p>
                       ) : (
                         summary.routes.map((route) => (
                           <div
                             key={route.routeId}
-                            className="flex items-center justify-between border-b border-dispatch-border px-4 py-3 last:border-0"
+                            className="flex items-center justify-between px-4 py-3"
+                            style={{ borderBottom: "1px solid var(--border)" }}
                           >
                             <div>
-                              <p className="text-sm font-semibold text-dispatch-text">
+                              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
                                 {formatDisplayDate(route.scheduleDate)} · {route.arrivalTime}
                               </p>
-                              <p className="text-xs text-dispatch-muted">
+                              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                                 {route.driverName ?? "Unknown driver"}
                               </p>
                             </div>
-                            <p className="text-sm font-bold text-emerald-600">{formatMoney(route.rate)}</p>
+                            <p className="text-sm font-bold" style={{ color: "var(--green)" }}>{formatMoney(route.rate)}</p>
                           </div>
                         ))
                       )}
@@ -198,7 +205,7 @@ export function StorePayrollDetailModal({
                 </div>
               ))}
               {isFetching && !isLoading ? (
-                <p className="text-center text-xs text-dispatch-muted">Refreshing…</p>
+                <p className="text-center text-xs" style={{ color: "var(--text-muted)" }}>Refreshing…</p>
               ) : null}
             </>
           )}

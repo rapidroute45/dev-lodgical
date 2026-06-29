@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/modules/auth/presentation/components/AuthLayout.jsx";
 import { TextField, PasswordField } from "@/modules/auth/presentation/components/TextField.jsx";
 import { Button } from "@/modules/auth/presentation/components/Button.jsx";
+import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { postLoginPath } from "@/shared/utils/postLoginPath.js";
+import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +20,7 @@ export function LoginScreen() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -24,10 +29,10 @@ export function LoginScreen() {
 
   function validate() {
     const next = {};
-    if (!form.email) next.email = "Email is required.";
+    if (!form.email) next.email = t("auth.emailRequired");
     else if (!/^\S+@\S+\.\S+$/.test(form.email))
-      next.email = "Enter a valid email.";
-    if (!form.password) next.password = "Password is required.";
+      next.email = t("auth.emailInvalid");
+    if (!form.password) next.password = t("auth.passwordRequired");
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -41,7 +46,7 @@ export function LoginScreen() {
       const loggedIn = await login({ email: form.email.trim(), password: form.password });
       navigate(redirectTo || postLoginPath(loggedIn?.role), { replace: true });
     } catch (err) {
-      setSubmitError(err.message || "Unable to sign in.");
+      setSubmitError(err.message || t("auth.signInFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -49,19 +54,24 @@ export function LoginScreen() {
 
   return (
     <AuthLayout
+      theme="dark"
       side="left"
-      title="Welcome back"
-      description="Sign in to access your account and manage your workspace securely."
-      footerNote="Standard secure login."
+      badge="Dispatch.co"
+      title={t("auth.welcomeBack")}
+      description={t("auth.loginDescription")}
+      footerNote={t("auth.secureLogin")}
     >
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-dispatch-text">Login</h2>
-        <p className="mt-1 text-sm text-dispatch-muted">Access your account</p>
+        <h2 className="text-2xl font-bold text-[#e8eef7]">{t("auth.login")}</h2>
+        <p className="mt-1 text-sm text-[#94a3b8]">{t("auth.accessAccount")}</p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <ApiEnvironmentSelect value={apiEnvironment} onChange={setApiEnvironment} tone="dark" />
+
         <TextField
-          label="Email"
+          tone="dark"
+          label={t("auth.email")}
           type="email"
           autoComplete="email"
           placeholder="you@company.com"
@@ -71,7 +81,8 @@ export function LoginScreen() {
         />
 
         <PasswordField
-          label="Password"
+          tone="dark"
+          label={t("auth.password")}
           autoComplete="current-password"
           placeholder="Enter your password"
           value={form.password}
@@ -80,22 +91,17 @@ export function LoginScreen() {
         />
 
         {submitError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-dispatch-red">
-            {submitError}
-          </div>
+          <div className="auth-dark__error">{submitError}</div>
         )}
 
-        <Button type="submit" loading={submitting}>
-          {submitting ? "Signing in..." : "Sign In"}
+        <Button type="submit" tone="dark" loading={submitting}>
+          {submitting ? t("auth.signingIn") : t("auth.signIn")}
         </Button>
 
-        <p className="pt-2 text-center text-sm text-dispatch-muted">
-          New here?{" "}
-          <Link
-            to="/register"
-            className="font-medium text-dispatch-indigo transition hover:text-dispatch-indigo-pressed"
-          >
-            Create an account
+        <p className="pt-2 text-center text-sm text-[#94a3b8]">
+          {t("auth.noAccount")}{" "}
+          <Link to="/register" className="auth-dark__link">
+            {t("auth.register")}
           </Link>
         </p>
       </form>

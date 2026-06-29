@@ -200,97 +200,106 @@ export function DatePickerPopover({
 
   const panel =
     open && position ? (
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-label="Choose date"
-        style={{
-          position: "fixed",
-          top: position.top,
-          left: position.left,
-          width: position.width,
-          zIndex: 100,
-        }}
-        className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4 shadow-2xl ring-1 ring-dispatch-border/80"
-      >
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-dispatch-border text-dispatch-muted hover:bg-dispatch-bg"
-            aria-label="Previous month"
-          >
-            ‹
-          </button>
-          <p className="text-sm font-bold text-dispatch-text">
-            {MONTHS[viewMonth]} {viewYear}
-          </p>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-dispatch-border text-dispatch-muted hover:bg-dispatch-bg"
-            aria-label="Next month"
-          >
-            ›
-          </button>
-        </div>
-
-        <div className="mb-2 grid grid-cols-7 gap-1 text-center">
-          {WEEKDAYS.map((d) => (
-            <span
-              key={d}
-              className="py-1 text-[10px] font-bold uppercase tracking-wide text-dispatch-light"
+      <div className="ops-shell" style={{ position: "static", minHeight: 0, background: "transparent" }}>
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Choose date"
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+            width: position.width,
+            zIndex: 100,
+            background: "var(--bg-card-solid)",
+            border: "1px solid var(--border-strong)",
+          }}
+          className="ops-popover rounded-2xl p-4 shadow-2xl"
+        >
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={prevMonth}
+              className="ops-btn flex h-8 w-8 items-center justify-center"
+              aria-label="Previous month"
             >
-              {d}
-            </span>
-          ))}
-        </div>
+              ‹
+            </button>
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
+              {MONTHS[viewMonth]} {viewYear}
+            </p>
+            <button
+              type="button"
+              onClick={nextMonth}
+              className="ops-btn flex h-8 w-8 items-center justify-center"
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {cells.flat().map((d, i) => {
-            if (d == null) {
-              return <span key={`empty-${i}`} className="h-9" />;
-            }
-            const iso = isoDateFromParts(viewYear, viewMonth, d);
-            const disabled = isDisabled(iso, minIso, maxIso);
-            const selected = iso === value;
-            const isToday = iso === today;
-
-            return (
-              <button
-                key={iso}
-                type="button"
-                disabled={disabled}
-                onClick={() => selectDay(d)}
-                className={`flex h-9 w-full items-center justify-center rounded-lg text-sm font-semibold transition ${
-                  disabled
-                    ? "cursor-not-allowed text-dispatch-light/50"
-                    : selected
-                      ? "bg-dispatch-indigo text-white shadow-md"
-                      : isToday
-                        ? "bg-dispatch-primary-soft text-dispatch-primary hover:bg-dispatch-primary/20"
-                        : "text-dispatch-text hover:bg-dispatch-bg"
-                }`}
+          <div className="mb-2 grid grid-cols-7 gap-1 text-center">
+            {WEEKDAYS.map((d) => (
+              <span
+                key={d}
+                className="py-1 text-[10px] font-bold uppercase tracking-wide"
+                style={{ color: "var(--text-dim)" }}
               >
                 {d}
-              </button>
-            );
-          })}
-        </div>
+              </span>
+            ))}
+          </div>
 
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-dispatch-border pt-3">
-          <p className="text-xs text-dispatch-muted">{formatDisplayDate(value)}</p>
-          <button
-            type="button"
-            onClick={() => {
-              onChange(today);
-              setOpen(false);
-            }}
-            disabled={isDisabled(today, minIso, maxIso)}
-            className="rounded-lg bg-dispatch-primary-soft px-2.5 py-1 text-xs font-bold text-dispatch-primary disabled:opacity-40"
+          <div className="grid grid-cols-7 gap-1">
+            {cells.flat().map((d, i) => {
+              if (d == null) {
+                return <span key={`empty-${i}`} className="h-9" />;
+              }
+              const iso = isoDateFromParts(viewYear, viewMonth, d);
+              const disabled = isDisabled(iso, minIso, maxIso);
+              const selected = iso === value;
+              const isToday = iso === today;
+
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => selectDay(d)}
+                  className="flex h-9 w-full items-center justify-center rounded-lg text-sm font-semibold transition"
+                  style={
+                    disabled
+                      ? { color: "var(--text-dim)", opacity: 0.5, cursor: "not-allowed" }
+                      : selected
+                        ? { background: "var(--accent)", color: "#041018", boxShadow: "var(--glow)" }
+                        : isToday
+                          ? { background: "rgba(34, 211, 238, 0.12)", color: "var(--accent)" }
+                          : { color: "var(--text)" }
+                  }
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            className="mt-3 flex items-center justify-between gap-2 pt-3"
+            style={{ borderTop: "1px solid var(--border)" }}
           >
-            Today
-          </button>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDisplayDate(value)}</p>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(today);
+                setOpen(false);
+              }}
+              disabled={isDisabled(today, minIso, maxIso)}
+              className="ops-btn ops-btn--accent px-2.5 py-1 text-xs font-bold disabled:opacity-40"
+            >
+              Today
+            </button>
+          </div>
         </div>
       </div>
     ) : null;
@@ -304,7 +313,7 @@ export function DatePickerPopover({
             onClick={() => setOpen(!open)}
             className={
               buttonClassName ||
-              "inline-flex items-center gap-1.5 rounded-xl border border-dispatch-border px-3 py-2 text-xs font-semibold text-dispatch-muted transition hover:border-dispatch-primary/40 hover:bg-dispatch-bg hover:text-dispatch-primary"
+              "ops-btn inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
             }
             aria-expanded={open}
             aria-haspopup="dialog"

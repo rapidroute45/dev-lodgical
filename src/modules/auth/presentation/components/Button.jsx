@@ -1,18 +1,25 @@
-/** Mirrors mobile AuthPrimaryButton — solid dispatch indigo. */
+/** Mirrors mobile AuthPrimaryButton — solid dispatch indigo, or landing glow when dark. */
 export function Button({
   type = "button",
   loading = false,
   disabled = false,
+  tone = "light",
   children,
   className = "",
   ...props
 }) {
   const isDisabled = disabled || loading;
+  const isDark = tone === "dark";
+
   return (
     <button
       type={type}
       disabled={isDisabled}
-      className={`group relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-dispatch-indigo px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-dispatch-primary/25 transition hover:bg-dispatch-indigo-pressed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={
+        isDark
+          ? `landing__btn-glow group relative inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60 ${className}`
+          : `group relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-dispatch-indigo px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-dispatch-primary/25 transition hover:bg-dispatch-indigo-pressed focus:outline-none focus:ring-2 focus:ring-brand-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`
+      }
       {...props}
     >
       {loading && (

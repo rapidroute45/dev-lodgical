@@ -1,28 +1,36 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createRoute,
   createSchedule,
   createStore,
+  completeRouteStopOps,
   deleteRoute,
   deleteSchedule,
   fetchAvailableDrivers,
   fetchCities,
+  fetchLocations,
   fetchRoute,
   fetchRoutes,
   fetchSchedule,
   fetchSchedules,
   fetchStore,
   fetchStores,
+  fetchTeam,
   fetchTeams,
+  returnRouteStopOps,
+  updateRouteStopStatusOps,
   updateRoute,
   updateSchedule,
   updateStore,
 } from "./scheduling.api.js";
+import { useLocationQueryParams } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 export function useStoresQuery(enabled = true, params) {
+  const scopeParams = useLocationQueryParams(params);
+  const merged = { activeOnly: true, ...scopeParams, ...params };
   return useQuery({
-    queryKey: ["stores", params?.city ?? "", params?.state ?? "", params?.activeOnly ?? "active"],
-    queryFn: () => fetchStores({ activeOnly: true, ...params }),
+    queryKey: ["stores", merged.city ?? "", merged.state ?? "", merged.activeOnly ?? "active"],
+    queryFn: () => fetchStores(merged),
     enabled,
   });
 }
@@ -43,6 +51,14 @@ export function useTeamsQuery(enabled = true) {
   });
 }
 
+export function useTeamQuery(teamId, enabled = true) {
+  return useQuery({
+    queryKey: ["teams", teamId],
+    queryFn: () => fetchTeam(teamId),
+    enabled: enabled && Boolean(teamId),
+  });
+}
+
 export function useCitiesQuery(enabled = true) {
   return useQuery({
     queryKey: ["cities"],
@@ -51,23 +67,33 @@ export function useCitiesQuery(enabled = true) {
   });
 }
 
+export function useLocationsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ["locations"],
+    queryFn: fetchLocations,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useSchedulesQuery(filters, enabled = true) {
+  const scopeParams = useLocationQueryParams(filters);
   const date = typeof filters === "string" ? filters : filters?.date;
   return useQuery({
     queryKey: [
       "schedules",
       "list",
       date,
-      filters?.city ?? "",
-      filters?.state ?? "",
+      scopeParams.city ?? "",
+      scopeParams.state ?? "",
       filters?.storeId ?? "",
       filters?.status ?? "",
     ],
     queryFn: () =>
       fetchSchedules({
         date,
-        city: filters?.city,
-        state: filters?.state,
+        city: scopeParams.city,
+        state: scopeParams.state,
         storeId: filters?.storeId,
         status: filters?.status === "all" ? undefined : filters?.status,
         limit: 50,
@@ -84,28 +110,44 @@ export function useScheduleQuery(id, enabled = true) {
   });
 }
 
+export function useScheduleGroupQuery(scheduleIds, enabled = true, options = {}) {
+  const ids = scheduleIds ?? [];
+  const { refetchInterval } = options;
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ["schedules", id],
+      queryFn: () => fetchSchedule(id),
+      enabled: enabled && Boolean(id),
+      refetchInterval,
+    })),
+  });
+}
+
 export function useRoutesQuery(params, enabled = true) {
+  const scopeParams = useLocationQueryParams(params);
   return useQuery({
     queryKey: [
       "routes",
       "list",
       params?.date ?? "",
-      params?.city ?? "",
-      params?.state ?? "",
+      scopeParams.city ?? "",
+      scopeParams.state ?? "",
       params?.storeId ?? "",
       params?.status ?? "",
       params?.teamId ?? "",
     ],
-    queryFn: () => fetchRoutes(params),
+    queryFn: () => fetchRoutes({ ...params, ...scopeParams }),
     enabled: enabled && Boolean(params?.date),
   });
 }
 
-export function useRouteQuery(id, enabled = true) {
+export function useRouteQuery(id, enabled = true, options = {}) {
+  const { refetchInterval } = options;
   return useQuery({
     queryKey: ["routes", id],
     queryFn: () => fetchRoute(id),
     enabled: enabled && Boolean(id),
+    refetchInterval,
   });
 }
 
@@ -218,6 +260,50 @@ export function useDeleteRouteMutation() {
       qc.invalidateQueries({ queryKey: ["routes"] });
       if (vars?.scheduleId) {
         qc.invalidateQueries({ queryKey: ["schedules", vars.scheduleId] });
+      }
+    },
+  });
+}
+
+export function useCompleteRouteStopOpsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId, stopId }) => completeRouteStopOps(routeId, stopId),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["schedules"] });
+      qc.invalidateQueries({ queryKey: ["routes"] });
+      if (vars?.routeId) {
+        qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
+      }
+    },
+  });
+}
+
+export function useReturnRouteStopOpsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId, stopId, reason, customReason }) =>
+      returnRouteStopOps(routeId, stopId, { reason, customReason }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["schedules"] });
+      qc.invalidateQueries({ queryKey: ["routes"] });
+      if (vars?.routeId) {
+        qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
+      }
+    },
+  });
+}
+
+export function useUpdateRouteStopStatusOpsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId, stopId, status, reason, customReason }) =>
+      updateRouteStopStatusOps(routeId, stopId, { status, reason, customReason }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["schedules"] });
+      qc.invalidateQueries({ queryKey: ["routes"] });
+      if (vars?.routeId) {
+        qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
       }
     },
   });

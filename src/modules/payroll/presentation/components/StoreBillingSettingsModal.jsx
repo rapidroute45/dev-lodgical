@@ -45,14 +45,14 @@ export function StoreBillingSettingsModal({ open, onClose }) {
   return (
     <ModalSheet open={open} title="Default store rates" onClose={onClose}>
       {isLoading ? (
-        <p className="py-8 text-center text-sm text-dispatch-muted">Loading…</p>
+        <p className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</p>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm text-dispatch-muted">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             Default Small, Medium, and Full billing rates. Stores can override from payroll detail.
           </p>
           {error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="ops-banner ops-banner--error">
               {error}
             </div>
           ) : null}
@@ -69,7 +69,7 @@ export function StoreBillingSettingsModal({ open, onClose }) {
             type="button"
             onClick={() => void handleSave()}
             disabled={updateMutation.isPending}
-            className="mt-2 w-full rounded-xl bg-dispatch-primary py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="ops-btn ops-btn--accent mt-2 w-full justify-center py-3 font-bold"
           >
             {updateMutation.isPending ? "Saving…" : "Save rates"}
           </button>

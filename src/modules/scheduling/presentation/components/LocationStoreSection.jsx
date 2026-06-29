@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  filterLocationsByAllowedCities,
   findLocationOption,
   storeLocationsFromStores,
   storesInLocation,
@@ -9,25 +10,26 @@ import { ListPickerModal } from "./ListPickerModal.jsx";
 function PickerField({ label, value, placeholder, disabled, onClick }) {
   return (
     <div className="mb-3">
-      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-dispatch-muted">
+      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
         {label}
       </label>
       <button
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className="group flex w-full items-center gap-3 rounded-xl border border-dispatch-border bg-[#FAFBFC] px-4 py-3 text-left text-sm transition hover:border-dispatch-primary/40 hover:bg-white disabled:opacity-50"
+        className="ops-field group flex w-full items-center gap-3 text-left text-sm disabled:opacity-50"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-dispatch-primary-soft text-dispatch-primary">
+        <span className="ops-field__icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           </svg>
         </span>
-        <span className={`flex-1 font-semibold ${value ? "text-dispatch-text" : "text-dispatch-light"}`}>
+        <span className="flex-1 font-semibold" style={{ color: value ? "var(--text)" : "var(--text-dim)" }}>
           {value || placeholder}
         </span>
         <svg
-          className="h-4 w-4 text-dispatch-muted transition group-hover:text-dispatch-primary"
+          className="h-4 w-4 transition"
+          style={{ color: "var(--text-muted)" }}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -51,16 +53,25 @@ export function LocationStoreSection({
   onCreateStore,
   sectionTitle = "Location & store",
   cityLocked = false,
+  allowedCities = null,
+  canCreateStore = Boolean(onCreateStore),
 }) {
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [storeModalOpen, setStoreModalOpen] = useState(false);
 
-  const locations = useMemo(() => storeLocationsFromStores(stores), [stores]);
+  const locations = useMemo(() => {
+    const all = storeLocationsFromStores(stores);
+    return filterLocationsByAllowedCities(all, allowedCities);
+  }, [stores, allowedCities]);
   const selectedLocation = findLocationOption(locations, city, state);
-  const storesInCity = useMemo(
-    () => (selectedLocation ? storesInLocation(stores, city, state) : []),
-    [stores, city, state, selectedLocation]
-  );
+  const storesInCity = useMemo(() => {
+    if (!selectedLocation) return [];
+    return storesInLocation(
+      stores,
+      selectedLocation.city,
+      selectedLocation.state
+    );
+  }, [stores, selectedLocation]);
 
   const cityPickerItems = locations.map((loc) => ({
     id: loc.key,
@@ -78,35 +89,49 @@ export function LocationStoreSection({
     ? `${selectedLocation.label} (${selectedLocation.storeCount} store${selectedLocation.storeCount === 1 ? "" : "s"})`
     : "";
 
+  const lockedCityDisplay = selectedLocation
+    ? cityDisplay
+    : state.trim()
+      ? `${city}, ${state}`
+      : city.trim();
+
   const hasCity = Boolean(selectedLocation);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-dispatch-border/80 bg-dispatch-surface shadow-sm">
-      <div className="border-b border-dispatch-border/60 bg-gradient-to-r from-dispatch-primary-soft/50 to-transparent px-5 py-4">
-        <h2 className="text-base font-bold text-dispatch-text">{sectionTitle}</h2>
-        <p className="mt-0.5 text-sm text-dispatch-muted">
+    <section className="ops-panel ops-fade overflow-hidden">
+      <div className="ops-panel__head px-5 py-4">
+        <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>{sectionTitle}</h2>
+        <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>
           Choose where this schedule runs
         </p>
       </div>
 
       <div className="p-5">
         <PickerField
-          label="City"
-          value={cityLocked && city.trim() ? `${city}, ${state}` : cityDisplay}
+          label={cityLocked ? "City (assigned)" : "City"}
+          value={cityLocked ? lockedCityDisplay : cityDisplay}
           placeholder={
             cityLocked
               ? city.trim()
-                ? `${city}, ${state}`
+                ? lockedCityDisplay || city.trim()
                 : "Assigned city"
               : isLoadingStores
                 ? "Loading cities…"
                 : locations.length === 0
-                  ? "No stores yet — create one"
+                  ? canCreateStore
+                    ? "No stores yet — create one"
+                    : "No stores in your assigned cities"
                   : "Select city"
           }
           disabled={cityLocked || isLoadingStores || locations.length === 0}
           onClick={() => setCityModalOpen(true)}
         />
+        {cityLocked ? (
+          <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
+            This city is fixed for your account. Ask a manager to assign more cities if you need to
+            work elsewhere.
+          </p>
+        ) : null}
 
         <PickerField
           label="Store"
@@ -123,8 +148,8 @@ export function LocationStoreSection({
         />
 
         {selectedStore ? (
-          <div className="mb-4 rounded-xl border border-dispatch-border bg-dispatch-bg px-3 py-2.5 text-xs text-dispatch-muted">
-            <span className="font-semibold text-dispatch-text">{selectedStore.storeId}</span>
+          <div className="ops-field mb-4 px-3 py-2.5 text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="font-semibold" style={{ color: "var(--text)" }}>{selectedStore.storeId}</span>
             {" · "}
             {selectedStore.city}, {selectedStore.state}
             {selectedStore.address ? ` · ${selectedStore.address}` : ""}
@@ -135,7 +160,7 @@ export function LocationStoreSection({
           <button
             type="button"
             onClick={onCreateStore}
-            className="inline-flex items-center gap-2 rounded-xl border border-dashed border-dispatch-primary/50 bg-dispatch-primary-soft/30 px-4 py-2.5 text-sm font-bold text-dispatch-primary transition hover:bg-dispatch-primary-soft"
+            className="ops-dashed inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold"
           >
             <span className="text-lg leading-none">+</span>
             Create new store
@@ -149,12 +174,17 @@ export function LocationStoreSection({
         items={cityPickerItems}
         selectedId={selectedLocation?.key ?? null}
         isLoading={isLoadingStores}
-        emptyMessage="Create a store first to see cities here."
+        emptyMessage={
+          canCreateStore
+            ? "Create a store first to see cities here."
+            : "No stores available. Ask your dispatch manager to add one."
+        }
         onSelect={(key) => {
           const loc = locations.find((l) => l.key === key);
           if (loc) onSelectLocation(loc.city, loc.state);
         }}
         onClose={() => setCityModalOpen(false)}
+        searchPlaceholder="Search cities…"
       />
 
       <ListPickerModal
@@ -168,6 +198,7 @@ export function LocationStoreSection({
           if (store) onSelectStore(store);
         }}
         onClose={() => setStoreModalOpen(false)}
+        searchPlaceholder="Search stores…"
       />
     </section>
   );

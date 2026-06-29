@@ -1,0 +1,74 @@
+.route-planning-map-wrap {
+  width: 100%;
+  height: 280px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.route-planning-map-wrap--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.route-planning-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.route-planning-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.route-planning-map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.route-planning-map-legend-dot--pickup {
+  background: #16a34a;
+}
+
+.route-planning-map-legend-dot--dropoff {
+  background: #2563eb;
+}
+
+.route-planning-map-legend-line {
+  display: inline-block;
+  width: 18px;
+  height: 0;
+  border-top: 3px solid #2563eb;
+  border-radius: 9999px;
+}
+
+.route-planning-map-legend-line--driver {
+  border-top-color: #2563eb;
+}
+
+/* ---------- Dark ops shell overrides (chrome only, not the map tiles) ---------- */
+.ops-shell .route-planning-map-wrap {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ops-shell .route-planning-map-legend {
+  color: var(--text-muted);
+}
+
+.ops-shell .route-planning-map-legend-dot {
+  border-color: rgba(15, 19, 28, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}

@@ -1,13 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import {
   createConversation,
+  createGroup,
   createInternalConversation,
   fetchChatDrivers,
   fetchChatOpsPeers,
   fetchConversations,
+  fetchGroupCandidates,
   fetchMessages,
+  leaveGroup,
   sendChatMessage,
+  sendDocument,
+  sendVoiceMessage,
+  updateGroup,
 } from "./chat.api.js";
+import {
+  filterConversationsByScope,
+  filterPeopleByScope,
+  useScopedUserIdSet,
+} from "@/modules/chat/utils/chatLocationScope.js";
+import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 export const chatKeys = {
   all: ["chat"],
@@ -15,14 +29,23 @@ export const chatKeys = {
   messages: (id) => [...chatKeys.all, "messages", id],
   drivers: () => [...chatKeys.all, "drivers"],
   opsPeers: () => [...chatKeys.all, "ops-peers"],
+  groupCandidates: () => [...chatKeys.all, "group-candidates"],
 };
 
 export function useConversationsQuery(enabled = true) {
-  return useQuery({
-    queryKey: chatKeys.conversations(),
+  const { user } = useAuth();
+  const { isScoped, city, state } = useOpsLocationScope();
+  const scopedIds = useScopedUserIdSet();
+  const query = useQuery({
+    queryKey: [...chatKeys.conversations(), city ?? "", state ?? ""],
     queryFn: fetchConversations,
     enabled,
   });
+  const data = useMemo(
+    () => (isScoped ? filterConversationsByScope(query.data ?? [], scopedIds, user?.id) : query.data ?? []),
+    [query.data, scopedIds, user?.id, isScoped]
+  );
+  return { ...query, data };
 }
 
 export function useChatMessagesQuery(conversationId, enabled = true) {
@@ -35,19 +58,33 @@ export function useChatMessagesQuery(conversationId, enabled = true) {
 }
 
 export function useChatDriversQuery(enabled = true) {
-  return useQuery({
+  const { user } = useAuth();
+  const scopedIds = useScopedUserIdSet();
+  const query = useQuery({
     queryKey: chatKeys.drivers(),
     queryFn: fetchChatDrivers,
     enabled,
   });
+  const data = useMemo(
+    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
+    [query.data, scopedIds, user?.id]
+  );
+  return { ...query, data };
 }
 
 export function useChatOpsPeersQuery(enabled = true) {
-  return useQuery({
+  const { user } = useAuth();
+  const scopedIds = useScopedUserIdSet();
+  const query = useQuery({
     queryKey: chatKeys.opsPeers(),
     queryFn: fetchChatOpsPeers,
     enabled,
   });
+  const data = useMemo(
+    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
+    [query.data, scopedIds, user?.id]
+  );
+  return { ...query, data };
 }
 
 export function useCreateConversationMutation() {
@@ -84,5 +121,67 @@ export function useSendChatMessageMutation() {
   return useMutation({
     mutationFn: ({ conversationId, body }) => sendChatMessage(conversationId, body),
     onSuccess: (message) => mergeSentMessage(qc, message),
+  });
+}
+
+export function useSendVoiceMessageMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, blob, durationMs }) =>
+      sendVoiceMessage(conversationId, blob, durationMs),
+    onSuccess: (message) => mergeSentMessage(qc, message),
+  });
+}
+
+export function useSendDocumentMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, file }) => sendDocument(conversationId, file),
+    onSuccess: (message) => mergeSentMessage(qc, message),
+  });
+}
+
+export function useGroupCandidatesQuery(enabled = true) {
+  const { user } = useAuth();
+  const scopedIds = useScopedUserIdSet();
+  const query = useQuery({
+    queryKey: chatKeys.groupCandidates(),
+    queryFn: fetchGroupCandidates,
+    enabled,
+  });
+  const data = useMemo(
+    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
+    [query.data, scopedIds, user?.id]
+  );
+  return { ...query, data };
+}
+
+export function useCreateGroupMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createGroup,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: chatKeys.conversations() });
+    },
+  });
+}
+
+export function useUpdateGroupMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, ...payload }) => updateGroup(conversationId, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: chatKeys.conversations() });
+    },
+  });
+}
+
+export function useLeaveGroupMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId }) => leaveGroup(conversationId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: chatKeys.conversations() });
+    },
   });
 }

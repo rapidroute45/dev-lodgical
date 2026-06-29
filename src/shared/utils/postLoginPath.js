@@ -4,7 +4,7 @@ import { MOBILE_ONLY_ROLES, OPS_ROLES, UserRole } from "./constants.js";
 export function postLoginPath(role) {
   if (!role) return "/dashboard";
   if (MOBILE_ONLY_ROLES.includes(role)) return "/mobile-only";
-  if (role === UserRole.DISPATCH_TEAM) return "/schedules";
+  if (role === UserRole.DISPATCH_TEAM) return "/dashboard";
   if (role === UserRole.ACCOUNTANT) return "/payroll";
   return "/dashboard";
 }

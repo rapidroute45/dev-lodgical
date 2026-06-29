@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useOpsTheme } from "@/modules/manager-home/presentation/context/OpsThemeContext.jsx";
 import {
   useCreateTeamMutation,
   useTeamsQuery,
 } from "@/modules/users/infrastructure/api/users.queries.js";
 
 export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDriver = true }) {
+  const { theme } = useOpsTheme();
   const [newTeamName, setNewTeamName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState(null);
@@ -49,74 +52,88 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
     onClose();
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center"
+      className={`ops-shell ops-picker-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4${
+        theme === "light" ? " ops-shell--light" : ""
+      }`}
       role="dialog"
       aria-modal="true"
       onClick={handleClose}
     >
-      <div
-        className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-2xl bg-dispatch-surface shadow-2xl ring-1 ring-dispatch-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b border-dispatch-border px-4 py-3">
-          <h3 className="text-base font-bold text-dispatch-text">{title}</h3>
-          <p className="mt-1 text-xs text-dispatch-muted">{subtitle}</p>
+      <div className="ops-picker" onClick={(e) => e.stopPropagation()}>
+        <div className="ops-picker__head">
+          <div>
+            <h3 className="ops-picker__title">{title}</h3>
+            <p className="ops-picker__sub">{subtitle}</p>
+          </div>
+          <button type="button" onClick={handleClose} className="ops-picker__close" aria-label="Close">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <ul className="max-h-[45vh] overflow-auto p-2">
-          {isLoading ? (
-            <li className="px-3 py-6 text-center text-sm text-dispatch-muted">Loading…</li>
-          ) : isError ? (
-            <li className="px-3 py-6 text-center text-sm text-dispatch-muted">
-              Could not load teams.{" "}
-              <button type="button" onClick={() => refetch()} className="font-semibold text-dispatch-primary">
-                Retry
-              </button>
-            </li>
-          ) : teams.length === 0 && !showCreate ? (
-            <li className="px-3 py-8 text-center">
-              <p className="text-sm font-semibold text-dispatch-text">No teams yet</p>
-              <p className="mt-1 text-xs text-dispatch-muted">
-                Create a team to assign this user
-              </p>
-            </li>
-          ) : (
-            teams.map((team) => {
-              const selected = team.id === selectedTeamId;
-              const leadLabel = team.teamLeadName
-                ? `Team lead: ${team.teamLeadName}`
-                : "No team lead assigned";
-              return (
-                <li key={team.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelect(team);
-                      handleClose();
-                    }}
-                    className={`w-full rounded-xl px-3 py-3 text-left transition hover:bg-dispatch-bg ${
-                      selected ? "bg-dispatch-primary-soft ring-1 ring-dispatch-primary" : ""
-                    }`}
-                  >
-                    <p className="font-semibold text-dispatch-text">{team.name}</p>
-                    <p className="text-xs font-medium text-dispatch-primary">{team.code}</p>
-                    <p className="mt-1 text-xs text-dispatch-muted">{leadLabel}</p>
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
+        <div className="ops-picker__body">
+          <ul className="ops-picker__list">
+            {isLoading ? (
+              <li className="ops-picker__empty">Loading…</li>
+            ) : isError ? (
+              <li className="ops-picker__empty">
+                Could not load teams.{" "}
+                <button type="button" onClick={() => refetch()} className="font-semibold" style={{ color: "var(--accent)" }}>
+                  Retry
+                </button>
+              </li>
+            ) : teams.length === 0 && !showCreate ? (
+              <li className="ops-picker__empty">
+                <p className="font-semibold" style={{ color: "var(--text)" }}>No teams yet</p>
+                <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>
+                  Create a team to assign this user
+                </p>
+              </li>
+            ) : (
+              teams.map((team) => {
+                const selected = team.id === selectedTeamId;
+                const leadLabel = team.teamLeadName
+                  ? `Team lead: ${team.teamLeadName}`
+                  : "No team lead assigned";
+                return (
+                  <li key={team.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelect(team);
+                        handleClose();
+                      }}
+                      className={`ops-picker__item${selected ? " ops-picker__item--selected" : ""}`}
+                    >
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block truncate font-semibold" style={{ color: "var(--text)" }}>{team.name}</span>
+                        <span className="mt-0.5 block truncate text-xs font-medium" style={{ color: "var(--accent)" }}>{team.code}</span>
+                        <span className="mt-1 block truncate text-xs" style={{ color: "var(--text-muted)" }}>{leadLabel}</span>
+                      </span>
+                      {selected ? (
+                        <svg className="h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
 
         {showCreate ? (
-          <div className="border-t border-dispatch-border px-4 py-3">
+          <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
             {createError ? (
-              <p className="mb-2 text-xs text-dispatch-red">{createError}</p>
+              <p className="mb-2 text-xs" style={{ color: "var(--rose)" }}>{createError}</p>
             ) : null}
             <input
-              className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-dispatch-primary/30"
+              className="ops-field w-full text-sm outline-none"
+              style={{ color: "var(--text)" }}
               placeholder="Team name (e.g. ABC)"
               value={newTeamName}
               onChange={(e) => {
@@ -133,7 +150,7 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
                   setNewTeamName("");
                   setCreateError(null);
                 }}
-                className="flex-1 rounded-xl border border-dispatch-border px-3 py-2.5 text-sm font-semibold text-dispatch-muted hover:bg-dispatch-bg"
+                className="ops-btn flex-1 px-3 py-2.5 text-sm font-semibold"
               >
                 Cancel
               </button>
@@ -141,18 +158,18 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
                 type="button"
                 onClick={handleCreate}
                 disabled={createTeam.isPending || newTeamName.trim().length < 2}
-                className="flex-[1.4] rounded-xl bg-dispatch-indigo px-3 py-2.5 text-sm font-bold text-white hover:bg-dispatch-indigo-pressed disabled:opacity-50"
+                className="ops-btn ops-btn--accent flex-[1.4] px-3 py-2.5 text-sm font-bold disabled:opacity-50"
               >
                 {createTeam.isPending ? "Creating…" : "Create team"}
               </button>
             </div>
           </div>
         ) : (
-          <div className="border-t border-dispatch-border p-3">
+          <div className="space-y-2 p-3" style={{ borderTop: "1px solid var(--border)" }}>
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-dispatch-primary bg-dispatch-primary-soft px-3 py-2.5 text-sm font-bold text-dispatch-primary hover:bg-dispatch-primary-soft/80"
+              className="ops-dashed flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold"
             >
               <span className="text-lg leading-none">+</span>
               Create new team
@@ -160,13 +177,14 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
             <button
               type="button"
               onClick={handleClose}
-              className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm font-semibold text-dispatch-muted hover:bg-dispatch-bg"
+              className="ops-btn w-full px-3 py-2.5 text-sm font-semibold"
             >
               Close
             </button>
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

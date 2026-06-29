@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
+import { useResolvedStoreLocation } from "@/modules/scheduling/presentation/hooks/useResolvedStoreLocation.js";
 import { Link } from "react-router-dom";
 import { todayIsoDate } from "@/shared/utils/time.js";
 import {
   useSchedulesQuery,
   useStoresQuery,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { OpsStatCard } from "@/modules/manager-home/presentation/components/OpsWidgets.jsx";
 import { DateNavigator } from "@/modules/scheduling/presentation/components/DateNavigator.jsx";
 import { LocationStoreSection } from "@/modules/scheduling/presentation/components/LocationStoreSection.jsx";
 import { ScheduleStatusFilter } from "@/modules/scheduling/presentation/components/ScheduleStatusFilter.jsx";
 import { ScheduleCard } from "@/modules/scheduling/presentation/components/ScheduleCard.jsx";
+import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
 
-export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
+export function DispatchTeamSchedulesPanel({ city }) {
   const memberCity = city?.trim() ?? "";
   const [date, setDate] = useState(todayIsoDate());
   const [state, setState] = useState("");
@@ -19,6 +22,8 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
   const [expandedId, setExpandedId] = useState(null);
 
   const { data: allStores = [], isLoading: storesLoading } = useStoresQuery(true);
+
+  useResolvedStoreLocation(allStores, memberCity, state, () => {}, setState);
 
   const listFilters = useMemo(
     () => ({
@@ -38,6 +43,11 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
   const schedules = data?.items ?? [];
   const total = data?.total ?? 0;
 
+  const groupedSchedules = useMemo(
+    () => groupSchedulesByStore(schedules),
+    [schedules]
+  );
+
   const summary = useMemo(() => {
     let routes = 0;
     let pending = 0;
@@ -45,16 +55,22 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
       routes += s.routeCount ?? 0;
       pending += s.pendingRouteCount ?? 0;
     }
-    return { schedules: schedules.length, routes, pending };
-  }, [schedules]);
+    return {
+      stores: groupedSchedules.length,
+      routes,
+      pending,
+    };
+  }, [schedules, groupedSchedules.length]);
 
   if (!memberCity) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
-        <p className="font-semibold text-amber-900">No city assigned</p>
-        <p className="mt-1 text-sm text-amber-800">
-          Assign a city to this dispatch team member to see their schedules.
-        </p>
+      <div className="ops-banner ops-banner--warning">
+        <div>
+          <p className="font-semibold">No city assigned</p>
+          <p className="mt-1 text-sm">
+            Assign a city to this dispatch team member to see their schedules.
+          </p>
+        </div>
       </div>
     );
   }
@@ -69,10 +85,18 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
         }}
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryPill label="Schedules" value={summary.schedules} accent="primary" />
-        <SummaryPill label="Routes" value={summary.routes} accent="blue" />
-        <SummaryPill label="Pending acceptance" value={summary.pending} accent="orange" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <OpsStatCard icon="schedule" label="Stores" value={summary.stores} loading={isLoading} delay={0} />
+        <OpsStatCard icon="routes" label="Routes" value={summary.routes} loading={isLoading} delay={60} />
+        <OpsStatCard
+          icon="clock"
+          label="Pending acceptance"
+          value={summary.pending}
+          barColor="var(--amber)"
+          percent={summary.routes ? (summary.pending / summary.routes) * 100 : 0}
+          loading={isLoading}
+          delay={120}
+        />
       </div>
 
       <div className="grid w-full gap-6 xl:grid-cols-[minmax(280px,340px)_1fr] xl:items-start">
@@ -92,8 +116,8 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
             }}
           />
 
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4 shadow-sm">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-dispatch-muted">
+          <div className="ops-panel ops-fade p-5">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
               Filter by status
             </p>
             <ScheduleStatusFilter
@@ -112,7 +136,8 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
                 setSelectedStore(null);
                 setExpandedId(null);
               }}
-              className="text-sm font-semibold text-dispatch-primary hover:underline"
+              className="text-sm font-semibold hover:underline"
+              style={{ color: "var(--accent)" }}
             >
               Clear store filter
             </button>
@@ -121,10 +146,10 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
 
         <div className="min-w-0 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-dispatch-text">
+            <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>
               Schedules in {memberCity}
               {!isLoading && total > 0 ? (
-                <span className="ml-2 text-sm font-semibold text-dispatch-muted">
+                <span className="ml-2 text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
                   {schedules.length} of {total}
                 </span>
               ) : null}
@@ -132,7 +157,7 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
             <button
               type="button"
               onClick={() => refetch()}
-              className="rounded-lg border border-dispatch-border px-3 py-1.5 text-xs font-semibold text-dispatch-muted hover:bg-dispatch-bg"
+              className="ops-btn px-3 py-1.5 text-xs font-semibold"
             >
               {isFetching ? "Refreshing…" : "Refresh"}
             </button>
@@ -141,63 +166,43 @@ export function DispatchTeamSchedulesPanel({ city, allowEdit = true }) {
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl bg-dispatch-border/40" />
+                <div key={i} className="ops-skel h-28 rounded-2xl" />
               ))}
             </div>
-          ) : schedules.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-dispatch-border bg-dispatch-surface px-8 py-12 text-center">
-              <p className="font-bold text-dispatch-text">No schedules for this day</p>
-              <p className="mt-1 text-sm text-dispatch-muted">
+          ) : groupedSchedules.length === 0 ? (
+            <div className="ops-panel ops-fade px-8 py-14 text-center">
+              <div className="ops-stat__icon mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-lg font-bold" style={{ color: "var(--text)" }}>No schedules for this day</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
                 Nothing scheduled in {memberCity} on this date.
               </p>
               <Link
                 to="/schedules/create"
-                className="mt-4 inline-flex rounded-xl bg-dispatch-indigo px-5 py-2.5 text-sm font-bold text-white hover:bg-dispatch-indigo-pressed"
+                className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold"
               >
                 Create schedule
               </Link>
             </div>
           ) : (
             <div className="space-y-4">
-              {schedules.map((schedule) => (
+              {groupedSchedules.map((group) => (
                 <ScheduleCard
-                  key={schedule.id}
-                  schedule={schedule}
-                  expanded={expandedId === schedule.id}
+                  key={group.key}
+                  group={group}
+                  expanded={expandedId === group.key}
                   onToggle={() =>
-                    setExpandedId((id) => (id === schedule.id ? null : schedule.id))
+                    setExpandedId((id) => (id === group.key ? null : group.key))
                   }
-                  allowEdit={allowEdit}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SummaryPill({ label, value, accent }) {
-  const styles = {
-    primary: "border-dispatch-primary/20 from-dispatch-primary-soft",
-    blue: "border-blue-200 from-blue-50",
-    orange: "border-orange-200 from-orange-50",
-  };
-  const valueColor = {
-    primary: "text-dispatch-primary",
-    blue: "text-dispatch-blue",
-    orange: "text-orange-700",
-  };
-
-  return (
-    <div
-      className={`rounded-2xl border bg-gradient-to-br to-white px-4 py-3 shadow-sm ${styles[accent]}`}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wide text-dispatch-muted">{label}</p>
-      <p className={`mt-0.5 text-2xl font-extrabold tabular-nums ${valueColor[accent]}`}>
-        {value}
-      </p>
     </div>
   );
 }

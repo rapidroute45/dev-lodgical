@@ -1,13 +1,13 @@
 export const SCHEDULE_STATUS_STYLES = {
-  draft: "bg-amber-50 text-amber-800 ring-amber-200",
-  pending: "bg-orange-50 text-orange-800 ring-orange-200",
-  active: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  completed: "bg-indigo-50 text-indigo-800 ring-indigo-200",
-  cancelled: "bg-slate-100 text-slate-600 ring-slate-200",
+  draft: "ops-badge ops-badge--pending",
+  pending: "ops-badge ops-badge--pending",
+  active: "ops-badge ops-badge--active",
+  completed: "ops-badge ops-badge--done",
+  cancelled: "ops-badge ops-badge--muted",
 };
 
 export function scheduleStatusClass(status) {
-  return SCHEDULE_STATUS_STYLES[status] ?? "bg-dispatch-bg text-dispatch-muted ring-dispatch-border";
+  return SCHEDULE_STATUS_STYLES[status] ?? "ops-badge ops-badge--muted";
 }
 
 export function formatScheduleStatus(status) {
@@ -23,18 +23,18 @@ export function formatRouteStatus(status) {
 export function routeStatusClass(status) {
   switch (status) {
     case "completed":
-      return "bg-emerald-50 text-emerald-700";
+      return "ops-badge ops-badge--done";
     case "in_progress":
     case "active":
-      return "bg-blue-50 text-blue-700";
+      return "ops-badge ops-badge--active";
     case "pending":
     case "assigned":
-      return "bg-amber-50 text-amber-800";
+      return "ops-badge ops-badge--pending";
     case "cancelled":
-      return "bg-slate-100 text-slate-600";
+      return "ops-badge ops-badge--muted";
     case "not_verified":
-      return "bg-rose-50 text-rose-700";
+      return "ops-badge ops-badge--rose";
     default:
-      return "bg-dispatch-bg text-dispatch-muted";
+      return "ops-badge ops-badge--muted";
   }
 }

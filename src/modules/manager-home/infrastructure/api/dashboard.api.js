@@ -1,10 +1,9 @@
 import { api } from "@/shared/utils/api.js";
 
 /** GET /dashboard/stats — same as mobile useDashboardStatsQuery */
-export async function fetchDashboardStats(date) {
-  const res = await api.get("/dashboard/stats", {
-    params: date ? { date } : undefined,
-  });
+export async function fetchDashboardStats(date, scope = {}) {
+  const params = { ...(date ? { date } : {}), ...scope };
+  const res = await api.get("/dashboard/stats", { params });
   return res.data.data;
 }
 

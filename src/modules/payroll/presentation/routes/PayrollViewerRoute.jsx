@@ -7,7 +7,7 @@ export function PayrollViewerRoute({ children }) {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-dispatch-bg text-dispatch-muted">
+      <div className="ops-shell flex min-h-svh items-center justify-center" style={{ color: "var(--text-muted)" }}>
         Loading…
       </div>
     );

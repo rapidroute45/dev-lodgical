@@ -64,12 +64,12 @@ export function PayrollGeneratePanel() {
   }
 
   return (
-    <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4 shadow-sm">
-      <h3 className="text-base font-bold text-dispatch-text">Generate payroll</h3>
+    <div className="ops-panel ops-fade p-5">
+      <h3 className="text-base font-bold" style={{ color: "var(--text)" }}>Generate payroll</h3>
       {error ? (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <div className="ops-banner ops-banner--error mt-2">{error}</div>
       ) : null}
-      <p className="mt-2 text-[11px] font-semibold text-dispatch-muted">Team</p>
+      <p className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Team</p>
       <div className="mt-1 flex flex-wrap gap-2">
         {teams.map((t) => (
           <button
@@ -80,11 +80,7 @@ export function PayrollGeneratePanel() {
               setPreviewRequested(false);
               setPreviewModalOpen(false);
             }}
-            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-              teamId === t.id
-                ? "border-dispatch-primary bg-dispatch-primary text-white"
-                : "border-dispatch-border bg-dispatch-bg text-dispatch-muted"
-            }`}
+            className={`ops-chip ${teamId === t.id ? "ops-chip--active" : ""}`}
           >
             {t.name}
           </button>
@@ -92,7 +88,7 @@ export function PayrollGeneratePanel() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <label>
-          <span className="text-[10px] font-semibold text-dispatch-muted">Start</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Start</span>
           <input
             type="date"
             value={periodStart}
@@ -103,11 +99,12 @@ export function PayrollGeneratePanel() {
               setPreviewRequested(false);
               setPreviewModalOpen(false);
             }}
-            className="mt-1 w-full rounded-xl border border-dispatch-border px-2 py-2 text-sm"
+            className="mt-1 w-full rounded-xl px-2 py-2 text-sm"
+            style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)", colorScheme: "dark" }}
           />
         </label>
         <label>
-          <span className="text-[10px] font-semibold text-dispatch-muted">End</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>End</span>
           <input
             type="date"
             value={periodEnd}
@@ -118,7 +115,8 @@ export function PayrollGeneratePanel() {
               setPreviewRequested(false);
               setPreviewModalOpen(false);
             }}
-            className="mt-1 w-full rounded-xl border border-dispatch-border px-2 py-2 text-sm"
+            className="mt-1 w-full rounded-xl px-2 py-2 text-sm"
+            style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)", colorScheme: "dark" }}
           />
         </label>
       </div>
@@ -126,7 +124,7 @@ export function PayrollGeneratePanel() {
         <button
           type="button"
           onClick={handlePreview}
-          className="flex-1 rounded-xl border border-dispatch-primary py-2.5 text-sm font-bold text-dispatch-primary"
+          className="ops-btn flex-1 justify-center py-2.5 font-bold"
         >
           Preview
         </button>
@@ -134,7 +132,7 @@ export function PayrollGeneratePanel() {
           type="button"
           onClick={() => void handleGenerate()}
           disabled={generateMutation.isPending || !teamId}
-          className="flex-1 rounded-xl bg-dispatch-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
+          className="ops-btn ops-btn--accent flex-1 justify-center py-2.5 font-bold"
         >
           {generateMutation.isPending ? "Generating…" : "Generate payroll"}
         </button>

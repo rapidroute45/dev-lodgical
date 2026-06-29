@@ -42,14 +42,14 @@ export function PayrollSettingsModal({ open, onClose }) {
     <>
       <ModalSheet open={open} title="Default driver rates" onClose={onClose}>
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-dispatch-muted">Loading…</p>
+          <p className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</p>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm text-dispatch-muted">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Default Small, Medium, and Full pay for all stores. Override per store below.
             </p>
             {error ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="ops-banner ops-banner--error">
                 {error}
               </div>
             ) : null}
@@ -59,16 +59,17 @@ export function PayrollSettingsModal({ open, onClose }) {
             <button
               type="button"
               onClick={() => setStoreRatesOpen(true)}
-              className="flex w-full items-center justify-between rounded-xl border border-dispatch-border bg-[#FAFBFC] px-3 py-3 text-sm font-semibold text-dispatch-text hover:bg-dispatch-bg"
+              className="ops-field flex w-full items-center justify-between py-3 text-sm font-semibold"
+              style={{ color: "var(--text)" }}
             >
               Per-store driver rates
-              <span className="text-dispatch-muted">→</span>
+              <span style={{ color: "var(--text-muted)" }}>→</span>
             </button>
             <button
               type="button"
               onClick={() => void handleSave()}
               disabled={updateMutation.isPending}
-              className="mt-2 w-full rounded-xl bg-dispatch-primary py-3 text-sm font-bold text-white disabled:opacity-60"
+              className="ops-btn ops-btn--accent mt-2 w-full justify-center py-3 font-bold"
             >
               {updateMutation.isPending ? "Saving…" : "Save rates"}
             </button>

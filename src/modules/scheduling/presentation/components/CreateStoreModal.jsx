@@ -51,22 +51,23 @@ export function CreateStoreModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl bg-dispatch-surface p-6 shadow-2xl ring-1 ring-dispatch-border"
+        className="ops-modal max-h-[90vh] w-full max-w-lg overflow-auto p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-dispatch-text">Create store</h2>
-        <p className="mt-1 text-sm text-dispatch-muted">
+        <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>Create store</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
           Store ID is generated automatically. New stores are active.
         </p>
 
         <form onSubmit={handleCreate} className="mt-5 space-y-4">
           <TextField
+            tone="dark"
             label="Store name *"
             placeholder="Walmart Downtown"
             value={storeName}
@@ -74,12 +75,14 @@ export function CreateStoreModal({
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
+              tone="dark"
               label="City"
               placeholder="Austin"
               value={city}
               onChange={(e) => setCity(e.target.value)}
             />
             <TextField
+              tone="dark"
               label="State"
               placeholder="TX"
               value={state}
@@ -88,6 +91,7 @@ export function CreateStoreModal({
             />
           </div>
           <TextField
+            tone="dark"
             label="Address"
             placeholder="123 Main St"
             value={address}
@@ -99,19 +103,10 @@ export function CreateStoreModal({
           />
 
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-dispatch-border px-4 py-2.5 text-sm font-semibold text-dispatch-muted hover:bg-dispatch-bg"
-            >
+            <button type="button" onClick={onClose} className="ops-btn flex-1 px-4 py-2.5 text-sm font-semibold">
               Cancel
             </button>
-            <Button
-              type="submit"
-              loading={loading}
-              disabled={!canCreate}
-              className="flex-1"
-            >
+            <Button type="submit" tone="dark" loading={loading} disabled={!canCreate} className="flex-1">
               Create
             </Button>
           </div>

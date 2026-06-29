@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import {
   useStoreQuery,
   useUpdateStoreMutation,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
-import { TextField } from "@/modules/auth/presentation/components/TextField.jsx";
-import { Button } from "@/modules/auth/presentation/components/Button.jsx";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import { SectionCard } from "../components/SectionCard.jsx";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 
 export function EditStoreScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: store, isLoading, isError } = useStoreQuery(id, Boolean(id));
+  const { data: store, isLoading, isError, refetch, isFetching } = useStoreQuery(
+    id,
+    Boolean(id)
+  );
   const updateStore = useUpdateStoreMutation();
 
   const [storeName, setStoreName] = useState("");
@@ -60,39 +63,42 @@ export function EditStoreScreen() {
   }
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={`${PAGE_HEADER_INNER} items-center`}>
-        <Link
-          to="/stores"
-          className="rounded-xl border border-dispatch-border p-2.5 text-dispatch-muted hover:bg-dispatch-bg"
-        >
+    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
+  );
+
+  const titleRow = (
+    <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <Link to="/stores" className="ops-btn p-2.5" aria-label="Back to stores">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-bold text-dispatch-text">Edit store</h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+            Edit store
+          </h1>
           {store?.storeId ? (
-            <p className="text-xs text-dispatch-muted">{store.storeId}</p>
+            <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>{store.storeId}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={save}
-          disabled={updateStore.isPending || !hydrated}
-          className="rounded-xl bg-dispatch-indigo px-4 py-2 text-sm font-semibold text-white hover:bg-dispatch-indigo-pressed disabled:opacity-50"
-        >
-          {updateStore.isPending ? "Saving…" : "Save"}
-        </button>
       </div>
-    </header>
+      <button
+        type="button"
+        onClick={save}
+        disabled={updateStore.isPending || !hydrated}
+        className="ops-btn ops-btn--accent shrink-0 px-5 py-2.5 font-bold disabled:opacity-50"
+      >
+        {updateStore.isPending ? "Saving…" : "Save"}
+      </button>
+    </div>
   );
 
   if (isLoading || !hydrated) {
     return (
       <DashboardLayout topBar={topBar}>
         <div className={PAGE_CONTENT}>
-          <div className="h-64 animate-pulse rounded-2xl bg-dispatch-border/30" />
+          <div className="ops-skel h-64 rounded-2xl" />
         </div>
       </DashboardLayout>
     );
@@ -102,9 +108,9 @@ export function EditStoreScreen() {
     return (
       <DashboardLayout topBar={topBar}>
         <div className={PAGE_CONTENT}>
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-12 text-center">
-            <p className="text-lg font-bold text-dispatch-text">Store not found</p>
-            <Link to="/stores" className="mt-4 inline-block text-sm font-bold text-dispatch-primary">
+          <div className="ops-panel ops-fade px-8 py-14 text-center">
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>Store not found</p>
+            <Link to="/stores" className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold">
               Back to stores
             </Link>
           </div>
@@ -116,18 +122,18 @@ export function EditStoreScreen() {
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
+        {titleRow}
+
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-dispatch-red">
-            {error}
-          </div>
+          <div className="ops-banner ops-banner--error">{error}</div>
         ) : null}
 
         <SectionCard title="Store details" subtitle="Update pickup location information">
           <dl className="mb-4">
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-dispatch-light">
+            <dt className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
               Store ID
             </dt>
-            <dd className="mt-1 text-sm font-semibold text-dispatch-text">{store.storeId}</dd>
+            <dd className="mt-1 text-sm font-semibold" style={{ color: "var(--text)" }}>{store.storeId}</dd>
           </dl>
 
           <form
@@ -137,7 +143,7 @@ export function EditStoreScreen() {
             }}
             className="space-y-4"
           >
-            <TextField
+            <OpsField
               label="Store name *"
               placeholder="Walmart Downtown"
               value={storeName}
@@ -145,13 +151,13 @@ export function EditStoreScreen() {
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
+              <OpsField
                 label="City *"
                 placeholder="Austin"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               />
-              <TextField
+              <OpsField
                 label="State *"
                 placeholder="TX"
                 value={stateVal}
@@ -160,7 +166,7 @@ export function EditStoreScreen() {
               />
             </div>
 
-            <TextField
+            <OpsField
               label="Address *"
               placeholder="123 Main St"
               value={address}
@@ -168,8 +174,8 @@ export function EditStoreScreen() {
             />
 
             <div>
-              <p className="mb-1.5 text-sm font-medium text-dispatch-text">Status</p>
-              <p className="mb-3 text-xs text-dispatch-muted">
+              <p className="mb-1.5 text-sm font-semibold" style={{ color: "var(--text)" }}>Status</p>
+              <p className="mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
                 Inactive stores are hidden from schedule store pickers.
               </p>
               <div className="flex gap-3">
@@ -178,10 +184,8 @@ export function EditStoreScreen() {
                     key={status}
                     type="button"
                     onClick={() => setActiveStatus(status)}
-                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-semibold capitalize transition ${
-                      activeStatus === status
-                        ? "border-dispatch-indigo bg-dispatch-indigo text-white"
-                        : "border-dispatch-border bg-[#FAFBFC] text-dispatch-muted hover:bg-dispatch-bg"
+                    className={`ops-btn flex-1 px-4 py-3 text-sm font-semibold capitalize ${
+                      activeStatus === status ? "ops-btn--accent" : ""
                     }`}
                   >
                     {status}
@@ -190,12 +194,31 @@ export function EditStoreScreen() {
               </div>
             </div>
 
-            <Button type="submit" loading={updateStore.isPending} className="max-w-xs">
-              Save changes
-            </Button>
+            <button
+              type="submit"
+              disabled={updateStore.isPending}
+              className="ops-btn ops-btn--accent w-full max-w-xs px-5 py-2.5 font-bold disabled:opacity-50"
+            >
+              {updateStore.isPending ? "Saving…" : "Save changes"}
+            </button>
           </form>
         </SectionCard>
       </div>
     </DashboardLayout>
+  );
+}
+
+function OpsField({ label, ...inputProps }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+        {label}
+      </label>
+      <input
+        className="ops-field w-full text-sm"
+        style={{ color: "var(--text)" }}
+        {...inputProps}
+      />
+    </div>
   );
 }

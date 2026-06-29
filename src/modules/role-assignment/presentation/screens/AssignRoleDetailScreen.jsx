@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import {
   UserRole,
@@ -9,6 +11,7 @@ import {
   roleRequiresCity,
   roleRequiresTeam,
 } from "@/shared/utils/constants.js";
+import { roleUsesMultipleCities } from "@/shared/utils/assignedCities.js";
 import { ROLE_DEFINITIONS } from "@/modules/role-assignment/constants/roleDefinitions.js";
 import { TeamPickerModal } from "@/modules/role-assignment/presentation/components/TeamPickerModal.jsx";
 import { CityPickerModal } from "@/modules/role-assignment/presentation/components/CityPickerModal.jsx";
@@ -26,6 +29,7 @@ export function AssignRoleDetailScreen() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedCities, setSelectedCities] = useState([]);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [error, setError] = useState(null);
@@ -69,7 +73,12 @@ export function AssignRoleDetailScreen() {
       setError("Select or create a team for this role.");
       return;
     }
-    if (needsCity && !selectedCity?.trim()) {
+    if (needsCity && roleUsesMultipleCities(selectedRole) && selectedCities.length === 0) {
+      setCityModalOpen(true);
+      setError("Assign at least one city for dispatch team.");
+      return;
+    }
+    if (needsCity && !roleUsesMultipleCities(selectedRole) && !selectedCity?.trim()) {
       setCityModalOpen(true);
       setError("Assign a city for this role.");
       return;
@@ -82,7 +91,8 @@ export function AssignRoleDetailScreen() {
           role: selectedRole,
           status: UserStatus.ACTIVE,
           teamId: needsTeam ? (selectedTeam?.id ?? null) : null,
-          assignedCity: needsCity ? selectedCity?.trim() ?? null : null,
+          assignedCity: needsCity && !roleUsesMultipleCities(selectedRole) ? selectedCity?.trim() ?? null : null,
+          assignedCities: needsCity && roleUsesMultipleCities(selectedRole) ? selectedCities : null,
         },
       });
       navigate("/assign-role");
@@ -92,25 +102,37 @@ export function AssignRoleDetailScreen() {
   }
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div className="flex items-center gap-3">
-          <Link to="/assign-role" className="text-sm font-semibold text-dispatch-primary hover:underline">
-            ← Assign role
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-dispatch-text">Assign user role</h1>
-            {user ? <p className="text-sm text-dispatch-muted">{displayName}</p> : null}
-          </div>
+    <OpsTopBar showDate={false} />
+  );
+
+  const titleRow = (
+    <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <Link to="/assign-role" className="ops-btn p-2.5" aria-label="Back to assign role">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+            Assign user role
+          </h1>
+          {user ? <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{displayName}</p> : null}
         </div>
       </div>
-    </header>
+    </div>
   );
 
   if (isLoading) {
     return (
       <DashboardLayout topBar={topBar}>
-        <p className="py-12 text-center text-sm text-dispatch-muted">Loading…</p>
+        <div className={PAGE_CONTENT}>
+          {titleRow}
+          <div className="space-y-4">
+            <div className="ops-skel h-20 rounded-2xl" />
+            <div className="ops-skel h-48 rounded-2xl" />
+          </div>
+        </div>
       </DashboardLayout>
     );
   }
@@ -118,11 +140,14 @@ export function AssignRoleDetailScreen() {
   if (isError || !user) {
     return (
       <DashboardLayout topBar={topBar}>
-        <div className="py-12 text-center">
-          <p className="text-sm text-dispatch-muted">User not found</p>
-          <Link to="/assign-role" className="mt-2 inline-block text-sm font-semibold text-dispatch-primary">
-            Back to list
-          </Link>
+        <div className={PAGE_CONTENT}>
+          {titleRow}
+          <div className="ops-panel ops-fade px-8 py-14 text-center">
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>User not found</p>
+            <Link to="/assign-role" className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold">
+              Back to list
+            </Link>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -131,27 +156,28 @@ export function AssignRoleDetailScreen() {
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
-        {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-dispatch-red">
-            {error}
-          </div>
-        ) : null}
+        {titleRow}
 
-        <div className="flex items-center gap-4 rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-dispatch-primary-soft text-xl font-extrabold text-dispatch-primary">
+        {error ? <div className="ops-banner ops-banner--error">{error}</div> : null}
+
+        <div className="ops-card ops-fade flex items-center gap-4 p-5">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-extrabold"
+            style={{ background: "color-mix(in srgb, var(--accent) 16%, transparent)", color: "var(--accent)" }}
+          >
             {displayName.charAt(0)}
           </div>
           <div className="flex-1">
-            <p className="text-lg font-bold text-dispatch-text">{displayName}</p>
-            <p className="text-sm text-dispatch-muted">{user.email}</p>
-            <span className="mt-1 inline-block rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>{displayName}</p>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>{user.email}</p>
+            <span className="ops-badge ops-badge--pending mt-1 inline-block">
               Pending approval
             </span>
           </div>
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-bold text-dispatch-text">Select role</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Select role</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {ROLE_DEFINITIONS.map((role) => {
               const selected = selectedRole === role.role;
@@ -160,14 +186,11 @@ export function AssignRoleDetailScreen() {
                   key={role.role}
                   type="button"
                   onClick={() => handleRoleSelect(role.role)}
-                  className={`rounded-xl border px-4 py-3 text-left transition ${
-                    selected
-                      ? "border-dispatch-primary bg-dispatch-primary-soft"
-                      : "border-dispatch-border bg-dispatch-surface hover:bg-dispatch-bg"
-                  }`}
+                  className="ops-card p-4 text-left transition"
+                  style={selected ? { borderColor: "var(--accent)", background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}
                 >
-                  <p className="font-bold text-dispatch-text">{role.title}</p>
-                  <p className="mt-1 text-xs text-dispatch-muted">{role.description}</p>
+                  <p className="font-bold" style={{ color: "var(--text)" }}>{role.title}</p>
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>{role.description}</p>
                 </button>
               );
             })}
@@ -178,15 +201,21 @@ export function AssignRoleDetailScreen() {
           <button
             type="button"
             onClick={() => setCityModalOpen(true)}
-            className="flex w-full items-center justify-between rounded-xl border border-dispatch-border bg-dispatch-surface px-4 py-3 text-left"
+            className="ops-field flex w-full items-center justify-between text-left"
           >
             <div>
-              <p className="text-xs font-semibold text-dispatch-muted">Assigned city</p>
-              <p className="font-bold text-dispatch-text">
-                {selectedCity?.trim() || "Tap to select a city"}
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                {roleUsesMultipleCities(selectedRole) ? "Assigned cities" : "Assigned city"}
+              </p>
+              <p className="font-bold" style={{ color: "var(--text)" }}>
+                {roleUsesMultipleCities(selectedRole)
+                  ? selectedCities.length
+                    ? selectedCities.join(", ")
+                    : "Tap to select cities"
+                  : selectedCity?.trim() || "Tap to select a city"}
               </p>
             </div>
-            <span className="text-dispatch-muted">→</span>
+            <span style={{ color: "var(--accent)" }}>→</span>
           </button>
         ) : null}
 
@@ -194,32 +223,29 @@ export function AssignRoleDetailScreen() {
           <button
             type="button"
             onClick={() => setTeamModalOpen(true)}
-            className="flex w-full items-center justify-between rounded-xl border border-dispatch-border bg-dispatch-surface px-4 py-3 text-left"
+            className="ops-field flex w-full items-center justify-between text-left"
           >
             <div>
-              <p className="text-xs font-semibold text-dispatch-muted">Team</p>
-              <p className="font-bold text-dispatch-text">
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Team</p>
+              <p className="font-bold" style={{ color: "var(--text)" }}>
                 {selectedTeam
                   ? `${selectedTeam.name} (${selectedTeam.code})`
                   : "Tap to select a team"}
               </p>
             </div>
-            <span className="text-dispatch-muted">→</span>
+            <span style={{ color: "var(--accent)" }}>→</span>
           </button>
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <Link
-            to="/assign-role"
-            className="rounded-xl border border-dispatch-border px-5 py-2.5 text-sm font-semibold text-dispatch-muted hover:bg-dispatch-surface"
-          >
+          <Link to="/assign-role" className="ops-btn px-4 py-2 text-sm font-semibold">
             Cancel
           </Link>
           <button
             type="button"
             onClick={handleSave}
             disabled={updateMutation.isPending}
-            className="rounded-xl bg-dispatch-indigo px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-dispatch-primary/25 hover:bg-dispatch-indigo-pressed disabled:opacity-50"
+            className="ops-btn ops-btn--accent px-5 py-2.5 font-bold disabled:opacity-50"
           >
             {updateMutation.isPending ? "Saving…" : "Save role"}
           </button>
@@ -236,8 +262,11 @@ export function AssignRoleDetailScreen() {
       <CityPickerModal
         open={cityModalOpen}
         selectedCity={selectedCity}
+        selectedCities={selectedCities}
+        multi={roleUsesMultipleCities(selectedRole)}
         excludeUserId={userId}
         onSelect={setSelectedCity}
+        onSelectMultiple={setSelectedCities}
         onClose={() => setCityModalOpen(false)}
         enforceDispatchTeamUniqueness={selectedRole === UserRole.DISPATCH_TEAM}
       />

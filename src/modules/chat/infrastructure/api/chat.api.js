@@ -34,3 +34,43 @@ export async function sendChatMessage(conversationId, body) {
   const res = await api.post(`/chat/conversations/${conversationId}/messages`, { body });
   return res.data.data;
 }
+
+export async function sendVoiceMessage(conversationId, blob, durationMs) {
+  const form = new FormData();
+  const ext = (blob.type && blob.type.split("/")[1]) || "webm";
+  form.append("audio", blob, `voice-${Date.now()}.${ext}`);
+  form.append("durationMs", String(Math.round(durationMs ?? 0)));
+  const res = await api.post(`/chat/conversations/${conversationId}/voice`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+export async function sendDocument(conversationId, file) {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  const res = await api.post(`/chat/conversations/${conversationId}/attachment`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+export async function fetchGroupCandidates() {
+  const res = await api.get("/chat/group-candidates");
+  return res.data.data ?? [];
+}
+
+export async function createGroup({ title, memberIds }) {
+  const res = await api.post("/chat/groups", { title, memberIds });
+  return res.data.data;
+}
+
+export async function updateGroup(conversationId, payload) {
+  const res = await api.patch(`/chat/groups/${conversationId}`, payload);
+  return res.data.data;
+}
+
+export async function leaveGroup(conversationId) {
+  const res = await api.post(`/chat/groups/${conversationId}/leave`);
+  return res.data.data;
+}

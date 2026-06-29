@@ -32,8 +32,29 @@ export function storesInLocation(stores, city, state) {
     .sort((a, b) => a.storeName.localeCompare(b.storeName));
 }
 
+export function findLocationsForCity(locations, city) {
+  if (!city?.trim()) return [];
+  const needle = city.trim().toLowerCase();
+  return locations.filter((loc) => loc.city.trim().toLowerCase() === needle);
+}
+
 export function findLocationOption(locations, city, state) {
-  if (!city?.trim() || !state?.trim()) return undefined;
-  const key = locationKey(city, state);
-  return locations.find((l) => l.key === key);
+  if (!city?.trim()) return undefined;
+  if (state?.trim()) {
+    const key = locationKey(city, state);
+    return locations.find((loc) => loc.key === key);
+  }
+  const matches = findLocationsForCity(locations, city);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+export function citiesMatch(a, b) {
+  return a?.trim().toLowerCase() === b?.trim().toLowerCase();
+}
+
+export function filterLocationsByAllowedCities(locations, allowedCities) {
+  if (!allowedCities?.length) return locations;
+  return locations.filter((loc) =>
+    allowedCities.some((city) => citiesMatch(loc.city, city))
+  );
 }

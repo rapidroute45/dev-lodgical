@@ -15,6 +15,7 @@ function toDomainError(err) {
     "Something went wrong.";
 
   if (status === 401) return new InvalidCredentialsError(message);
+  if (status === 403) return new AuthError(message, { status });
   if (status === 400) return new ValidationError(message);
   return new AuthError(message, { status });
 }
@@ -59,6 +60,24 @@ export async function updateProfileRequest(body) {
   try {
     const { data } = await api.patch("/auth/me", body);
     return User.fromApi(data.data);
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function changePasswordRequest(body) {
+  try {
+    const { data } = await api.patch("/auth/me/password", body);
+    return data.message ?? "Password updated.";
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function verifyOpsElevationRequest({ scope, pin }) {
+  try {
+    const { data } = await api.post("/auth/ops-elevation/verify", { scope, pin });
+    return { token: data.data.token, scope: data.data.scope };
   } catch (err) {
     throw toDomainError(err);
   }
