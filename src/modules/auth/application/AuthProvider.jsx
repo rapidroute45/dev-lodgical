@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import { authService } from "./authService.js";
 import { clearWebPushTokenFromBackend } from "@/modules/notifications/infrastructure/push/firebaseWebPush.js";
+import { clearInboxStorage } from "@/modules/notifications/application/pushNotificationInbox.js";
 import { isAccountLoginAllowed } from "@/modules/auth/utils/accountAccess.js";
 
 export const AuthContext = createContext(null);
@@ -63,11 +64,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (user?.id) clearInboxStorage(user.id);
     void clearWebPushTokenFromBackend();
     authService.logout();
     setUser(null);
     setStatus("guest");
-  }, []);
+  }, [user?.id]);
 
   const value = useMemo(
     () => ({ user, status, error, login, register, logout }),

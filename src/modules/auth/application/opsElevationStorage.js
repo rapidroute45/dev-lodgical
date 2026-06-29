@@ -35,8 +35,14 @@ export const opsElevationStorage = {
     writeRaw(current);
   },
 
-  clear() {
+  clear(scope) {
     try {
+      if (scope) {
+        const current = readRaw();
+        current[scope] = null;
+        writeRaw(current);
+        return;
+      }
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */

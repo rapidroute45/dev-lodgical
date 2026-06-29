@@ -10,12 +10,27 @@ importScripts("https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging-com
 firebase.initializeApp(self.FIREBASE_SW_CONFIG);
 const messaging = firebase.messaging();
 
+function notifyClientsPushReceived(title, body, data) {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    clientList.forEach((client) => {
+      client.postMessage({
+        dispatchMessageType: "dispatch-push-received",
+        title,
+        body,
+        ...data,
+      });
+    });
+  });
+}
+
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || "Dispatch";
   const body = payload.notification?.body || "";
   const data = payload.data || {};
 
-  self.registration.showNotification(title, {
+  void notifyClientsPushReceived(title, body, data);
+
+  return self.registration.showNotification(title, {
     body,
     icon: "/favicon.svg",
     silent: false,
@@ -26,6 +41,8 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data || {};
+  const title = event.notification.title || "Dispatch";
+  const body = event.notification.body || "";
   const deepLink = data.deepLink || "/";
   const url = new URL(deepLink, self.location.origin).href;
 
@@ -33,7 +50,12 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          client.postMessage({ type: "dispatch-push-navigate", ...data });
+          client.postMessage({
+            dispatchMessageType: "dispatch-push-navigate",
+            title,
+            body,
+            ...data,
+          });
           return client.focus();
         }
       }

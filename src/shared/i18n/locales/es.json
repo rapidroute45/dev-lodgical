@@ -50,6 +50,10 @@
     "unlockDispatch": "Despacho",
     "unlockPayroll": "Nómina",
     "dispatchModeActive": "Modo despacho",
+    "dispatchMode": "Modo despacho",
+    "payrollMode": "Nómina",
+    "logoutDispatch": "Cerrar sesión despacho",
+    "logoutPayroll": "Cerrar sesión nómina",
     "documents": "Documentos"
   },
   "opsElevation": {
@@ -174,5 +178,10 @@
     "profileUpdated": "Perfil actualizado",
     "updateFailed": "No se pudo actualizar el perfil",
     "fullNameRequired": "El nombre completo es obligatorio"
+  },
+  "documents": {
+    "requestUpload": "Solicitar carga",
+    "requestUploadSent": "Conductor notificado para subir {{title}}",
+    "requestUploadFailed": "No se pudo notificar al conductor"
   }
 }

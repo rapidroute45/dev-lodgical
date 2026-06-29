@@ -57,6 +57,9 @@ function mapTypeToRoute(type, data) {
       return data?.billId ? `/payroll/${data.billId}` : "/payroll";
     case "driver_dwelling":
     case "stop_auto_completed":
+    case "stop_completed":
+    case "driver_off_route":
+    case "driver_location_stale":
       return data?.routeId ? `/routes/tracking/${data.routeId}` : "/routes";
     case "chat_message":
       return data?.conversationId ? `/chat/${data.conversationId}` : "/chat";

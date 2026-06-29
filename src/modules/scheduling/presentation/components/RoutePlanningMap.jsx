@@ -73,12 +73,9 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
       const nextDropoffs = [];
       for (let index = 0; index < dropoffs.length; index += 1) {
         const stop = dropoffs[index];
-        let position = null;
-        if (stop.address?.trim()) {
+        let position = readDropoffMapCoords(stop);
+        if (!position && stop.address?.trim()) {
           position = await geocodeOne(stop.address);
-        }
-        if (!position) {
-          position = readDropoffMapCoords(stop);
         }
         if (position) {
           nextDropoffs.push({ ...stop, position, sequence: index + 1 });

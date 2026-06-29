@@ -50,6 +50,10 @@
     "unlockDispatch": "Dispatch",
     "unlockPayroll": "Payroll",
     "dispatchModeActive": "Dispatch mode",
+    "dispatchMode": "Dispatch mode",
+    "payrollMode": "Payroll",
+    "logoutDispatch": "Logout dispatch",
+    "logoutPayroll": "Logout payroll",
     "documents": "Documents"
   },
   "opsElevation": {
@@ -174,5 +178,10 @@
     "profileUpdated": "Profile updated",
     "updateFailed": "Could not update profile",
     "fullNameRequired": "Full name is required"
+  },
+  "documents": {
+    "requestUpload": "Request upload",
+    "requestUploadSent": "Driver notified to upload {{title}}",
+    "requestUploadFailed": "Could not notify driver"
   }
 }

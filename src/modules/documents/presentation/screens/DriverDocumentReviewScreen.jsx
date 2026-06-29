@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -8,6 +9,7 @@ import { mediaUrl } from "@/shared/utils/mediaUrl.js";
 import {
   useDriverDocumentsDetailQuery,
   useRejectDocumentMutation,
+  useRequestDocumentUploadMutation,
   useVerifyDocumentMutation,
 } from "@/modules/documents/infrastructure/api/documents.queries.js";
 
@@ -16,19 +18,28 @@ function statusLabel(status) {
   if (status === "pending") return { text: "Pending review", variant: "pending" };
   if (status === "rejected") return { text: "Rejected", variant: "rose" };
   if (status === "missing") return { text: "Missing", variant: "muted" };
+  if (status === "expired") return { text: "Expired", variant: "rose" };
   return { text: status, variant: "muted" };
+}
+
+function canRequestUpload(status) {
+  return status === "missing" || status === "rejected" || status === "expired";
 }
 
 export function DriverDocumentReviewScreen() {
   const { driverId } = useParams();
+  const { t } = useTranslation();
   const { data, isLoading, refetch, isFetching } = useDriverDocumentsDetailQuery(driverId, Boolean(driverId));
   const verify = useVerifyDocumentMutation();
   const reject = useRejectDocumentMutation();
+  const requestUpload = useRequestDocumentUploadMutation();
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   async function handleVerify(requirementId) {
     setError(null);
+    setSuccess(null);
     setBusyId(requirementId);
     try {
       await verify.mutateAsync({ driverId, requirementId });
@@ -45,11 +56,26 @@ export function DriverDocumentReviewScreen() {
       undefined;
     if (reason === null) return;
     setError(null);
+    setSuccess(null);
     setBusyId(requirementId);
     try {
       await reject.mutateAsync({ driverId, requirementId, reason });
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Reject failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRequestUpload(requirementId, requirementTitle) {
+    setError(null);
+    setSuccess(null);
+    setBusyId(requirementId);
+    try {
+      await requestUpload.mutateAsync({ driverId, requirementId });
+      setSuccess(t("documents.requestUploadSent", { title: requirementTitle }));
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || t("documents.requestUploadFailed"));
     } finally {
       setBusyId(null);
     }
@@ -82,6 +108,10 @@ export function DriverDocumentReviewScreen() {
 
         {error ? (
           <div className="ops-banner ops-banner--error">{error}</div>
+        ) : null}
+
+        {success ? (
+          <div className="ops-banner ops-banner--success">{success}</div>
         ) : null}
 
         {isLoading || !data ? (
@@ -149,9 +179,22 @@ export function DriverDocumentReviewScreen() {
                           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{requirement.description}</p>
                         ) : null}
                       </div>
-                      <span className={`ops-badge ops-badge--${badge.variant}`}>
-                        {badge.text}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`ops-badge ops-badge--${badge.variant}`}>
+                          {badge.text}
+                        </span>
+                        {canRequestUpload(submission.status) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRequestUpload(requirement.id, requirement.title)}
+                            disabled={busyId === requirement.id}
+                            className="ops-btn px-3 py-1.5 text-xs font-bold disabled:opacity-50"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            {busyId === requirement.id ? "…" : t("documents.requestUpload")}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
 
                     {submission.referenceNumber ? (

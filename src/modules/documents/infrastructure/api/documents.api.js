@@ -25,6 +25,13 @@ export async function rejectDriverDocument(driverId, requirementId, reason) {
   return res.data;
 }
 
+export async function requestDriverDocumentUpload(driverId, requirementId) {
+  const res = await api.post(
+    `/driver-documents/drivers/${driverId}/${requirementId}/request`
+  );
+  return res.data;
+}
+
 export async function fetchDocumentRequirements() {
   const res = await api.get("/driver-documents/requirements");
   return res.data.data ?? [];

@@ -25,11 +25,12 @@ const STORE_ICON = (
 export function StoreNavMenu({ date, open, onToggle, onClose }) {
   const navigate = useNavigate();
   const rootRef = useRef(null);
+  const panelRef = useRef(null);
   const { assignedCities, globalState } = useOpsNavScope();
   const [selectedStore, setSelectedStore] = useState(null);
   const [search, setSearch] = useState("");
 
-  useMenuDismiss(open, close, rootRef);
+  useMenuDismiss(open, close, rootRef, panelRef);
 
   function close() {
     setSelectedStore(null);
@@ -61,8 +62,14 @@ export function StoreNavMenu({ date, open, onToggle, onClose }) {
     <div className="ops-menu" ref={rootRef}>
       <MenuTrigger label="Store" icon={STORE_ICON} open={open} onToggle={onToggle} />
 
-      {open ? (
-        <MenuPanel className="ops-menu__panel--single">
+      <MenuPanel
+        ref={panelRef}
+        anchorRef={rootRef}
+        open={open}
+        maxWidth={380}
+        className="ops-menu__panel--single"
+        positionDeps={[selectedStore, search]}
+      >
           <div className="ops-menu__pane ops-menu__pane--full">
             {!selectedStore ? (
               <>
@@ -126,7 +133,6 @@ export function StoreNavMenu({ date, open, onToggle, onClose }) {
             )}
           </div>
         </MenuPanel>
-      ) : null}
     </div>
   );
 }

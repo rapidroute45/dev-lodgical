@@ -27,6 +27,12 @@ export function OpsElevationProvider({ children }) {
     setPayrollUnlocked(false);
   }, []);
 
+  const clearScope = useCallback((scope) => {
+    opsElevationStorage.clear(scope);
+    if (scope === "dispatch") setDispatchUnlocked(false);
+    if (scope === "payroll") setPayrollUnlocked(false);
+  }, []);
+
   useEffect(() => {
     if (status === "guest") {
       clearElevation();
@@ -65,10 +71,11 @@ export function OpsElevationProvider({ children }) {
       payrollUnlocked,
       verifyPin,
       clearElevation,
+      clearScope,
       canMutateOps,
       canAccessPayroll,
     }),
-    [dispatchUnlocked, payrollUnlocked, verifyPin, clearElevation, canMutateOps, canAccessPayroll]
+    [dispatchUnlocked, payrollUnlocked, verifyPin, clearElevation, clearScope, canMutateOps, canAccessPayroll]
   );
 
   return (

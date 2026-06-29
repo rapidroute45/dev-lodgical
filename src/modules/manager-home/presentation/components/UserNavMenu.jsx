@@ -100,6 +100,7 @@ function teamMembersFromDetail(detail) {
 export function UserNavMenu({ date, open, onToggle, onClose }) {
   const navigate = useNavigate();
   const rootRef = useRef(null);
+  const panelRef = useRef(null);
   const { user } = useAuth();
   const { assignedCities, isDispatchTeam, routesQueryCity, routesQueryState, globalState } = useOpsNavScope();
 
@@ -109,7 +110,7 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [search, setSearch] = useState("");
 
-  useMenuDismiss(open, close, rootRef);
+  useMenuDismiss(open, close, rootRef, panelRef);
 
   function resetDrill() {
     setSelectedTeam(null);
@@ -324,8 +325,12 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
     <div className="ops-menu" ref={rootRef}>
       <MenuTrigger label="Users" icon={USER_ICON} open={open} onToggle={onToggle} />
 
-      {open ? (
-        <MenuPanel>
+      <MenuPanel
+        ref={panelRef}
+        anchorRef={rootRef}
+        open={open}
+        positionDeps={[category, selectedTeam, selectedMember, teamPane, search]}
+      >
           <MenuRail categories={categories} activeKey={category} onSelect={switchCategory} />
           <div className="ops-menu__pane">
             {selectedMember ? (
@@ -573,7 +578,6 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
             ) : null}
           </div>
         </MenuPanel>
-      ) : null}
     </div>
   );
 }

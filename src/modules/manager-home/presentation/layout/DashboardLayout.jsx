@@ -163,32 +163,28 @@ function NavIcon({ name }) {
   );
 }
 
-function SidebarElevationActions({ role, dispatchUnlocked, payrollUnlocked, onUnlockDispatch, onUnlockPayroll }) {
+function SidebarElevationActions({ role, dispatchUnlocked, payrollUnlocked, onDispatchClick, onPayrollClick }) {
   const { t } = useTranslation();
-  if (!isAdmin(role) && !isDispatchManager(role)) return null;
+  if (!isAdmin(role)) return null;
 
   return (
     <div className="space-y-1 border-t px-3 py-3" style={{ borderColor: "var(--border)" }}>
-      {isAdmin(role) ? (
-        <button
-          type="button"
-          className={`ops-navlink w-full text-left ${dispatchUnlocked ? "ops-navlink--active" : ""}`}
-          onClick={onUnlockDispatch}
-        >
-          <NavIcon name="dispatchTeam" />
-          {dispatchUnlocked ? t("nav.dispatchModeActive") : t("nav.unlockDispatch")}
-        </button>
-      ) : null}
-      {(isAdmin(role) || isDispatchManager(role)) && !payrollUnlocked ? (
-        <button
-          type="button"
-          className="ops-navlink w-full text-left"
-          onClick={onUnlockPayroll}
-        >
-          <NavIcon name="payroll" />
-          {t("nav.unlockPayroll")}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className={`ops-navlink w-full text-left ${dispatchUnlocked ? "ops-navlink--active" : ""}`}
+        onClick={onDispatchClick}
+      >
+        <NavIcon name="dispatchTeam" />
+        {dispatchUnlocked ? t("nav.logoutDispatch") : t("nav.dispatchMode")}
+      </button>
+      <button
+        type="button"
+        className={`ops-navlink w-full text-left ${payrollUnlocked ? "ops-navlink--active" : ""}`}
+        onClick={onPayrollClick}
+      >
+        <NavIcon name="payroll" />
+        {payrollUnlocked ? t("nav.logoutPayroll") : t("nav.payrollMode")}
+      </button>
     </div>
   );
 }
@@ -235,7 +231,7 @@ function DashboardLayoutShell({ children, topBar }) {
   const { theme } = useOpsTheme();
   const { user, logout } = useAuth();
   const { t, i18n } = useTranslation();
-  const { dispatchUnlocked, payrollUnlocked, verifyPin } = useOpsElevation();
+  const { dispatchUnlocked, payrollUnlocked, verifyPin, clearScope } = useOpsElevation();
   const [pinModal, setPinModal] = useState(null);
   const nav = useMemo(
     () => buildNav(user, t, { dispatchUnlocked, payrollUnlocked }),
@@ -305,12 +301,18 @@ function DashboardLayoutShell({ children, topBar }) {
             role={user?.role}
             dispatchUnlocked={dispatchUnlocked}
             payrollUnlocked={payrollUnlocked}
-            onUnlockDispatch={() => {
-              if (dispatchUnlocked) return;
+            onDispatchClick={() => {
+              if (dispatchUnlocked) {
+                clearScope("dispatch");
+                return;
+              }
               setPinModal("dispatch");
             }}
-            onUnlockPayroll={() => {
-              if (payrollUnlocked) return;
+            onPayrollClick={() => {
+              if (payrollUnlocked) {
+                clearScope("payroll");
+                return;
+              }
               setPinModal("payroll");
             }}
           />

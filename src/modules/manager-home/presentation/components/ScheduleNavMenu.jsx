@@ -40,6 +40,7 @@ const SCHEDULE_ICON = (
 export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   const navigate = useNavigate();
   const rootRef = useRef(null);
+  const panelRef = useRef(null);
   const { assignedCities, isCityScoped, routesQueryCity, routesQueryState, globalState } = useOpsNavScope();
 
   const [category, setCategory] = useState("cities");
@@ -47,7 +48,7 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [search, setSearch] = useState("");
 
-  useMenuDismiss(open, close, rootRef);
+  useMenuDismiss(open, close, rootRef, panelRef);
 
   function resetDrill() {
     setSelectedCity(null);
@@ -118,8 +119,12 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
     <div className="ops-menu" ref={rootRef}>
       <MenuTrigger label="Schedule" icon={SCHEDULE_ICON} open={open} onToggle={onToggle} />
 
-      {open ? (
-        <MenuPanel>
+      <MenuPanel
+        ref={panelRef}
+        anchorRef={rootRef}
+        open={open}
+        positionDeps={[category, selectedCity, selectedTeam, search]}
+      >
           <MenuRail categories={CATEGORIES} activeKey={category} onSelect={switchCategory} />
           <div className="ops-menu__pane">
             {category === "cities" && !selectedCity ? (
@@ -243,7 +248,6 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
             ) : null}
           </div>
         </MenuPanel>
-      ) : null}
     </div>
   );
 }

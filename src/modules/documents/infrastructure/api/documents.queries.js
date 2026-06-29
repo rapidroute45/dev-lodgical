@@ -46,6 +46,13 @@ export function useRejectDocumentMutation() {
   });
 }
 
+export function useRequestDocumentUploadMutation() {
+  return useMutation({
+    mutationFn: ({ driverId, requirementId }) =>
+      documentsApi.requestDriverDocumentUpload(driverId, requirementId),
+  });
+}
+
 export function useDocumentRequirementsQuery(enabled = true) {
   return useQuery({
     queryKey: documentsKeys.requirements,

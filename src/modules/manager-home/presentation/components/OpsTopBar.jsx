@@ -90,7 +90,9 @@ export function OpsTopBar({
 
   return (
     <header className="ops-topbar">
-      <OpsHeaderNav date={navDate} />
+      <div className="ops-topbar__nav-scroll">
+        <OpsHeaderNav date={navDate} />
+      </div>
 
       <div className="ops-topbar__end">
         <LocationScopeControls />

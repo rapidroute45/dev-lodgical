@@ -3,6 +3,7 @@ import { QueryProvider } from "@/app/QueryProvider.jsx";
 import { AppFullscreen } from "@/app/AppFullscreen.jsx";
 import { AuthProvider } from "@/modules/auth/application/AuthProvider.jsx";
 import { PushNotificationBootstrap } from "@/modules/notifications/presentation/PushNotificationBootstrap.jsx";
+import { PushNotificationInboxProvider } from "@/modules/notifications/presentation/context/PushNotificationInboxProvider.jsx";
 import { OpsElevationProvider } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { OpsElevationRoute } from "@/modules/auth/presentation/routes/OpsElevationRoute.jsx";
 import { TrackingSocketProvider } from "@/modules/tracking/application/TrackingSocketProvider.jsx";
@@ -62,6 +63,7 @@ export default function App() {
       <BrowserRouter>
         <AppFullscreen />
         <AuthProvider>
+          <PushNotificationInboxProvider>
           <PushNotificationBootstrap />
           <OpsElevationProvider>
           <TrackingSocketProvider>
@@ -431,6 +433,7 @@ export default function App() {
           </ChatProvider>
           </TrackingSocketProvider>
           </OpsElevationProvider>
+          </PushNotificationInboxProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryProvider>

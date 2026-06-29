@@ -9,6 +9,12 @@ import {
 import { CONFIG } from "@/shared/utils/constants.js";
 import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
 import { isOffPlannedSegment } from "@/modules/tracking/utils/plannedSegmentTrail.js";
+import {
+  collectRouteAnchorPoints,
+  filterMapPathPoints,
+  filterTrailOutliers,
+  polylineEndsNearTarget,
+} from "@/modules/tracking/utils/mapPathFilters.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import { useGoogleDrivingRoutePath } from "@/modules/tracking/utils/drivingRoutePath.js";
@@ -126,13 +132,10 @@ function LiveRouteMapLayers({
       for (let index = 0; index < dropoffs.length; index += 1) {
         const stop = dropoffs[index];
         const sequence = stop.sequence ?? index + 1;
-        let position = null;
+        let position = readDropoffMapCoords(stop);
 
-        if (stop.address?.trim()) {
+        if (!position && stop.address?.trim()) {
           position = await geocodeOne(stop.address);
-        }
-        if (!position) {
-          position = readDropoffMapCoords(stop);
         }
 
         if (position) {
@@ -161,9 +164,18 @@ function LiveRouteMapLayers({
 
   const driverPoint = readMapCoords(driverLocation);
 
+  const routeAnchors = useMemo(() => {
+    const pendingDropoff = resolvedDropoffs[0] ?? null;
+    return collectRouteAnchorPoints({
+      pickup: resolvedPickup,
+      dropoffs: pendingDropoff ? [pendingDropoff] : resolvedDropoffs,
+      driverPoint,
+    });
+  }, [resolvedPickup, resolvedDropoffs, driverPoint]);
+
   const trailPath = useMemo(
     () =>
-      smoothTrailForDisplay(trail ?? [])
+      smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
         .map((point) => readMapCoords(point))
         .filter(Boolean),
     [trail]
@@ -189,26 +201,40 @@ function LiveRouteMapLayers({
     return [];
   }, [plannedSegment]);
 
+  const nextStopPosition = resolvedDropoffs[0]?.position ?? null;
+
+  const trustedSegmentPolyline = useMemo(() => {
+    if (segmentPolyline.length < 2) return [];
+    if (!nextStopPosition) return segmentPolyline;
+    return polylineEndsNearTarget(segmentPolyline, nextStopPosition)
+      ? segmentPolyline
+      : [];
+  }, [segmentPolyline, nextStopPosition]);
+
   const driverMarkerPoint =
     driverPoint ?? (trailPath.length >= 1 ? trailPath[trailPath.length - 1] : null);
 
-  const greyPath = segmentPolyline.length >= 2 ? segmentPolyline : plannedPath;
+  const greyPath = trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : plannedPath;
   const actualTrailPath = trailPath;
 
   const offRoute = useMemo(() => {
     const latest = driverMarkerPoint ?? (trail.length ? trail[trail.length - 1] : null);
-    return isOffPlannedSegment(latest, segmentPolyline);
-  }, [driverMarkerPoint, trail, segmentPolyline]);
+    const segmentForCheck = trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
+    return isOffPlannedSegment(latest, segmentForCheck);
+  }, [driverMarkerPoint, trail, trustedSegmentPolyline]);
 
   useEffect(() => {
     onOffRouteChange?.(offRoute);
   }, [offRoute, onOffRouteChange]);
 
   const fitPoints = useMemo(() => {
-    const points = [...greyPath, ...actualTrailPath];
+    const boundedGrey = filterMapPathPoints(greyPath, routeAnchors);
+    const boundedTrail = filterMapPathPoints(actualTrailPath, routeAnchors);
+    const points = [...boundedGrey, ...boundedTrail];
     if (driverMarkerPoint) points.push(driverMarkerPoint);
+    for (const anchor of routeAnchors) points.push(anchor);
     return points;
-  }, [greyPath, actualTrailPath, driverMarkerPoint]);
+  }, [greyPath, actualTrailPath, driverMarkerPoint, routeAnchors]);
 
   const center = fitPoints[0] ?? DEFAULT_CENTER;
 
@@ -257,7 +283,7 @@ function LiveRouteMapLayers({
 
       {greyPath.length >= 2 ? (
         <Polyline
-          path={greyPath}
+          path={filterMapPathPoints(greyPath, routeAnchors)}
           strokeColor="#94a3b8"
           strokeOpacity={0.85}
           strokeWeight={4}

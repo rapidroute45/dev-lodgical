@@ -127,10 +127,17 @@
   border-bottom: 1px solid var(--border);
   background: rgba(7, 11, 18, 0.78);
   backdrop-filter: blur(14px);
+  overflow: visible;
+}
+
+.ops-topbar__nav-scroll {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.ops-topbar::-webkit-scrollbar {
+
+.ops-topbar__nav-scroll::-webkit-scrollbar {
   display: none;
 }
 
@@ -353,10 +360,6 @@ button.ops-dateseg__label:hover {
 }
 
 .ops-menu__panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 60;
   display: grid;
   grid-template-columns: 170px 1fr;
   width: min(560px, calc(100vw - 2rem));
@@ -368,6 +371,16 @@ button.ops-dateseg__label:hover {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
   overflow: hidden;
   animation: ops-menu-in 0.18s ease-out;
+}
+
+.ops-menu__panel--floating {
+  position: fixed;
+  top: auto;
+  left: auto;
+  min-height: 0;
+  backdrop-filter: none;
+  background: var(--bg-card-solid);
+  color: var(--text);
 }
 @keyframes ops-menu-in {
   from { opacity: 0; transform: translateY(-6px); }
@@ -496,22 +509,15 @@ button.ops-dateseg__label:hover {
 }
 
 @media (max-width: 640px) {
-  .ops-menu__panel {
-    position: fixed;
-    left: 0.5rem;
-    right: 0.5rem;
-    width: auto;
-    max-width: none;
-  }
-  .ops-header-nav {
-    gap: 0.35rem;
-  }
   .ops-menu__trigger {
     padding: 0.45rem 0.6rem;
     font-size: 0.78rem;
   }
   .ops-console-label span:last-child {
     display: none;
+  }
+  .ops-header-nav {
+    gap: 0.35rem;
   }
 }
 .ops-menu__search {
@@ -573,6 +579,11 @@ button.ops-dateseg__label:hover {
   text-align: center;
   font-size: 0.82rem;
   color: var(--text-dim);
+}
+
+.ops-notifications-panel {
+  min-height: 0;
+  color: var(--text);
 }
 
 /* ---------- Cards ---------- */

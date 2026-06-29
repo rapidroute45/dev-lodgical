@@ -1,5 +1,8 @@
-import { useEffect } from "react";
+import { forwardRef, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { formatStatusLabel } from "@/modules/manager-home/utils/routeStatus.js";
+import { useAnchoredPanelPosition } from "@/modules/manager-home/presentation/hooks/useAnchoredPanelPosition.js";
+import { useOpsTheme } from "@/modules/manager-home/presentation/context/OpsThemeContext.jsx";
 
 const IN_PROGRESS = new Set(["active", "in_progress"]);
 
@@ -64,9 +67,40 @@ export function MenuTrigger({ label, icon, open, onToggle }) {
   );
 }
 
-export function MenuPanel({ children, className = "" }) {
-  return <div className={`ops-menu__panel ${className}`.trim()}>{children}</div>;
-}
+export const MenuPanel = forwardRef(function MenuPanel(
+  {
+    children,
+    className = "",
+    anchorRef,
+    open = false,
+    maxWidth = 560,
+    positionDeps = [],
+  },
+  ref
+) {
+  const internalRef = useRef(null);
+  const panelRef = ref ?? internalRef;
+  const { theme } = useOpsTheme();
+  const fixedStyle = useAnchoredPanelPosition(anchorRef, panelRef, open, {
+    maxWidth,
+    deps: positionDeps,
+  });
+
+  if (!open) return null;
+
+  const shellClass = theme === "light" ? " ops-shell--light" : "";
+
+  return createPortal(
+    <div
+      ref={panelRef}
+      className={`ops-shell ops-menu__panel ops-menu__panel--floating${shellClass} ${className}`.trim()}
+      style={fixedStyle ?? undefined}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+});
 
 export function MenuRail({ categories, activeKey, onSelect }) {
   return (
@@ -234,11 +268,14 @@ export function MemberDetailPane({ title, subtitle, rows, actions }) {
   );
 }
 
-export function useMenuDismiss(open, onClose, ref) {
+export function useMenuDismiss(open, onClose, anchorRef, panelRef) {
   useEffect(() => {
     if (!open) return undefined;
     function onDown(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
+      const target = e.target;
+      if (anchorRef?.current?.contains(target)) return;
+      if (panelRef?.current?.contains(target)) return;
+      onClose();
     }
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -249,7 +286,7 @@ export function useMenuDismiss(open, onClose, ref) {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose, ref]);
+  }, [open, onClose, anchorRef, panelRef]);
 }
 
 export function filterByQuery(items, query, getText) {

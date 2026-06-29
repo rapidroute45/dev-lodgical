@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { chatKeys } from "@/modules/chat/infrastructure/api/chat.queries.js";
 
-import { notificationKeys } from "../infrastructure/api/notifications.queries.js";
 import {
   listenForForegroundMessages,
   syncWebPushTokenWithBackend,
@@ -16,10 +15,9 @@ import {
 } from "../infrastructure/push/navigateFromNotification.js";
 import { handleIncomingPushFeedback } from "../infrastructure/push/handleIncomingPush.js";
 import { playNotificationSound } from "../infrastructure/push/playNotificationSound.js";
+import { usePushNotificationInbox } from "./context/PushNotificationInboxProvider.jsx";
 
 function invalidatePushQueries(queryClient, data) {
-  queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-
   if (data.type === "chat_message") {
     queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
     if (data.conversationId) {
@@ -30,10 +28,22 @@ function invalidatePushQueries(queryClient, data) {
   }
 }
 
+function buildPushPayloadFromMessage(eventData) {
+  if (!eventData || typeof eventData !== "object") return {};
+  const { dispatchMessageType: _swType, title, body, ...rest } = eventData;
+  const data = extractNotificationData(rest);
+  return {
+    title: title ?? data.title ?? "Dispatch",
+    body: body ?? data.body ?? "",
+    data,
+  };
+}
+
 export function PushNotificationBootstrap() {
   const { status } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { addFromPush, removeItem } = usePushNotificationInbox();
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -43,8 +53,20 @@ export function PushNotificationBootstrap() {
     let tokenRefreshTimer = null;
 
     const onServiceWorkerMessage = (event) => {
-      if (event.data?.type !== "dispatch-push-navigate") return;
-      const data = extractNotificationData(event.data);
+      const messageType = event.data?.dispatchMessageType;
+      if (!messageType) return;
+
+      if (messageType === "dispatch-push-received") {
+        addFromPush(buildPushPayloadFromMessage(event.data));
+        return;
+      }
+
+      if (messageType !== "dispatch-push-navigate") return;
+
+      const payload = buildPushPayloadFromMessage(event.data);
+      const added = addFromPush(payload);
+      const data = payload.data ?? extractNotificationData(event.data);
+      if (added?.id) removeItem(added.id);
       playNotificationSound();
       invalidatePushQueries(queryClient, data);
       navigateFromNotification(navigate, data);
@@ -69,8 +91,8 @@ export function PushNotificationBootstrap() {
         }, 30 * 60 * 1000);
 
         unsubscribeForeground = listenForForegroundMessages((payload) => {
+          addFromPush(payload);
           const data = extractNotificationData(payload.data ?? {});
-
           handleIncomingPushFeedback(payload);
           invalidatePushQueries(queryClient, data);
         });
@@ -86,7 +108,7 @@ export function PushNotificationBootstrap() {
       navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
       document.removeEventListener("visibilitychange", onVisibilitySync);
     };
-  }, [navigate, queryClient, status]);
+  }, [addFromPush, removeItem, navigate, queryClient, status]);
 
   return null;
 }
