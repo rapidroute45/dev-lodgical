@@ -1,0 +1,46 @@
+/* eslint-disable no-undef */
+/**
+ * Background FCM handler for dev-lodgical.
+ * Config is injected at dev/build time into /firebase-sw-config.js (see vite.config.js).
+ */
+importScripts("/firebase-sw-config.js");
+importScripts("https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging-compat.js");
+
+firebase.initializeApp(self.FIREBASE_SW_CONFIG);
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  const title = payload.notification?.title || "Dispatch";
+  const body = payload.notification?.body || "";
+  const data = payload.data || {};
+
+  self.registration.showNotification(title, {
+    body,
+    icon: "/favicon.svg",
+    silent: false,
+    data,
+  });
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const deepLink = data.deepLink || "/";
+  const url = new URL(deepLink, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          client.postMessage({ type: "dispatch-push-navigate", ...data });
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(url);
+      }
+      return undefined;
+    })
+  );
+});

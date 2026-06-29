@@ -54,11 +54,13 @@ export function DispatchTeamRoutesPanel({ city }) {
 
   if (!memberCity) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
-        <p className="font-semibold text-amber-900">No city assigned</p>
-        <p className="mt-1 text-sm text-amber-800">
-          Assign a city to this dispatch team member to see their routes.
-        </p>
+      <div className="ops-banner ops-banner--warning">
+        <div>
+          <p className="font-semibold">No city assigned</p>
+          <p className="mt-1 text-sm">
+            Assign a city to this dispatch team member to see their routes.
+          </p>
+        </div>
       </div>
     );
   }
@@ -103,7 +105,8 @@ export function DispatchTeamRoutesPanel({ city }) {
             <button
               type="button"
               onClick={() => setSelectedStore(null)}
-              className="text-sm font-semibold text-dispatch-primary hover:underline"
+              className="text-sm font-semibold hover:underline"
+              style={{ color: "var(--accent)" }}
             >
               Clear store filter
             </button>
@@ -112,10 +115,10 @@ export function DispatchTeamRoutesPanel({ city }) {
 
         <div className="min-w-0 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-dispatch-text">
+            <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>
               Routes in {memberCity}
               {!isLoading && total > 0 ? (
-                <span className="ml-2 text-sm font-semibold text-dispatch-muted">
+                <span className="ml-2 text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
                   {count} of {total}
                 </span>
               ) : null}
@@ -123,7 +126,7 @@ export function DispatchTeamRoutesPanel({ city }) {
             <button
               type="button"
               onClick={() => refetch()}
-              className="rounded-lg border border-dispatch-border px-3 py-1.5 text-xs font-semibold text-dispatch-muted hover:bg-dispatch-bg"
+              className="ops-btn px-3 py-1.5 text-xs font-semibold"
             >
               {isFetching ? "Refreshing…" : "Refresh"}
             </button>
@@ -132,13 +135,18 @@ export function DispatchTeamRoutesPanel({ city }) {
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl bg-dispatch-border/40" />
+                <div key={i} className="ops-skel h-28 rounded-2xl" />
               ))}
             </div>
           ) : routes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-dispatch-border bg-dispatch-surface px-8 py-12 text-center">
-              <p className="font-bold text-dispatch-text">No routes for this day</p>
-              <p className="mt-1 text-sm text-dispatch-muted">
+            <div className="ops-panel ops-fade px-8 py-14 text-center">
+              <div className="ops-stat__icon mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <p className="text-lg font-bold" style={{ color: "var(--text)" }}>No routes for this day</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
                 No routes in {memberCity} on this date.
               </p>
             </div>
@@ -154,7 +162,7 @@ export function DispatchTeamRoutesPanel({ city }) {
 
                 return (
                   <li key={route.id}>
-                    <div className="rounded-2xl border border-dispatch-border/80 bg-dispatch-surface p-4 shadow-sm">
+                    <div className="ops-card ops-fade p-4">
                       <button
                         type="button"
                         onClick={() => {
@@ -164,14 +172,14 @@ export function DispatchTeamRoutesPanel({ city }) {
                         className="w-full text-left disabled:cursor-default disabled:opacity-70"
                       >
                         <div className="mb-3 flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-dispatch-primary-soft text-dispatch-primary">
+                          <span className="ops-avatar flex h-9 w-9 shrink-0 items-center justify-center">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-dispatch-text">{storeName}</p>
-                            <p className="truncate text-xs text-dispatch-muted">
+                            <p className="truncate text-sm font-bold" style={{ color: "var(--text)" }}>{storeName}</p>
+                            <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                               {route.schedule?.city}, {route.schedule?.state}
                             </p>
                           </div>
@@ -182,18 +190,18 @@ export function DispatchTeamRoutesPanel({ city }) {
                         </div>
 
                         <div className="flex items-start gap-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-dispatch-primary text-xs font-extrabold text-white">
+                          <span className="ops-route__idx flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold">
                             {index + 1}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-dispatch-text">
+                            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
                               {route.routeName || `Route ${index + 1}`}
                             </p>
-                            <p className="mt-1 text-xs text-dispatch-muted">
+                            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                               {route.teamName ?? "Team"}
                               {route.teamCode ? ` (${route.teamCode})` : ""} · {driver}
                             </p>
-                            <p className="mt-1 text-xs text-dispatch-light">
+                            <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>
                               {route.arrivalTime} – {route.departureTime}
                               {route.schedule?.date
                                 ? ` · ${formatDisplayDate(route.schedule.date)}`
@@ -204,18 +212,23 @@ export function DispatchTeamRoutesPanel({ city }) {
                       </button>
 
                       {scheduleId ? (
-                        <div className="mt-3 flex flex-wrap gap-2 border-t border-dispatch-border pt-3">
+                        <div
+                          className="mt-3 flex flex-wrap gap-3 pt-3"
+                          style={{ borderTop: "1px solid var(--border)" }}
+                        >
                           <Link
                             to={`/schedules/${scheduleId}`}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-dispatch-primary hover:bg-dispatch-primary-soft"
+                            className="text-xs font-bold hover:underline"
+                            style={{ color: "var(--accent)" }}
                           >
                             View schedule
                           </Link>
                           <Link
-                            to={`/schedules/${scheduleId}/edit`}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-dispatch-muted hover:bg-dispatch-bg"
+                            to={`/schedules/${scheduleId}/routes`}
+                            className="text-xs font-bold hover:underline"
+                            style={{ color: "var(--text-muted)" }}
                           >
-                            Edit schedule & routes
+                            Edit routes
                           </Link>
                         </div>
                       ) : null}

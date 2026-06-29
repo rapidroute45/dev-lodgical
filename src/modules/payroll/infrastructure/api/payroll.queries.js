@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as payrollApi from "./payroll.api.js";
+import { useLocationQueryParams } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 export const payrollKeys = {
   all: ["payroll"],
@@ -213,9 +214,11 @@ export function useUpdateStoreBillingRatesMutation(storeId) {
 }
 
 export function useStorePayrollSummaryQuery(params, enabled = true) {
+  const scopeParams = useLocationQueryParams(params);
+  const merged = { ...params, ...scopeParams };
   return useQuery({
-    queryKey: payrollKeys.storePayrollSummary(params),
-    queryFn: () => payrollApi.fetchStorePayrollSummary(params),
+    queryKey: payrollKeys.storePayrollSummary(merged),
+    queryFn: () => payrollApi.fetchStorePayrollSummary(merged),
     enabled,
   });
 }
@@ -237,12 +240,19 @@ export function useInvoiceBillTosQuery(enabled = true) {
 }
 
 export function useStoreInvoicePreviewQuery(params, enabled = true) {
+  const enabledFlag = typeof enabled === "function" ? enabled : Boolean(enabled);
   return useQuery({
     queryKey: payrollKeys.storeInvoicePreview(params),
     queryFn: () => payrollApi.fetchStoreInvoicePreview(params),
     enabled:
-      enabled &&
-      Boolean(params?.periodStart && params?.periodEnd && params?.billToName && params?.billToAddress),
+      enabledFlag &&
+      Boolean(
+        params?.periodStart &&
+          params?.periodEnd &&
+          (params?.storeIds || params?.storeId) &&
+          params?.billToName &&
+          params?.billToAddress
+      ),
   });
 }
 

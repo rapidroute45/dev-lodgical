@@ -10,6 +10,15 @@ export const ROUTE_CATEGORY_LABELS = {
   FULL: "Full",
 };
 
+export const ROUTE_CATEGORY_SLUG = {
+  SMALL: "small",
+  MEDIUM: "medium",
+  FULL: "full",
+};
+
+/** Max routes per category in one bulk add. */
+export const MAX_BULK_ROUTES_PER_CATEGORY = 20;
+
 export const SCHEDULE_STATUSES = [
   "draft",
   "pending",

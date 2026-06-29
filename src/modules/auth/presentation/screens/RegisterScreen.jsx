@@ -71,18 +71,21 @@ export function RegisterScreen() {
 
   return (
     <AuthLayout
+      theme="dark"
       side="right"
+      badge="Dispatch.co"
       title="Start your journey"
       description="Join our platform to streamline your workflow and boost productivity."
       footerNote="Enterprise account registration."
     >
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-dispatch-text">Register</h2>
-        <p className="mt-1 text-sm text-dispatch-muted">Create a new account</p>
+        <h2 className="text-2xl font-bold text-[#e8eef7]">Register</h2>
+        <p className="mt-1 text-sm text-[#94a3b8]">Create a new account</p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <TextField
+          tone="dark"
           label="Full name"
           autoComplete="name"
           placeholder="Jane Doe"
@@ -93,6 +96,7 @@ export function RegisterScreen() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
+            tone="dark"
             label="Email"
             type="email"
             autoComplete="email"
@@ -102,6 +106,7 @@ export function RegisterScreen() {
             error={errors.email}
           />
           <TextField
+            tone="dark"
             label="Phone number"
             type="tel"
             autoComplete="tel"
@@ -114,6 +119,7 @@ export function RegisterScreen() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <PasswordField
+            tone="dark"
             label="Password"
             autoComplete="new-password"
             placeholder="At least 8 characters"
@@ -122,6 +128,7 @@ export function RegisterScreen() {
             error={errors.password}
           />
           <PasswordField
+            tone="dark"
             label="Confirm"
             autoComplete="new-password"
             placeholder="Re-enter password"
@@ -132,26 +139,19 @@ export function RegisterScreen() {
         </div>
 
         {submitError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-dispatch-red">
-            {submitError}
-          </div>
+          <div className="auth-dark__error">{submitError}</div>
         )}
         {success && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {success}
-          </div>
+          <div className="auth-dark__success">{success}</div>
         )}
 
-        <Button type="submit" loading={submitting}>
+        <Button type="submit" tone="dark" loading={submitting}>
           {submitting ? "Creating account..." : "Create Account"}
         </Button>
 
-        <p className="pt-2 text-center text-sm text-dispatch-muted">
+        <p className="pt-2 text-center text-sm text-[#94a3b8]">
           Have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-dispatch-indigo transition hover:text-dispatch-indigo-pressed"
-          >
+          <Link to="/login" className="auth-dark__link">
             Log in
           </Link>
         </p>

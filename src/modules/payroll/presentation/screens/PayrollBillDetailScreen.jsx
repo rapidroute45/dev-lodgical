@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { OPS_ROLES, UserRole } from "@/shared/utils/constants.js";
-import { formatDisplayDate, formatTimestamp } from "@/shared/utils/time.js";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { formatTimestamp } from "@/shared/utils/time.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import {
   usePayrollBillQuery,
   usePayrollSettingsQuery,
@@ -23,8 +24,21 @@ import {
   statusMeta,
   ROUTE_CATEGORY_LABELS,
 } from "@/modules/payroll/utils/format.js";
+import { PayrollBillRouteGrid } from "@/modules/payroll/presentation/components/PayrollBillRouteGrid.jsx";
 
 const ROUTE_CATEGORIES = ["SMALL", "MEDIUM", "FULL"];
+
+const STATUS_BADGE = {
+  draft: "muted",
+  pending_team_lead: "pending",
+  team_lead_approved: "done",
+  team_lead_disputed: "rose",
+  paid: "done",
+};
+
+function statusBadgeClass(status) {
+  return `ops-badge ops-badge--${STATUS_BADGE[status] ?? "muted"}`;
+}
 
 function settingsRateForCategory(settings, category) {
   if (!settings) return null;
@@ -49,7 +63,7 @@ export function PayrollBillDetailScreen() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { data: bill, isLoading, isError } = usePayrollBillQuery(billId);
+  const { data: bill, isLoading, isError, refetch, isFetching } = usePayrollBillQuery(billId);
   const updateMutation = useUpdatePayrollBillMutation();
   const deleteMutation = useDeletePayrollBillMutation();
   const sendMutation = useSendPayrollToTeamLeadMutation();
@@ -67,6 +81,7 @@ export function PayrollBillDetailScreen() {
   const [opsNote, setOpsNote] = useState("");
   const [standardRateDraft, setStandardRateDraft] = useState("");
   const [removedRouteIds, setRemovedRouteIds] = useState(new Set());
+  const [opsMenuOpen, setOpsMenuOpen] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
@@ -74,7 +89,10 @@ export function PayrollBillDetailScreen() {
   const isOps = OPS_ROLES.includes(user?.role);
 
   const canEditAdjustments =
-    isOps && (bill?.status === "draft" || bill?.status === "team_lead_disputed");
+    isOps &&
+    (bill?.status === "draft" ||
+      bill?.status === "team_lead_disputed" ||
+      bill?.status === "pending_team_lead");
 
   const { data: payrollSettings } = usePayrollSettingsQuery(canEditAdjustments);
   const canTeamLeadReview = isTeamLead && bill?.status === "pending_team_lead";
@@ -82,7 +100,10 @@ export function PayrollBillDetailScreen() {
   const canApproveAfterAck = canTeamLeadReview && Boolean(bill?.teamLeadAcknowledgedAt);
   const canMarkPaid = isOps && bill?.status === "team_lead_approved";
   const canDelete =
-    isOps && (bill?.status === "draft" || bill?.status === "team_lead_disputed");
+    isOps &&
+    (bill?.status === "draft" ||
+      bill?.status === "team_lead_disputed" ||
+      bill?.status === "pending_team_lead");
   const showAdjustments =
     isOps || (bill?.status !== "draft" && bill?.status !== "team_lead_disputed");
 
@@ -150,6 +171,7 @@ export function PayrollBillDetailScreen() {
     isOps &&
     (bill?.status === "draft" || bill?.status === "team_lead_disputed") &&
     visibleLineItems.length > 0;
+  const isResendToTeamLead = bill?.status === "pending_team_lead";
 
   const grandTotal = useMemo(() => {
     if (!bill) return 0;
@@ -179,6 +201,8 @@ export function PayrollBillDetailScreen() {
     });
   }, [bill, draft, opsNote, effectiveRate, removedRouteIds]);
 
+  const canSaveBill = canEditAdjustments && (hasChanges || isResendToTeamLead);
+
   function buildAdjustments() {
     return Object.entries(draft).map(([driverId, v]) => ({
       driverId,
@@ -200,8 +224,15 @@ export function PayrollBillDetailScreen() {
   async function handleSave() {
     setError(null);
     try {
-      await updateMutation.mutateAsync({ id: billId, ...buildUpdatePayload() });
-      setMessage("Payroll bill saved");
+      if (hasChanges) {
+        await updateMutation.mutateAsync({ id: billId, ...buildUpdatePayload() });
+      }
+      if (isResendToTeamLead) {
+        await sendMutation.mutateAsync(billId);
+        setMessage(hasChanges ? "Saved and team lead notified" : "Team lead notified");
+      } else {
+        setMessage("Payroll bill saved");
+      }
     } catch (err) {
       setError(err.message || "Could not save");
     }
@@ -310,27 +341,80 @@ export function PayrollBillDetailScreen() {
     markPaidMutation.isPending;
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div className="flex items-center gap-3">
-          <Link to="/payroll" className="text-sm font-semibold text-dispatch-primary hover:underline">
-            ← Payroll
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-dispatch-text">Payroll bill</h1>
-            {bill ? (
-              <p className="text-sm text-dispatch-muted">{bill.teamName}</p>
-            ) : null}
-          </div>
+    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
+  );
+
+  const titleRow = (
+    <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <Link to="/payroll" className="ops-btn p-2.5">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>Payroll bill</h1>
+          {bill ? (
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{bill.teamName}</p>
+          ) : null}
         </div>
       </div>
-    </header>
+      {isOps && bill && (canEditAdjustments || canDelete || canSendToTeamLead) ? (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpsMenuOpen((v) => !v)}
+            className="ops-btn px-4 py-2 text-sm font-semibold"
+            aria-label="Bill actions"
+          >
+            ⋮
+          </button>
+          {opsMenuOpen ? (
+            <div
+              className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl"
+              style={{ border: "1px solid var(--border-strong)", background: "var(--bg-card-solid)", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}
+            >
+              {canEditAdjustments ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpsMenuOpen(false);
+                    document.getElementById("payroll-bill-edit")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="ops-row block w-full px-4 py-2.5 text-left text-sm"
+                  style={{ color: "var(--text)" }}
+                >
+                  Edit bill
+                </button>
+              ) : null}
+              {canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpsMenuOpen(false);
+                    void handleDeleteBill();
+                  }}
+                  disabled={busy}
+                  className="ops-row block w-full px-4 py-2.5 text-left text-sm"
+                  style={{ color: "#fda4af" }}
+                >
+                  Delete bill
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 
   if (isLoading) {
     return (
       <DashboardLayout topBar={topBar}>
-        <p className="text-sm text-dispatch-muted">Loading bill…</p>
+        <div className={PAGE_CONTENT}>
+          {titleRow}
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading bill…</p>
+        </div>
       </DashboardLayout>
     );
   }
@@ -338,7 +422,10 @@ export function PayrollBillDetailScreen() {
   if (isError || !bill) {
     return (
       <DashboardLayout topBar={topBar}>
-        <p className="text-sm text-red-600">Could not load this payroll bill.</p>
+        <div className={PAGE_CONTENT}>
+          {titleRow}
+          <p className="ops-banner ops-banner--error">Could not load this payroll bill.</p>
+        </div>
       </DashboardLayout>
     );
   }
@@ -349,35 +436,37 @@ export function PayrollBillDetailScreen() {
   return (
     <DashboardLayout topBar={topBar}>
       <div className={`${PAGE_CONTENT} pb-28`}>
+        {titleRow}
+
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="ops-banner ops-banner--error">
             {error}
           </div>
         ) : null}
         {message ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="ops-banner ops-banner--success">
             {message}
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-5 shadow-sm">
+        <div className="ops-panel ops-fade p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-dispatch-muted">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
               {formatPeriodRange(bill.periodStart, bill.periodEnd)}
             </p>
-            <span className={`rounded-lg px-2 py-1 text-xs font-bold ${meta.className}`}>
+            <span className={statusBadgeClass(bill.status)}>
               {meta.label}
             </span>
           </div>
-          <p className="mt-2 text-lg font-bold text-dispatch-text">
+          <p className="mt-2 text-lg font-bold" style={{ color: "var(--text)" }}>
             {bill.teamName}
             {bill.teamNumber ? ` · #${bill.teamNumber}` : ""}
           </p>
           <div className="mt-4 flex items-end justify-between">
-            <span className="text-sm font-semibold text-dispatch-muted">Total payable</span>
-            <span className="text-3xl font-extrabold text-dispatch-primary">{formatMoney(grandTotal)}</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>Total payable</span>
+            <span className="text-3xl font-extrabold" style={{ color: "var(--accent)" }}>{formatMoney(grandTotal)}</span>
           </div>
-          <p className="mt-2 text-xs text-dispatch-muted">
+          <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
             {categoryRatesSummary
               ? `${categoryRatesSummary} per route · `
               : `$${canEditAdjustments ? effectiveRate : bill.standardRate} per completed route · `}
@@ -386,69 +475,71 @@ export function PayrollBillDetailScreen() {
         </div>
 
         {canEditAdjustments ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-            <p className="text-sm font-bold text-dispatch-text">Edit bill</p>
-            <p className="mt-3 text-xs font-semibold text-dispatch-muted">Rates per route ($)</p>
-            <div className="mt-1 divide-y divide-dispatch-border rounded-xl border border-dispatch-border">
+          <div id="payroll-bill-edit" className="ops-panel ops-fade p-4">
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Edit bill</p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Rates per route ($)</p>
+            <div className="mt-1 overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
               {categoryRateRows.map((row) => (
-                <div key={row.category} className="flex items-center justify-between px-3 py-2.5">
+                <div key={row.category} className="flex items-center justify-between px-3 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
                   <div>
-                    <p className="text-sm font-semibold text-dispatch-text">{row.label}</p>
-                    <p className="text-xs text-dispatch-muted">
+                    <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{row.label}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {row.count > 0
                         ? `${row.count} route${row.count === 1 ? "" : "s"} on bill`
                         : "Default rate"}
                     </p>
                   </div>
-                  <p className="text-base font-extrabold text-emerald-600">${row.rate}</p>
+                  <p className="text-base font-extrabold" style={{ color: "var(--green)" }}>${row.rate}</p>
                 </div>
               ))}
             </div>
-            <label className="mt-4 block text-xs font-semibold text-dispatch-muted">Flat override ($)</label>
-            <p className="mb-1 text-xs text-dispatch-muted">
+            <label className="mt-4 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Flat override ($)</label>
+            <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
               Optional — applies the same rate to all routes when saved
             </p>
             <input
               type="number"
               value={standardRateDraft}
               onChange={(e) => setStandardRateDraft(e.target.value)}
-              className="w-full rounded-xl border border-dispatch-border px-3 py-2 text-sm"
+              className="w-full rounded-xl px-3 py-2 text-sm"
+              style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
             />
-            <label className="mt-3 block text-xs font-semibold text-dispatch-muted">Internal note</label>
+            <label className="mt-3 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Internal note</label>
             <textarea
               value={opsNote}
               onChange={(e) => setOpsNote(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-xl border border-dispatch-border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl px-3 py-2 text-sm"
+              style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
               placeholder="Optional note for ops"
             />
           </div>
         ) : bill.note ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-            <p className="text-sm font-bold text-dispatch-text">Ops note</p>
-            <p className="mt-2 text-sm text-dispatch-muted">{bill.note}</p>
+          <div className="ops-panel ops-fade p-4">
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Ops note</p>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{bill.note}</p>
           </div>
         ) : null}
 
         {bill.status === "team_lead_disputed" && bill.teamLeadNote ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-bold text-red-800">Team lead note</p>
-            <p className="mt-1 text-sm text-red-700">{bill.teamLeadNote}</p>
+          <div className="ops-banner ops-banner--error">
+            <p className="text-sm font-bold">Team lead note</p>
+            <p className="mt-1 text-sm">{bill.teamLeadNote}</p>
           </div>
         ) : null}
 
         {bill.status === "paid" && receiptUri ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-            <p className="text-sm text-dispatch-muted">
+          <div className="ops-panel ops-fade p-4">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Paid{bill.paidByName ? ` by ${bill.paidByName}` : ""}
               {bill.paidAt ? ` · ${formatTimestamp(bill.paidAt)}` : ""}
             </p>
-            <img src={receiptUri} alt="Payment receipt" className="mt-3 max-h-64 rounded-lg border" />
+            <img src={receiptUri} alt="Payment receipt" className="mt-3 max-h-64 rounded-lg" style={{ border: "1px solid var(--border)" }} />
           </div>
         ) : null}
 
         {visibleLineItems.length === 0 ? (
-          <p className="text-sm text-dispatch-muted">No routes on this bill.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No routes on this bill.</p>
         ) : (
           visibleLineItems.map((line) => {
             const d = draft[line.driverId];
@@ -459,23 +550,23 @@ export function PayrollBillDetailScreen() {
             const isOpen = expanded.has(line.driverId);
 
             return (
-              <div key={line.driverId} className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
+              <div key={line.driverId} className="ops-panel ops-fade p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-bold text-dispatch-text">{line.driverName}</p>
-                    <p className="text-xs text-dispatch-muted">
+                    <p className="font-bold" style={{ color: "var(--text)" }}>{line.driverName}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {line.routes.length} route{line.routes.length === 1 ? "" : "s"} ·{" "}
                       {formatMoney(line.basePay)} base
                     </p>
                   </div>
-                  <p className="text-lg font-extrabold text-dispatch-primary">{formatMoney(lineTotal)}</p>
+                  <p className="text-lg font-extrabold" style={{ color: "var(--accent)" }}>{formatMoney(lineTotal)}</p>
                 </div>
 
                 {showAdjustments ? (
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {["bonus", "deduction", "overtime"].map((field) => (
                       <div key={field}>
-                        <label className="text-[10px] font-semibold capitalize text-dispatch-muted">
+                        <label className="text-[10px] font-bold uppercase capitalize" style={{ color: "var(--text-dim)" }}>
                           {field} ($)
                         </label>
                         {canEditAdjustments ? (
@@ -491,10 +582,11 @@ export function PayrollBillDetailScreen() {
                                 },
                               }))
                             }
-                            className="mt-1 w-full rounded-lg border border-dispatch-border px-2 py-1.5 text-sm"
+                            className="mt-1 w-full rounded-lg px-2 py-1.5 text-sm"
+                            style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
                           />
                         ) : (
-                          <p className="mt-1 text-sm font-semibold">
+                          <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text)" }}>
                             {formatMoney(field === "bonus" ? bonus : field === "deduction" ? deduction : overtime)}
                           </p>
                         )}
@@ -506,73 +598,51 @@ export function PayrollBillDetailScreen() {
                 <button
                   type="button"
                   onClick={() => toggleExpand(line.driverId)}
-                  className="mt-3 text-xs font-semibold text-dispatch-primary"
+                  className="mt-3 text-xs font-semibold"
+                  style={{ color: "var(--accent)" }}
                 >
                   {isOpen ? "Hide" : "View"} route details {isOpen ? "▲" : "▼"}
                 </button>
 
-                {isOpen
-                  ? line.routes.map((r) => (
-                      <div
-                        key={r.routeId}
-                        className="mt-2 flex items-center justify-between border-t border-dispatch-border pt-2 text-sm"
-                      >
-                        <div>
-                          <p className="font-semibold text-dispatch-text">
-                            {r.routeName || "Route"}
-                            {r.location ? ` · ${r.location}` : ""}
-                          </p>
-                          <p className="text-xs text-dispatch-muted">
-                            {formatDisplayDate(r.scheduleDate)}
-                            {r.routeCategory
-                              ? ` · ${ROUTE_CATEGORY_LABELS[r.routeCategory.toUpperCase()] ?? r.routeCategory}`
-                              : ""}
-                            {r.rate != null ? ` · ${formatMoney(r.rate)}` : ""}
-                          </p>
-                        </div>
-                        {canEditAdjustments ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setRemovedRouteIds((prev) => new Set([...prev, r.routeId]))
-                            }
-                            className="text-xs font-semibold text-red-600"
-                          >
-                            Remove
-                          </button>
-                        ) : null}
-                      </div>
-                    ))
-                  : null}
+                {isOpen ? (
+                  <PayrollBillRouteGrid
+                    routes={line.routes}
+                    canRemove={canEditAdjustments}
+                    onRemove={(routeId) =>
+                      setRemovedRouteIds((prev) => new Set([...prev, routeId]))
+                    }
+                  />
+                ) : null}
               </div>
             );
           })
         )}
 
         {canMarkPaid ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-            <p className="text-sm font-bold text-dispatch-text">Payment receipt</p>
-            <input type="file" accept="image/*" onChange={handleReceiptPick} className="mt-2 text-sm" />
+          <div className="ops-panel ops-fade p-4">
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Payment receipt</p>
+            <input type="file" accept="image/*" onChange={handleReceiptPick} className="mt-2 text-sm" style={{ color: "var(--text-muted)" }} />
             {receiptPreview ? (
-              <img src={receiptPreview} alt="Receipt preview" className="mt-3 max-h-48 rounded-lg border" />
+              <img src={receiptPreview} alt="Receipt preview" className="mt-3 max-h-48 rounded-lg" style={{ border: "1px solid var(--border)" }} />
             ) : null}
           </div>
         ) : null}
 
         {disputing ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-            <label className="text-sm font-bold text-dispatch-text">Describe the issue</label>
+          <div className="ops-panel ops-fade p-4">
+            <label className="text-sm font-bold" style={{ color: "var(--text)" }}>Describe the issue</label>
             <textarea
               value={disputeNote}
               onChange={(e) => setDisputeNote(e.target.value)}
               rows={3}
-              className="mt-2 w-full rounded-xl border border-dispatch-border px-3 py-2 text-sm"
+              className="mt-2 w-full rounded-xl px-3 py-2 text-sm"
+              style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
             />
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
                 onClick={() => setDisputing(false)}
-                className="rounded-xl border border-dispatch-border px-4 py-2 text-sm font-semibold"
+                className="ops-btn px-4 py-2 text-sm font-semibold"
               >
                 Cancel
               </button>
@@ -580,7 +650,8 @@ export function PayrollBillDetailScreen() {
                 type="button"
                 onClick={() => void handleDispute()}
                 disabled={busy}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                className="ops-btn px-4 py-2 text-sm font-bold"
+                style={{ borderColor: "rgba(251, 113, 133, 0.4)", background: "rgba(251, 113, 133, 0.12)", color: "#fda4af" }}
               >
                 Send to dispatch
               </button>
@@ -590,14 +661,18 @@ export function PayrollBillDetailScreen() {
       </div>
 
       {canSendToTeamLead || canAcknowledge || canApproveAfterAck || canEditAdjustments || canDelete || canMarkPaid ? (
-        <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-dispatch-border bg-dispatch-surface/95 px-4 py-3 backdrop-blur-md lg:left-64">
+        <div
+          className="fixed bottom-0 left-0 right-0 z-20 px-4 py-3 backdrop-blur-md"
+          style={{ borderTop: "1px solid var(--border)", background: "rgba(7, 11, 18, 0.85)" }}
+        >
           <div className="mx-auto flex max-w-4xl flex-wrap justify-end gap-2">
             {canDelete ? (
               <button
                 type="button"
                 onClick={() => void handleDeleteBill()}
                 disabled={busy}
-                className="rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 disabled:opacity-60"
+                className="ops-btn px-4 py-2.5 text-sm font-semibold"
+                style={{ borderColor: "rgba(251, 113, 133, 0.4)", color: "#fda4af" }}
               >
                 Delete
               </button>
@@ -606,8 +681,8 @@ export function PayrollBillDetailScreen() {
               <button
                 type="button"
                 onClick={() => void handleSave()}
-                disabled={busy || !hasChanges}
-                className="rounded-xl border border-dispatch-primary px-4 py-2.5 text-sm font-bold text-dispatch-primary disabled:opacity-60"
+                disabled={busy || !canSaveBill}
+                className="ops-btn ops-btn--accent px-5 py-2.5 font-bold"
               >
                 Save
               </button>
@@ -617,7 +692,7 @@ export function PayrollBillDetailScreen() {
                 type="button"
                 onClick={() => void handleSendToTeamLead()}
                 disabled={busy}
-                className="rounded-xl bg-dispatch-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="ops-btn ops-btn--accent px-5 py-2.5 font-bold"
               >
                 Send to team lead
               </button>
@@ -627,7 +702,7 @@ export function PayrollBillDetailScreen() {
                 type="button"
                 onClick={() => void handleAcknowledge()}
                 disabled={busy}
-                className="rounded-xl bg-dispatch-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="ops-btn ops-btn--accent px-5 py-2.5 font-bold"
               >
                 Acknowledge payroll
               </button>
@@ -638,7 +713,8 @@ export function PayrollBillDetailScreen() {
                   type="button"
                   onClick={() => setDisputing(true)}
                   disabled={busy}
-                  className="rounded-xl border border-amber-400 px-4 py-2.5 text-sm font-bold text-amber-700 disabled:opacity-60"
+                  className="ops-btn px-4 py-2.5 text-sm font-bold"
+                  style={{ borderColor: "rgba(251, 191, 36, 0.4)", background: "rgba(251, 191, 36, 0.12)", color: "#fcd34d" }}
                 >
                   Report issue
                 </button>
@@ -646,7 +722,8 @@ export function PayrollBillDetailScreen() {
                   type="button"
                   onClick={() => void handleApprove()}
                   disabled={busy}
-                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                  className="ops-btn px-5 py-2.5 font-bold"
+                  style={{ borderColor: "rgba(52, 211, 153, 0.4)", background: "rgba(52, 211, 153, 0.12)", color: "#6ee7b7" }}
                 >
                   Approve
                 </button>
@@ -657,7 +734,8 @@ export function PayrollBillDetailScreen() {
                 type="button"
                 onClick={() => void handleMarkPaid()}
                 disabled={busy || !receiptFile}
-                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="ops-btn px-5 py-2.5 font-bold"
+                style={{ borderColor: "rgba(52, 211, 153, 0.4)", background: "rgba(52, 211, 153, 0.12)", color: "#6ee7b7" }}
               >
                 Mark paid
               </button>

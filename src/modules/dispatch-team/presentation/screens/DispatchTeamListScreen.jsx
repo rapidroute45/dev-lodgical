@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import { UserRole, UserStatus } from "@/shared/utils/constants.js";
+import { getUserAssignedCities } from "@/shared/utils/assignedCities.js";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import { useAllUsersQuery } from "@/modules/users/infrastructure/api/users.queries.js";
 
 export function DispatchTeamListScreen() {
@@ -13,34 +16,45 @@ export function DispatchTeamListScreen() {
     );
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div>
-          <h1 className="text-xl font-bold text-dispatch-text">Dispatch team</h1>
-          <p className="text-sm text-dispatch-muted">
-            View each member&apos;s schedules and routes by city
-          </p>
-        </div>
-      </div>
-    </header>
+    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
   );
 
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
+        <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+              Dispatch team
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+              View each member&apos;s schedules and routes by city
+            </p>
+          </div>
+        </div>
+
         {isLoading ? (
-          <p className="py-12 text-center text-sm text-dispatch-muted">Loading team…</p>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="ops-skel h-20 rounded-2xl" />
+            ))}
+          </div>
         ) : isError ? (
-          <p className="py-12 text-center text-sm text-dispatch-red">Could not load dispatch team</p>
+          <div className="ops-banner ops-banner--error">Could not load dispatch team</div>
         ) : users.length === 0 ? (
-          <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface px-6 py-12 text-center">
-            <p className="font-semibold text-dispatch-text">No dispatch team members</p>
-            <p className="mt-1 text-sm text-dispatch-muted">
+          <div className="ops-panel ops-fade px-8 py-14 text-center">
+            <div className="ops-stat__icon mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p className="text-lg font-bold" style={{ color: "var(--text)" }}>No dispatch team members</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
               Create accounts with the dispatch team role and assign a city.
             </p>
             <Link
               to="/users/new"
-              className="mt-4 inline-block rounded-xl bg-dispatch-indigo px-5 py-2.5 text-sm font-bold text-white hover:bg-dispatch-indigo-pressed"
+              className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold"
             >
               Create account
             </Link>
@@ -50,41 +64,43 @@ export function DispatchTeamListScreen() {
             {users.map((member) => {
               const displayName =
                 member.displayName ?? resolveDisplayName(member.fullName, member.email);
-              const city = member.assignedCity?.trim();
+              const cities = getUserAssignedCities(member);
 
               return (
                 <Link
                   key={member.id}
                   to={`/dispatch-team/${member.id}`}
-                  className="flex items-center gap-4 rounded-2xl border border-dispatch-border bg-dispatch-surface p-4 shadow-sm transition hover:border-dispatch-primary/40 hover:bg-dispatch-primary-soft/20"
+                  className="ops-card ops-card--hover ops-fade flex items-center gap-4 p-4"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-dispatch-primary-soft text-lg font-extrabold text-dispatch-primary">
+                  <span className="ops-avatar flex h-12 w-12 shrink-0 items-center justify-center text-lg">
                     {displayName.charAt(0)}
-                  </div>
+                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-bold text-dispatch-text">{displayName}</p>
-                    <p className="truncate text-sm text-dispatch-muted">{member.email}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {city ? (
-                        <span className="rounded-lg bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-800">
-                          {city}
-                        </span>
+                    <p className="truncate font-bold" style={{ color: "var(--text)" }}>{displayName}</p>
+                    <p className="truncate text-sm" style={{ color: "var(--text-muted)" }}>{member.email}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      {cities.length ? (
+                        cities.map((city) => (
+                          <span key={city} className="ops-citychip">
+                            {city}
+                          </span>
+                        ))
                       ) : (
-                        <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                          No city assigned
-                        </span>
+                        <span className="ops-badge ops-badge--pending">No city assigned</span>
                       )}
-                      <span className="text-xs text-dispatch-muted capitalize">
+                      <span className="text-xs capitalize" style={{ color: "var(--text-dim)" }}>
                         {member.status}
                       </span>
                     </div>
                   </div>
-                  <span className="text-dispatch-muted">→</span>
+                  <svg className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
                 </Link>
               );
             })}
             {isFetching && !isLoading ? (
-              <p className="text-center text-xs text-dispatch-muted">Refreshing…</p>
+              <p className="text-center text-xs" style={{ color: "var(--text-dim)" }}>Refreshing…</p>
             ) : null}
           </div>
         )}
@@ -92,7 +108,7 @@ export function DispatchTeamListScreen() {
         <button
           type="button"
           onClick={() => refetch()}
-          className="text-sm font-semibold text-dispatch-primary hover:underline"
+          className="ops-btn px-4 py-2 text-sm font-semibold"
         >
           Refresh list
         </button>

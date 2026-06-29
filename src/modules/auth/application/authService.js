@@ -4,11 +4,21 @@ import {
   fetchMeRequest,
 } from "@/modules/auth/infrastructure/api/auth.api.js";
 import { tokenStorage } from "@/shared/utils/storage.js";
+import { opsElevationStorage } from "@/modules/auth/application/opsElevationStorage.js";
+import {
+  getAccountBlockedMessage,
+  isAccountLoginAllowed,
+} from "@/modules/auth/utils/accountAccess.js";
+import { AuthError } from "@/modules/auth/domain/errors.js";
 
 /** Application use-cases (framework-agnostic). */
 export const authService = {
   async login({ email, password }) {
     const result = await loginRequest({ email, password });
+    if (!isAccountLoginAllowed(result.user)) {
+      tokenStorage.clear();
+      throw new AuthError(getAccountBlockedMessage(result.user), { status: 403 });
+    }
     if (result.token) tokenStorage.set(result.token);
     return result;
   },
@@ -23,6 +33,7 @@ export const authService = {
 
   logout() {
     tokenStorage.clear();
+    opsElevationStorage.clear();
   },
 
   hasToken() {

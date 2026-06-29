@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import {
   UserRole,
   UserStatus,
@@ -134,40 +136,42 @@ export function CreateUserScreen() {
   }
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div className="flex items-center gap-3">
-          <Link to="/users" className="text-sm font-semibold text-dispatch-primary hover:underline">
-            ← Users
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-dispatch-text">Create account</h1>
-            <p className="text-sm text-dispatch-muted">
-              Set up a user with role and login credentials
-            </p>
-          </div>
-        </div>
-      </div>
-    </header>
+    <OpsTopBar showDate={false} />
   );
 
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
-        {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-dispatch-red">
-            {error}
+        <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <Link to="/users" className="ops-btn p-2.5" aria-label="Back to users">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+                Create account
+              </h1>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                Set up a user with role and login credentials
+              </p>
+            </div>
           </div>
-        ) : null}
+        </div>
 
-        <div className="space-y-4 rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-          <h2 className="text-sm font-bold text-dispatch-text">Account details</h2>
+        {error ? <div className="ops-banner ops-banner--error">{error}</div> : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+        <section className="ops-panel ops-fade overflow-hidden">
+          <div className="ops-panel__head px-5 py-4">
+            <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>Account details</h2>
+          </div>
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">Full name</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Full name</label>
               <input
-                className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-dispatch-primary/30"
+                className="ops-field w-full text-sm outline-none"
+                style={{ color: "var(--text)" }}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
@@ -175,10 +179,11 @@ export function CreateUserScreen() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">Email</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Email</label>
               <input
                 type="email"
-                className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-dispatch-primary/30"
+                className="ops-field w-full text-sm outline-none"
+                style={{ color: "var(--text)" }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@company.com"
@@ -186,10 +191,11 @@ export function CreateUserScreen() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">Phone</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Phone</label>
               <input
                 type="tel"
-                className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-dispatch-primary/30"
+                className="ops-field w-full text-sm outline-none"
+                style={{ color: "var(--text)" }}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 555 123 4567"
@@ -197,120 +203,117 @@ export function CreateUserScreen() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
                 Temporary password
               </label>
               <input
                 type="password"
-                className="w-full rounded-xl border border-dispatch-border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-dispatch-primary/30"
+                className="ops-field w-full text-sm outline-none"
+                style={{ color: "var(--text)" }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
               />
-              <p className="mt-1 text-xs text-dispatch-muted">
+              <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 Share this with the user so they can sign in immediately.
               </p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="space-y-4 rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-          <h2 className="text-sm font-bold text-dispatch-text">Role & access</h2>
-          <p className="text-xs text-dispatch-muted">
-            Account is created as active — no pending approval step.
-          </p>
+        <section className="ops-panel ops-fade overflow-hidden">
+          <div className="ops-panel__head px-5 py-4">
+            <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>Role & access</h2>
+            <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+              Account is created as active — no pending approval step.
+            </p>
+          </div>
+          <div className="space-y-4 p-5">
+            {selectedRole && roleRequiresTeam(selectedRole) ? (
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Team</label>
+                <button
+                  type="button"
+                  onClick={() => setTeamModalOpen(true)}
+                  className="ops-field flex w-full items-center justify-between text-left text-sm font-semibold"
+                  style={{ color: "var(--text)" }}
+                >
+                  {selectedTeam
+                    ? `${selectedTeam.name} (${selectedTeam.code})`
+                    : "Select team"}
+                  <span style={{ color: "var(--accent)" }}>→</span>
+                </button>
+              </div>
+            ) : null}
 
-          {selectedRole && roleRequiresTeam(selectedRole) ? (
-            <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">Team</label>
-              <button
-                type="button"
-                onClick={() => setTeamModalOpen(true)}
-                className="flex w-full items-center justify-between rounded-xl bg-dispatch-primary-soft px-4 py-3 text-left text-sm font-semibold text-dispatch-primary"
-              >
-                {selectedTeam
-                  ? `${selectedTeam.name} (${selectedTeam.code})`
-                  : "Select team"}
-                <span>→</span>
-              </button>
-            </div>
-          ) : null}
+            {selectedRole && roleRequiresCity(selectedRole) ? (
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Assigned city</label>
+                <button
+                  type="button"
+                  onClick={() => setCityModalOpen(true)}
+                  className="ops-field flex w-full items-center justify-between text-left text-sm font-semibold"
+                  style={{ color: "var(--text)" }}
+                >
+                  {selectedCity?.trim() || "Select city"}
+                  <span style={{ color: "var(--accent)" }}>→</span>
+                </button>
+              </div>
+            ) : null}
 
-          {selectedRole && roleRequiresCity(selectedRole) ? (
-            <div>
-              <label className="mb-2 block text-sm font-bold text-dispatch-text">Assigned city</label>
-              <button
-                type="button"
-                onClick={() => setCityModalOpen(true)}
-                className="flex w-full items-center justify-between rounded-xl bg-dispatch-primary-soft px-4 py-3 text-left text-sm font-semibold text-dispatch-primary"
-              >
-                {selectedCity?.trim() || "Select city"}
-                <span>→</span>
-              </button>
-            </div>
-          ) : null}
+            {adminRoleCards.length > 0 ? (
+              <div className="space-y-2">
+                {adminRoleCards.map((role) => {
+                  const selected = selectedRole === role.role;
+                  return (
+                    <button
+                      key={role.role}
+                      type="button"
+                      onClick={() => handleRoleSelect(role.role)}
+                      className="ops-card flex w-full items-center justify-between p-4 text-left transition"
+                      style={selected ? { borderColor: "var(--accent)", background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}
+                    >
+                      <div>
+                        <p className="font-bold" style={{ color: "var(--text)" }}>{role.title}</p>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>{role.description}</p>
+                      </div>
+                      <span style={{ color: "var(--accent)" }}>{selected ? "✓" : "○"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
 
-          {adminRoleCards.length > 0 ? (
-            <div className="space-y-2">
-              {adminRoleCards.map((role) => {
+            <div className="grid gap-2 sm:grid-cols-2">
+              {roleOptions.map((role) => {
                 const selected = selectedRole === role.role;
                 return (
                   <button
                     key={role.role}
                     type="button"
                     onClick={() => handleRoleSelect(role.role)}
-                    className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
-                      selected
-                        ? "border-dispatch-primary bg-dispatch-primary-soft"
-                        : "border-dispatch-border bg-dispatch-bg hover:bg-dispatch-surface"
-                    }`}
+                    className="ops-card p-4 text-left transition"
+                    style={selected ? { borderColor: "var(--accent)", background: "color-mix(in srgb, var(--accent) 10%, transparent)" } : undefined}
                   >
-                    <div>
-                      <p className="font-bold text-dispatch-text">{role.title}</p>
-                      <p className="text-xs text-dispatch-muted">{role.description}</p>
-                    </div>
-                    <span className="text-dispatch-primary">{selected ? "✓" : "○"}</span>
+                    <p className="font-bold" style={{ color: "var(--text)" }}>{role.title}</p>
+                    <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>{role.description}</p>
                   </button>
                 );
               })}
             </div>
-          ) : null}
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            {roleOptions.map((role) => {
-              const selected = selectedRole === role.role;
-              return (
-                <button
-                  key={role.role}
-                  type="button"
-                  onClick={() => handleRoleSelect(role.role)}
-                  className={`rounded-xl border px-4 py-3 text-left transition ${
-                    selected
-                      ? "border-dispatch-primary bg-dispatch-primary-soft"
-                      : "border-dispatch-border bg-dispatch-bg hover:bg-dispatch-surface"
-                  }`}
-                >
-                  <p className="font-bold text-dispatch-text">{role.title}</p>
-                  <p className="mt-1 text-xs text-dispatch-muted">{role.description}</p>
-                </button>
-              );
-            })}
           </div>
-        </div>
+        </section>
 
         <div className="flex flex-wrap gap-3">
-          <Link
-            to="/users"
-            className="rounded-xl border border-dispatch-border px-5 py-2.5 text-sm font-semibold text-dispatch-muted hover:bg-dispatch-surface"
-          >
+          <Link to="/users" className="ops-btn px-4 py-2 text-sm font-semibold">
             Cancel
           </Link>
           <button
             type="button"
             onClick={handleCreate}
             disabled={createMutation.isPending}
-            className="rounded-xl bg-dispatch-indigo px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-dispatch-primary/25 hover:bg-dispatch-indigo-pressed disabled:opacity-50"
+            className="ops-btn ops-btn--accent px-5 py-2.5 font-bold disabled:opacity-50"
           >
             {createMutation.isPending ? "Creating…" : "Create account"}
           </button>

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import { mediaUrl } from "@/shared/utils/mediaUrl.js";
 import {
   useDriverDocumentsDetailQuery,
@@ -10,16 +12,16 @@ import {
 } from "@/modules/documents/infrastructure/api/documents.queries.js";
 
 function statusLabel(status) {
-  if (status === "verified") return { text: "Verified", className: "bg-emerald-100 text-emerald-800" };
-  if (status === "pending") return { text: "Pending review", className: "bg-amber-100 text-amber-800" };
-  if (status === "rejected") return { text: "Rejected", className: "bg-red-100 text-red-800" };
-  if (status === "missing") return { text: "Missing", className: "bg-slate-100 text-slate-600" };
-  return { text: status, className: "bg-dispatch-bg text-dispatch-muted" };
+  if (status === "verified") return { text: "Verified", variant: "done" };
+  if (status === "pending") return { text: "Pending review", variant: "pending" };
+  if (status === "rejected") return { text: "Rejected", variant: "rose" };
+  if (status === "missing") return { text: "Missing", variant: "muted" };
+  return { text: status, variant: "muted" };
 }
 
 export function DriverDocumentReviewScreen() {
   const { driverId } = useParams();
-  const { data, isLoading } = useDriverDocumentsDetailQuery(driverId, Boolean(driverId));
+  const { data, isLoading, refetch, isFetching } = useDriverDocumentsDetailQuery(driverId, Boolean(driverId));
   const verify = useVerifyDocumentMutation();
   const reject = useRejectDocumentMutation();
   const [busyId, setBusyId] = useState(null);
@@ -54,39 +56,43 @@ export function DriverDocumentReviewScreen() {
   }
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/driver-documents"
-            className="text-sm font-semibold text-dispatch-primary hover:underline"
-          >
-            ← Driver documents
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-dispatch-text">
-              {data?.driver.displayName ?? "Driver"}
-            </h1>
-            {data?.driver.email ? (
-              <p className="text-sm text-dispatch-muted">{data.driver.email}</p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </header>
+    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
   );
 
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
-        {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-dispatch-red">
-            {error}
+        <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <Link to="/driver-documents" className="ops-btn p-2.5" aria-label="Back to driver documents">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+                {data?.driver.displayName ?? "Driver"}
+              </h1>
+              {data?.driver.email ? (
+                <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>{data.driver.email}</p>
+              ) : null}
+            </div>
           </div>
+        </div>
+
+        {error ? (
+          <div className="ops-banner ops-banner--error">{error}</div>
         ) : null}
 
         {isLoading || !data ? (
-          <p className="py-12 text-center text-sm text-dispatch-muted">Loading…</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="ops-skel h-16 rounded-xl" />
+              ))}
+            </div>
+            <div className="ops-skel h-40 rounded-2xl" />
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -98,21 +104,18 @@ export function DriverDocumentReviewScreen() {
                 ["Expiring", data.stats.expiringSoon],
                 ["Expired", data.stats.expired],
               ].map(([label, count]) => (
-                <div
-                  key={label}
-                  className="rounded-xl border border-dispatch-border bg-dispatch-surface px-3 py-2 text-center"
-                >
-                  <p className="text-lg font-extrabold text-dispatch-text">{count}</p>
-                  <p className="text-xs text-dispatch-muted">{label}</p>
+                <div key={label} className="ops-card ops-fade px-3 py-2 text-center">
+                  <p className="text-lg font-extrabold" style={{ color: "var(--text)" }}>{count}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</p>
                 </div>
               ))}
             </div>
 
             {data.vehicle?.plateNumber || data.vehicle?.vehiclePhotoUrl ? (
-              <div className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4">
-                <p className="text-sm font-bold text-dispatch-text">Vehicle</p>
+              <div className="ops-panel ops-fade p-4">
+                <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Vehicle</p>
                 {data.vehicle.plateNumber ? (
-                  <p className="mt-1 text-sm text-dispatch-muted">
+                  <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                     Plate: {data.vehicle.plateNumber}
                   </p>
                 ) : null}
@@ -121,7 +124,8 @@ export function DriverDocumentReviewScreen() {
                     href={mediaUrl(data.vehicle.vehiclePhotoUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-block text-sm font-semibold text-dispatch-primary hover:underline"
+                    className="mt-3 inline-block text-sm font-semibold hover:underline"
+                    style={{ color: "var(--accent)" }}
                   >
                     View vehicle photo
                   </a>
@@ -137,34 +141,31 @@ export function DriverDocumentReviewScreen() {
                 const canReview = submission.status === "pending" && Boolean(submission.fileUrl);
 
                 return (
-                  <div
-                    key={requirement.id}
-                    className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-4"
-                  >
+                  <div key={requirement.id} className="ops-panel ops-fade p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-bold text-dispatch-text">{requirement.title}</p>
+                        <p className="font-bold" style={{ color: "var(--text)" }}>{requirement.title}</p>
                         {requirement.description ? (
-                          <p className="mt-1 text-sm text-dispatch-muted">{requirement.description}</p>
+                          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{requirement.description}</p>
                         ) : null}
                       </div>
-                      <span className={`rounded-lg px-2 py-1 text-xs font-bold ${badge.className}`}>
+                      <span className={`ops-badge ops-badge--${badge.variant}`}>
                         {badge.text}
                       </span>
                     </div>
 
                     {submission.referenceNumber ? (
-                      <p className="mt-2 text-sm text-dispatch-muted">
+                      <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
                         Reference: {submission.referenceNumber}
                       </p>
                     ) : null}
                     {submission.expiryDate ? (
-                      <p className="text-sm text-dispatch-muted">
+                      <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                         Expires: {submission.expiryDate}
                       </p>
                     ) : null}
                     {submission.rejectionReason ? (
-                      <p className="mt-1 text-sm text-dispatch-red">
+                      <p className="mt-1 text-sm" style={{ color: "var(--rose)" }}>
                         Rejection: {submission.rejectionReason}
                       </p>
                     ) : null}
@@ -175,14 +176,15 @@ export function DriverDocumentReviewScreen() {
                           <img
                             src={fileUrl}
                             alt={requirement.title}
-                            className="max-h-48 w-full rounded-xl border border-dispatch-border object-contain bg-dispatch-bg"
+                            className="max-h-48 w-full rounded-xl object-contain"
+                            style={{ border: "1px solid var(--border)", background: "rgba(255,255,255,0.03)" }}
                           />
                         ) : null}
                         <a
                           href={fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl border border-dispatch-primary bg-dispatch-primary-soft px-4 py-2 text-sm font-bold text-dispatch-primary hover:bg-dispatch-primary/10"
+                          className="ops-btn inline-flex px-4 py-2 text-sm font-semibold"
                         >
                           Open document
                         </a>
@@ -195,7 +197,8 @@ export function DriverDocumentReviewScreen() {
                           type="button"
                           onClick={() => handleReject(requirement.id)}
                           disabled={busyId === requirement.id}
-                          className="flex-1 rounded-xl border border-dispatch-red px-4 py-2 text-sm font-bold text-dispatch-red hover:bg-red-50 disabled:opacity-50"
+                          className="ops-btn flex-1 px-4 py-2 text-sm font-bold disabled:opacity-50"
+                          style={{ color: "var(--rose)", borderColor: "color-mix(in srgb, var(--rose) 35%, transparent)" }}
                         >
                           Reject
                         </button>
@@ -203,7 +206,7 @@ export function DriverDocumentReviewScreen() {
                           type="button"
                           onClick={() => handleVerify(requirement.id)}
                           disabled={busyId === requirement.id}
-                          className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="ops-btn ops-btn--accent flex-1 px-4 py-2 text-sm font-bold disabled:opacity-50"
                         >
                           {busyId === requirement.id ? "Working…" : "Verify"}
                         </button>

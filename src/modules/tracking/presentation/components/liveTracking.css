@@ -1,0 +1,106 @@
+.live-tracking-map {
+  width: 100%;
+  min-height: 420px;
+  height: min(70vh, 720px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e2e8f0);
+  z-index: 0;
+}
+
+.route-live-google-map {
+  position: relative;
+}
+
+.route-live-map-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--bg-card, #f8fafc);
+}
+
+.live-tracking-driver-icon,
+.live-tracking-stop-icon {
+  background: transparent;
+  border: none;
+}
+
+.live-tracking-driver-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+}
+
+.live-tracking-stop-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #10b981;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
+}
+
+.live-tracking-pickup-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #16a34a;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.35);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+
+.live-tracking-stop-number {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #2563eb;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+
+.live-tracking-sidebar {
+  max-height: min(70vh, 720px);
+  overflow-y: auto;
+}
+
+.live-tracking-card {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.live-tracking-card--active {
+  border-color: var(--accent, #2563eb);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.live-tracking-card--stationary {
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.live-tracking-card--completed {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.live-tracking-card--completed.live-tracking-card--active {
+  border-color: var(--green, #34d399);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.live-tracking-link--live {
+  color: var(--accent) !important;
+}

@@ -1,5 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import { authService } from "./authService.js";
+import { clearWebPushTokenFromBackend } from "@/modules/notifications/infrastructure/push/firebaseWebPush.js";
+import { isAccountLoginAllowed } from "@/modules/auth/utils/accountAccess.js";
 
 export const AuthContext = createContext(null);
 
@@ -20,6 +22,12 @@ export function AuthProvider({ children }) {
       try {
         const me = await authService.fetchCurrentUser();
         if (cancelled) return;
+        if (!isAccountLoginAllowed(me)) {
+          authService.logout();
+          setUser(null);
+          setStatus("guest");
+          return;
+        }
         setUser(me);
         setStatus("authenticated");
       } catch {
@@ -55,6 +63,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    void clearWebPushTokenFromBackend();
     authService.logout();
     setUser(null);
     setStatus("guest");

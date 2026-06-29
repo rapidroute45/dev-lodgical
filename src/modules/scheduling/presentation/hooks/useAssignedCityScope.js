@@ -1,15 +1,16 @@
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { UserRole } from "@/shared/utils/constants.js";
+import { getUserAssignedCities } from "@/shared/utils/assignedCities.js";
 
 export function useAssignedCityScope() {
   const { user } = useAuth();
-  const assignedCity =
-    user?.role === UserRole.DISPATCH_TEAM && user?.assignedCity?.trim()
-      ? user.assignedCity.trim()
-      : null;
+  const assignedCities = getUserAssignedCities(user);
+  const assignedCity = assignedCities.length === 1 ? assignedCities[0] : null;
 
   return {
+    assignedCities,
     assignedCity,
-    isCityLocked: Boolean(assignedCity),
+    isCityScoped: assignedCities.length > 0,
+    isCityLocked: assignedCities.length === 1,
+    hasMultipleCities: assignedCities.length > 1,
   };
 }

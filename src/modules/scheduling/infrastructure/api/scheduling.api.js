@@ -55,6 +55,21 @@ export async function deleteRoute(routeId) {
   await api.delete(`/routes/${routeId}`);
 }
 
+export async function completeRouteStopOps(routeId, stopId) {
+  const res = await api.post(`/routes/${routeId}/stops/${stopId}/ops-complete`);
+  return res.data;
+}
+
+export async function returnRouteStopOps(routeId, stopId, body) {
+  const res = await api.post(`/routes/${routeId}/stops/${stopId}/ops-return`, body);
+  return res.data;
+}
+
+export async function updateRouteStopStatusOps(routeId, stopId, body) {
+  const res = await api.patch(`/routes/${routeId}/stops/${stopId}/status`, body);
+  return res.data;
+}
+
 export async function fetchRoute(id) {
   const res = await api.get(`/routes/${id}`);
   return res.data.data;
@@ -75,6 +90,11 @@ export async function fetchRoutes(params) {
 export async function fetchTeams() {
   const res = await api.get("/teams");
   return res.data.data ?? [];
+}
+
+export async function fetchTeam(teamId) {
+  const res = await api.get(`/teams/${teamId}`);
+  return res.data.data;
 }
 
 export async function fetchSchedules(params) {
@@ -100,4 +120,14 @@ export async function fetchAvailableDrivers(teamId, params) {
 export async function fetchCities() {
   const res = await api.get("/cities");
   return res.data.data?.cities ?? [];
+}
+
+export async function fetchLocations() {
+  const res = await api.get("/cities");
+  const data = res.data.data ?? {};
+  return {
+    states: data.states ?? [],
+    locations: data.locations ?? [],
+    cities: data.cities ?? [],
+  };
 }

@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { UserRole } from "@/shared/utils/constants.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
-import { PAGE_CONTENT, PAGE_HEADER_INNER } from "@/shared/layout/pageLayout.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { todayIsoDate } from "@/shared/utils/time.js";
 import {
   useChatDriversQuery,
   useChatOpsPeersQuery,
@@ -50,121 +52,139 @@ export function NewChatScreen() {
   };
 
   const topBar = (
-    <header className="sticky top-0 z-10 border-b border-dispatch-border bg-dispatch-surface/95 backdrop-blur-md">
-      <div className={PAGE_HEADER_INNER}>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/chat"
-            className="rounded-lg border border-dispatch-border px-3 py-2 text-sm font-medium text-dispatch-muted transition hover:bg-dispatch-bg"
-          >
-            ← Back
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-dispatch-text">New chat</h1>
-            <p className="text-sm text-dispatch-muted">Select a contact to message</p>
-          </div>
-        </div>
-      </div>
-    </header>
+    <OpsTopBar showDate={false} refreshing={false} />
   );
+
+  const tabButton = (key, label) => {
+    const active = tab === key;
+    return (
+      <button
+        type="button"
+        onClick={() => setTab(key)}
+        className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+        style={
+          active
+            ? { background: "rgba(34,211,238,0.12)", color: "var(--accent)" }
+            : { background: "transparent", color: "var(--text-muted)" }
+        }
+      >
+        {label}
+      </button>
+    );
+  };
 
   return (
     <DashboardLayout topBar={topBar}>
       <div className={PAGE_CONTENT}>
+        <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <Link to="/chat" className="ops-btn p-2.5" aria-label="Back to messages">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+                New chat
+              </h1>
+              <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>
+                Select a contact to message
+              </p>
+            </div>
+          </div>
+        </div>
+
         {isDispatchTeam ? (
-          <div className="flex rounded-xl border border-dispatch-border bg-dispatch-surface p-1">
-            <button
-              type="button"
-              onClick={() => setTab("drivers")}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                tab === "drivers"
-                  ? "bg-dispatch-primary-soft text-dispatch-primary"
-                  : "text-dispatch-muted hover:bg-dispatch-bg"
-              }`}
-            >
-              Drivers
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("ops")}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                tab === "ops"
-                  ? "bg-dispatch-primary-soft text-dispatch-primary"
-                  : "text-dispatch-muted hover:bg-dispatch-bg"
-              }`}
-            >
-              Dispatch manager
-            </button>
+          <div className="ops-panel ops-fade flex p-1">
+            {tabButton("drivers", "Drivers")}
+            {tabButton("ops", "Dispatch manager")}
           </div>
         ) : null}
 
-        <div className="flex items-center gap-3 rounded-xl border border-dispatch-border bg-dispatch-surface px-4 py-3">
-          <svg
-            className="h-5 w-5 shrink-0 text-dispatch-muted"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.75}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <div className="ops-panel ops-fade overflow-hidden">
+          <div className="ops-menu__search">
+            <svg
+              className="h-4 w-4 shrink-0"
+              style={{ color: "var(--text-dim)" }}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={tab === "drivers" ? "Search drivers" : "Search dispatch managers"}
             />
-          </svg>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={tab === "drivers" ? "Search drivers" : "Search dispatch managers"}
-            className="w-full bg-transparent text-sm text-dispatch-text outline-none placeholder:text-dispatch-light"
-          />
-        </div>
+          </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-dispatch-muted">
-            Loading contacts…
-          </div>
-        ) : filtered.length === 0 ? (
-          <p className="py-12 text-center text-sm text-dispatch-muted">No contacts found.</p>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-dispatch-border bg-dispatch-surface">
-            {filtered.map((item) => {
-              const name = resolveDisplayName(item.fullName, item.email);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void (tab === "drivers" ? startDriverChat(item) : startOpsChat(item))
-                  }
-                  className="flex w-full items-center gap-4 border-b border-dispatch-border px-4 py-4 text-left transition last:border-b-0 hover:bg-dispatch-bg disabled:opacity-50 sm:px-6"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dispatch-primary-soft text-base font-bold text-dispatch-primary">
-                    {name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-bold text-dispatch-text">{name}</p>
-                    <p className="truncate text-sm text-dispatch-muted">
-                      {item.role ? `${item.role} · ` : ""}
-                      {item.email}
-                    </p>
-                  </div>
-                  <svg
-                    className="h-5 w-5 shrink-0 text-dispatch-light"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.75}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {isLoading ? (
+            <div className="space-y-4 p-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="ops-skel h-16 rounded-2xl" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+              No contacts found.
+            </p>
+          ) : (
+            <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {filtered.map((item) => {
+                const name = resolveDisplayName(item.fullName, item.email);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void (tab === "drivers" ? startDriverChat(item) : startOpsChat(item))
+                      }
+                      className="flex w-full items-center gap-4 px-4 py-4 text-left transition disabled:opacity-50 sm:px-6"
+                      style={{ background: "transparent" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <div className="ops-avatar flex h-11 w-11 shrink-0 items-center justify-center text-base font-bold">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-bold" style={{ color: "var(--text)" }}>
+                          {name}
+                        </p>
+                        <p className="truncate text-sm" style={{ color: "var(--text-muted)" }}>
+                          {item.role ? `${item.role} · ` : ""}
+                          {item.email}
+                        </p>
+                      </div>
+                      <svg
+                        className="h-5 w-5 shrink-0"
+                        style={{ color: "var(--text-dim)" }}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

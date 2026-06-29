@@ -1,0 +1,519 @@
+.route-grid-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  max-height: calc(100vh - 220px);
+}
+
+.route-grid-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 14px;
+  color: #334155;
+}
+
+.route-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 40px;
+  padding: 0 12px;
+  background-color: #f1f5f9;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.route-grid-table thead th:last-child {
+  border-right: none;
+}
+
+.route-grid-table tbody td {
+  position: relative;
+  height: 48px;
+  padding: 0;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.route-grid-table tbody td:not(.col-pinned) {
+  z-index: 0;
+}
+
+.route-grid-table tbody td:last-child {
+  border-right: none;
+}
+
+.route-grid-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.route-grid-table tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+.route-grid-table tbody tr.route-row-dirty td {
+  background-color: #f8fafc;
+}
+
+.route-grid-table tbody tr.route-row-dirty:hover td {
+  background-color: #f1f5f9;
+}
+
+/* Pinned route name column */
+.route-grid-table .col-pinned {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: #ffffff;
+  box-shadow: 2px 0 6px rgba(15, 23, 42, 0.05);
+}
+
+.route-grid-table thead .col-pinned {
+  z-index: 3;
+  background-color: #f1f5f9;
+}
+
+.route-grid-table tbody tr:hover .col-pinned {
+  background-color: #f8fafc;
+}
+
+.route-grid-table tbody tr.route-row-dirty .col-pinned {
+  background-color: #f8fafc;
+}
+
+.route-grid-cell-inner {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 10px;
+}
+
+.route-grid-input {
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #334155;
+  outline: none;
+  font-family: inherit;
+}
+
+.route-grid-input:focus {
+  box-shadow: inset 0 0 0 2px #94a3b8;
+  background-color: #ffffff;
+}
+
+.route-grid-input:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  background-color: #fafafa;
+}
+
+.route-grid-input--text {
+  font-weight: 500;
+}
+
+.route-grid-input--select {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.route-grid-input--time {
+  font-variant-numeric: tabular-nums;
+}
+
+.route-grid-input--number {
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.route-grid-static {
+  display: block;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.route-grid-stops-btn {
+  display: inline-flex;
+  min-width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 8px;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #2563eb;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.route-grid-stops-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.route-grid-stops-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.route-grid-stops-empty {
+  display: inline-flex;
+  min-width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 8px;
+  border: none;
+  background: none;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.route-grid-stops-empty:hover {
+  color: #64748b;
+}
+
+.route-grid-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 4px auto;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.route-grid-delete-btn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.route-grid-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.route-grid-delete-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fecaca;
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: route-grid-spin 0.7s linear infinite;
+}
+
+@keyframes route-grid-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.route-grid-track-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.route-grid-track-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.route-grid-track-btn--live {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #047857;
+  animation: route-grid-track-pulse 2s ease-in-out infinite;
+}
+
+.route-grid-track-btn--live:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.route-grid-track-empty {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+@keyframes route-grid-track-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+  }
+}
+
+.route-grid-table .col-track {
+  text-align: center;
+  position: sticky;
+  right: 52px;
+  z-index: 1;
+  background: #fff;
+  box-shadow: -4px 0 8px -4px rgba(15, 23, 42, 0.08);
+}
+
+.route-grid-table thead th.col-track {
+  z-index: 3;
+  background-color: #f1f5f9;
+}
+
+.route-grid-table tbody tr:hover .col-track {
+  background: #f8fafc;
+}
+
+.route-grid-table tbody tr.route-row-dirty .col-track {
+  background: #fffbeb;
+}
+
+.route-grid-table tbody tr.route-row-dirty:hover .col-track {
+  background: #fef3c7;
+}
+
+.route-grid-table .col-actions {
+  text-align: center;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: -4px 0 8px -4px rgba(15, 23, 42, 0.12);
+}
+
+.route-grid-table thead th.col-actions {
+  z-index: 3;
+  background-color: #f1f5f9;
+}
+
+.route-grid-wrap {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Dark ops shell overrides */
+.ops-shell .route-grid-wrap {
+  border-color: var(--border);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ops-shell .route-grid-table {
+  color: var(--text);
+}
+
+.ops-shell .route-grid-table thead th {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-right-color: var(--border);
+  border-bottom-color: var(--border-strong);
+  color: var(--text-dim);
+}
+
+.ops-shell .route-grid-table tbody td {
+  background-color: rgba(255, 255, 255, 0.015);
+  border-right-color: var(--border);
+  border-bottom-color: var(--border);
+}
+
+.ops-shell .route-grid-table tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.ops-shell .route-grid-table tbody tr.route-row-dirty td {
+  background-color: rgba(251, 191, 36, 0.06);
+}
+
+.ops-shell .route-grid-table tbody tr.route-row-dirty:hover td {
+  background-color: rgba(251, 191, 36, 0.1);
+}
+
+.ops-shell .route-grid-table .col-pinned {
+  background-color: rgba(15, 19, 28, 0.95);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.ops-shell .route-grid-table thead .col-pinned {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ops-shell .route-grid-table tbody tr:hover .col-pinned {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.ops-shell .route-grid-table tbody tr.route-row-dirty .col-pinned {
+  background-color: rgba(251, 191, 36, 0.08);
+}
+
+.ops-shell .route-grid-input {
+  color: var(--text);
+}
+
+.ops-shell .route-grid-input:focus {
+  box-shadow: inset 0 0 0 2px rgba(34, 211, 238, 0.4);
+  background-color: rgba(34, 211, 238, 0.05);
+}
+
+.ops-shell .route-grid-input:disabled {
+  color: var(--text-dim);
+  background-color: transparent;
+}
+
+.ops-shell .route-grid-static {
+  color: var(--text-muted);
+}
+
+.ops-shell .route-grid-stops-btn {
+  border-color: rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent);
+}
+
+.ops-shell .route-grid-stops-btn:hover {
+  background: rgba(34, 211, 238, 0.18);
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.ops-shell .route-grid-stops-empty {
+  color: var(--text-dim);
+}
+
+.ops-shell .route-grid-stops-empty:hover {
+  color: var(--text-muted);
+}
+
+.ops-shell .route-grid-delete-btn {
+  border-color: rgba(251, 113, 133, 0.35);
+  background: rgba(251, 113, 133, 0.1);
+  color: #fda4af;
+}
+
+.ops-shell .route-grid-delete-btn:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.18);
+  border-color: rgba(251, 113, 133, 0.5);
+}
+
+.ops-shell .route-grid-track-btn {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.1);
+  color: #93c5fd;
+}
+
+.ops-shell .route-grid-track-btn:hover {
+  background: rgba(96, 165, 250, 0.18);
+}
+
+.ops-shell .route-grid-track-btn--live {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+}
+
+.ops-shell .route-grid-track-empty {
+  color: var(--text-dim);
+}
+
+.ops-shell .route-grid-input--select {
+  color-scheme: dark;
+}
+.ops-shell .route-grid-input--select option {
+  background: var(--bg-card-solid);
+  color: var(--text);
+}
+.ops-shell--light .route-grid-input--select {
+  color-scheme: light;
+}
+.ops-shell--light .route-grid-input--select option {
+  background: #fff;
+  color: #0f172a;
+}
+
+.ops-shell .route-grid-table .col-track,
+.ops-shell .route-grid-table .col-actions {
+  background: rgba(15, 19, 28, 0.95);
+}
+
+.ops-shell .route-grid-table--no-track .col-actions {
+  right: 0;
+}
+
+.ops-shell .route-grid-table thead th.col-track,
+.ops-shell .route-grid-table thead th.col-actions {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ops-shell .route-grid-table tbody tr:hover .col-track,
+.ops-shell .route-grid-table tbody tr:hover .col-actions {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ops-shell .route-grid-table tbody tr.route-row-dirty .col-track,
+.ops-shell .route-grid-table tbody tr.route-row-dirty .col-actions {
+  background: rgba(251, 191, 36, 0.08);
+}
+
+/* Light theme spreadsheet */
+.ops-shell--light .route-grid-table .col-pinned,
+.ops-shell--light .route-grid-table .col-track,
+.ops-shell--light .route-grid-table .col-actions {
+  background-color: #fff;
+}
+
+.ops-shell--light .route-grid-table thead .col-pinned,
+.ops-shell--light .route-grid-table thead th.col-track,
+.ops-shell--light .route-grid-table thead th.col-actions {
+  background-color: #f1f5f9;
+}

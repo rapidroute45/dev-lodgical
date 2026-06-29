@@ -28,13 +28,13 @@ export function CityFilterRow({ selectedCity, lockedCity, onSelect }) {
         type="button"
         disabled={locked}
         onClick={() => !locked && setPickerOpen(true)}
-        className={`flex w-full items-center justify-between rounded-xl border border-dispatch-border bg-dispatch-surface px-4 py-2.5 text-sm ${
-          locked ? "cursor-default opacity-80" : "hover:bg-dispatch-bg"
+        className={`ops-field flex w-full items-center justify-between text-sm ${
+          locked ? "cursor-default opacity-80" : ""
         }`}
       >
-        <span className="font-medium text-dispatch-text">{label}</span>
+        <span className="font-medium" style={{ color: "var(--text)" }}>{label}</span>
         {!locked ? (
-          <svg className="h-4 w-4 text-dispatch-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-4 w-4" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         ) : null}

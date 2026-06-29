@@ -1,0 +1,385 @@
+/* ---------- Route stops modal table (native selects, ops theme) ---------- */
+.route-stops-table-wrap {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card-solid);
+}
+
+.route-stops-table-wrap--modal {
+  min-width: 100%;
+}
+
+.route-stops-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.route-stops-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--text) 4%, var(--bg-card-solid));
+}
+
+.route-stops-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.route-stops-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.route-stops-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.route-stops-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--text) 3%, var(--bg-card-solid));
+}
+
+.route-stops-table__col-seq,
+.route-stops-table__seq {
+  width: 48px;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.route-stops-table__col-code {
+  width: 140px;
+}
+
+.route-stops-table__col-status {
+  width: 160px;
+}
+
+.route-stops-table__col-actions,
+.route-stops-table__actions {
+  width: 52px;
+  text-align: center;
+}
+
+.route-stops-table__input,
+.route-stops-table__textarea {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--text);
+  background: transparent;
+  resize: vertical;
+}
+
+.route-stops-table__input:focus,
+.route-stops-table__textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  background: color-mix(in srgb, var(--text) 2%, var(--bg-card-solid));
+}
+
+.route-stops-table__input--code {
+  max-width: 120px;
+}
+
+.route-stops-table tbody tr.route-stop-row--completed td {
+  background: color-mix(in srgb, var(--green) 6%, var(--bg-card-solid));
+}
+
+.route-stops-table tbody tr.route-stop-row--returned td {
+  background: color-mix(in srgb, var(--rose) 6%, var(--bg-card-solid));
+}
+
+.route-stops-table tbody tr.route-stop-row--completed:hover td {
+  background: color-mix(in srgb, var(--green) 10%, var(--bg-card-solid));
+}
+
+.route-stops-table tbody tr.route-stop-row--returned:hover td {
+  background: color-mix(in srgb, var(--rose) 10%, var(--bg-card-solid));
+}
+
+.stops-csv-grid-wrap {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stops-csv-grid {
+  width: 100%;
+  min-width: 720px;
+  height: min(420px, calc(100vh - 280px));
+  --ag-font-size: 14px;
+  --ag-header-height: 40px;
+  --ag-row-height: 48px;
+  --ag-header-background-color: color-mix(in srgb, var(--text) 4%, transparent);
+  --ag-header-foreground-color: var(--text-dim, #64748b);
+  --ag-border-color: var(--border, #e2e8f0);
+  --ag-row-hover-color: color-mix(in srgb, var(--text) 3%, transparent);
+  --ag-foreground-color: var(--text, #334155);
+  --ag-background-color: transparent;
+  --ag-data-color: var(--text, #334155);
+}
+
+.stops-csv-grid .ag-header-cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stops-csv-grid .ag-cell {
+  display: flex;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.stops-csv-grid--modal {
+  min-width: 100%;
+  height: min(520px, calc(90vh - 220px));
+}
+
+.stops-csv-grid--editable .ag-cell-focus {
+  border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 55%, transparent) !important;
+}
+
+.route-stops-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--rose, #dc2626) 35%, transparent);
+  background: color-mix(in srgb, var(--rose, #dc2626) 10%, transparent);
+  color: var(--rose, #dc2626);
+  cursor: pointer;
+}
+
+.route-stops-delete-btn:hover {
+  background: color-mix(in srgb, var(--rose, #dc2626) 16%, transparent);
+  border-color: color-mix(in srgb, var(--rose, #dc2626) 50%, transparent);
+}
+
+.route-stop-status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.route-stop-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.route-stop-status--completed {
+  background: color-mix(in srgb, var(--green, #059669) 14%, transparent);
+  color: var(--green, #047857);
+  border-color: color-mix(in srgb, var(--green, #059669) 35%, transparent);
+}
+
+.route-stop-status--returned {
+  background: color-mix(in srgb, var(--rose, #e11d48) 14%, transparent);
+  color: var(--rose, #e11d48);
+  border-color: color-mix(in srgb, var(--rose, #e11d48) 35%, transparent);
+}
+
+.route-stop-status--pending {
+  background: color-mix(in srgb, var(--amber, #d97706) 14%, transparent);
+  color: var(--amber, #d97706);
+  border-color: color-mix(in srgb, var(--amber, #d97706) 35%, transparent);
+}
+
+.route-stop-status-note {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.route-stop-status-select {
+  width: 100%;
+  min-width: 118px;
+  max-width: 140px;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 8px;
+  padding: 6px 28px 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--bg-card-solid, #0f172a) 88%, transparent);
+  color: var(--text);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+}
+
+.route-stop-status-cell--editable {
+  width: 100%;
+}
+
+/* Force AG Grid to follow ops theme (quartz defaults to white). */
+.ops-shell .stops-csv-grid .ag-root-wrapper,
+.ops-shell .stops-csv-grid .ag-root-wrapper-body,
+.ops-shell .stops-csv-grid .ag-body-viewport,
+.ops-shell .stops-csv-grid .ag-center-cols-viewport,
+.ops-shell .stops-csv-grid .ag-center-cols-container,
+.ops-shell .stops-csv-grid .ag-header,
+.ops-shell .stops-csv-grid .ag-header-viewport,
+.ops-shell .stops-csv-grid .ag-row,
+.ops-shell .stops-csv-grid .ag-cell {
+  background-color: var(--bg-card-solid) !important;
+  color: var(--text);
+}
+
+.ops-shell .stops-csv-grid .ag-header-cell,
+.ops-shell .stops-csv-grid .ag-header-cell-label {
+  background-color: color-mix(in srgb, var(--text) 4%, var(--bg-card-solid)) !important;
+  color: var(--text-dim) !important;
+}
+
+.ops-shell .stops-csv-grid .ag-row-hover .ag-cell {
+  background-color: color-mix(in srgb, var(--text) 4%, var(--bg-card-solid)) !important;
+}
+
+.ops-shell--light .stops-csv-grid .ag-root-wrapper,
+.ops-shell--light .stops-csv-grid .ag-root-wrapper-body,
+.ops-shell--light .stops-csv-grid .ag-body-viewport,
+.ops-shell--light .stops-csv-grid .ag-center-cols-viewport,
+.ops-shell--light .stops-csv-grid .ag-center-cols-container,
+.ops-shell--light .stops-csv-grid .ag-header,
+.ops-shell--light .stops-csv-grid .ag-header-viewport,
+.ops-shell--light .stops-csv-grid .ag-row,
+.ops-shell--light .stops-csv-grid .ag-cell {
+  background-color: var(--bg-card-solid) !important;
+}
+
+.ops-shell .stops-csv-grid .ag-row.route-stop-row--completed .ag-cell {
+  background-color: color-mix(in srgb, var(--green) 8%, var(--bg-card-solid)) !important;
+}
+
+.ops-shell .stops-csv-grid .ag-row.route-stop-row--returned .ag-cell {
+  background-color: color-mix(in srgb, var(--rose) 8%, var(--bg-card-solid)) !important;
+}
+
+.ops-shell .stops-csv-grid.stops-csv-grid--dark {
+  --ag-background-color: var(--bg-card-solid);
+  --ag-odd-row-background-color: var(--bg-card-solid);
+  --ag-header-background-color: color-mix(in srgb, var(--text) 4%, var(--bg-card-solid));
+  --ag-border-color: var(--border);
+  --ag-row-border-color: var(--border);
+}
+
+.route-stop-status-select--completed {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--border));
+  color: var(--green);
+}
+
+.route-stop-status-select--returned {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--border));
+  color: var(--rose);
+}
+
+.route-stop-status-select--pending {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--border));
+  color: var(--amber);
+}
+
+.route-stop-status-select:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.stops-csv-grid .route-stop-row--completed {
+  background-color: color-mix(in srgb, var(--green) 6%, transparent);
+}
+
+.stops-csv-grid .route-stop-row--returned {
+  background-color: color-mix(in srgb, var(--rose) 6%, transparent);
+}
+
+/* ---------- Dark ops shell overrides ---------- */
+.ops-shell .stops-csv-grid {
+  --ag-background-color: transparent;
+  --ag-foreground-color: var(--text);
+  --ag-data-color: var(--text);
+  --ag-header-background-color: rgba(255, 255, 255, 0.04);
+  --ag-header-foreground-color: var(--text-dim);
+  --ag-border-color: var(--border);
+  --ag-row-border-color: var(--border);
+  --ag-row-hover-color: rgba(255, 255, 255, 0.04);
+  --ag-odd-row-background-color: transparent;
+  --ag-control-panel-background-color: var(--bg-card-solid);
+  --ag-input-focus-border-color: rgba(34, 211, 238, 0.4);
+  --ag-selected-row-background-color: rgba(34, 211, 238, 0.08);
+  --ag-modal-overlay-background-color: rgba(7, 11, 18, 0.7);
+  --ag-popup-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --ag-secondary-foreground-color: var(--text-muted);
+  --ag-input-border-color: var(--border);
+  color-scheme: dark;
+}
+
+.ops-shell .stops-csv-grid .ag-popup,
+.ops-shell .stops-csv-grid .ag-large-text,
+.ops-shell .stops-csv-grid .ag-large-text-input,
+.ops-shell .ag-popup .ag-large-text-input {
+  background: var(--bg-card-solid);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.ops-shell .stops-csv-grid--editable .ag-cell-focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
+}
+
+.ops-shell .route-stop-status-select option {
+  background: var(--bg-card-solid);
+  color: var(--text);
+}
+
+.ops-shell .stops-csv-grid .route-stop-row--completed {
+  background-color: color-mix(in srgb, var(--green) 6%, transparent);
+}
+
+.ops-shell .stops-csv-grid .route-stop-row--returned {
+  background-color: color-mix(in srgb, var(--rose) 6%, transparent);
+}
+
+.ops-shell .route-stops-delete-btn {
+  border-color: rgba(251, 113, 133, 0.35);
+  background: rgba(251, 113, 133, 0.1);
+  color: #fda4af;
+}
+
+.ops-shell .route-stops-delete-btn:hover {
+  background: rgba(251, 113, 133, 0.18);
+  border-color: rgba(251, 113, 133, 0.5);
+}

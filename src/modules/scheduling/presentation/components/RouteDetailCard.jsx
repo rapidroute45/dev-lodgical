@@ -15,100 +15,114 @@ export function RouteDetailCard({ route, index, scheduleId }) {
     route.driverEmail ??
     (route.driverId ? "Offer sent" : "Unassigned");
   const dropoffs = route.dropoffs ?? [];
+  const stopCount = dropoffs.length || route.stops || 0;
+  const status = route.status ?? "pending";
 
   return (
-    <article className="rounded-xl border border-dispatch-border bg-[#FAFBFC] p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-dispatch-primary text-sm font-extrabold text-white">
-          {index}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-bold text-dispatch-text">{title}</h4>
-            <StatusBadge
-              label={formatRouteStatus(route.status)}
-              className={routeStatusClass(route.status)}
-            />
-            {route.routeCategory ? (
+    <article className={`ops-card ops-fade ops-route-detail ops-route-detail--${status} overflow-hidden`}>
+      <div className="p-5 sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="ops-route__idx flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold">
+            {index}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>{title}</h2>
               <StatusBadge
-                label={ROUTE_CATEGORY_LABELS[route.routeCategory] ?? route.routeCategory}
-                className="bg-violet-50 text-violet-800 ring-violet-200"
+                label={formatRouteStatus(status)}
+                className={routeStatusClass(status)}
               />
-            ) : null}
+              {route.routeCategory ? (
+                <span className="ops-badge ops-badge--category">
+                  {ROUTE_CATEGORY_LABELS[route.routeCategory] ?? route.routeCategory}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              {route.location || "No location set"}
+            </p>
+            <p className="mt-1.5 text-xs" style={{ color: "var(--text-dim)" }}>
+              {route.teamName ?? "Team"}
+              {route.teamCode ? ` (${route.teamCode})` : ""}
+              {" · "}
+              {route.arrivalTime} – {route.departureTime}
+            </p>
           </div>
-          <p className="mt-1 text-sm text-dispatch-muted">
-            {route.location || "No location set"}
-          </p>
-          <p className="mt-1 text-xs text-dispatch-light">
-            {route.teamName ?? "Team"}
-            {route.teamCode ? ` (${route.teamCode})` : ""} · {route.arrivalTime} –{" "}
-            {route.departureTime}
-          </p>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailCell label="Driver" value={driver} highlight={!route.driverId} />
+          <DetailCell label="Vehicle" value={route.vehicleType ?? "—"} />
+          <DetailCell
+            label="Mileage"
+            value={route.mileage != null && route.mileage !== "" ? `${route.mileage} mi` : "—"}
+          />
+          <DetailCell label="Dropoffs" value={String(stopCount)} />
+          {route.overtimeHours > 0 ? (
+            <DetailCell label="Overtime" value={`${route.overtimeHours} hr`} />
+          ) : null}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <DetailCell label="Driver" value={driver} />
-        <DetailCell label="Vehicle" value={route.vehicleType ?? "—"} />
-        <DetailCell
-          label="Mileage"
-          value={route.mileage != null ? `${route.mileage} mi` : "—"}
-        />
-        <DetailCell
-          label="Dropoffs"
-          value={String(dropoffs.length || route.stops || 0)}
-        />
-        {route.overtimeHours > 0 ? (
-          <DetailCell label="Overtime" value={`${route.overtimeHours} hr`} />
-        ) : null}
-      </div>
-
-      {scheduleId ? (
-        <RouteOpsVerification route={route} scheduleId={scheduleId} />
-      ) : null}
-
       {route.pickup ? (
-        <div className="mt-3 rounded-lg border border-dispatch-primary/20 bg-dispatch-primary-soft/50 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-dispatch-primary">
+        <div className="ops-route-detail__pickup mx-5 mb-5 sm:mx-6 sm:mb-6">
+          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--accent)" }}>
             Pickup
           </p>
-          <p className="mt-1 text-sm font-semibold text-dispatch-text">
+          <p className="mt-1.5 text-sm font-semibold" style={{ color: "var(--text)" }}>
             {route.pickup.name}
           </p>
-          <p className="text-xs text-dispatch-muted">{route.pickup.address}</p>
+          <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            {route.pickup.address}
+          </p>
+        </div>
+      ) : null}
+
+      {scheduleId ? (
+        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+          <RouteOpsVerification route={route} scheduleId={scheduleId} />
         </div>
       ) : null}
 
       {dropoffs.length > 0 ? (
-        <div className="mt-3">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-dispatch-muted">
-            Stops
-          </p>
-          <ul className="space-y-2">
+        <div className="border-t px-5 py-5 sm:px-6" style={{ borderColor: "var(--border)" }}>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold" style={{ color: "var(--text)" }}>
+              Stops
+            </h3>
+            <span className="ops-teamtag">{dropoffs.length} stop{dropoffs.length === 1 ? "" : "s"}</span>
+          </div>
+          <ul className="space-y-3">
             {dropoffs.map((stop, i) => (
               <li
                 key={stop.id ?? i}
-                className="rounded-xl border border-dispatch-border bg-dispatch-surface p-3"
+                className={`ops-listcard ops-listcard--${stop.status ?? "pending"} p-4`}
               >
-                <div className="flex gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-dispatch-green text-xs font-bold text-white">
+                <div className="flex gap-3">
+                  <span className="ops-route__idx flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-extrabold">
                     {stop.sequence ?? i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-dispatch-text">{stop.name}</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                        {stop.name}
+                      </p>
                       {stop.status ? (
-                        <span className="rounded-md bg-dispatch-bg px-1.5 py-0.5 text-[10px] font-bold uppercase text-dispatch-muted">
+                        <span className="ops-badge ops-badge--muted">
                           {formatStatusLabel(stop.status)}
                         </span>
                       ) : null}
                     </div>
-                    <p className="text-xs text-dispatch-muted">{stop.address}</p>
+                    <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      {stop.address}
+                    </p>
                     {stop.accessCode ? (
-                      <p className="text-xs text-dispatch-light">Code: {stop.accessCode}</p>
+                      <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>
+                        Code: {stop.accessCode}
+                      </p>
                     ) : null}
                     {stop.returnReason ? (
-                      <p className="mt-1 text-xs text-orange-700">
+                      <p className="mt-1.5 text-xs" style={{ color: "var(--amber)" }}>
                         Return: {stop.returnReason}
                         {stop.returnReasonCustom ? ` — ${stop.returnReasonCustom}` : ""}
                       </p>
@@ -116,8 +130,8 @@ export function RouteDetailCard({ route, index, scheduleId }) {
                   </div>
                 </div>
                 {stop.deliveryPhotoUrl ? (
-                  <div className="mt-3">
-                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-dispatch-muted">
+                  <div className="mt-4">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
                       Delivery photo
                     </p>
                     <DeliveryPhoto
@@ -126,7 +140,7 @@ export function RouteDetailCard({ route, index, scheduleId }) {
                     />
                   </div>
                 ) : stop.status === "completed" ? (
-                  <p className="mt-2 text-xs italic text-dispatch-light">
+                  <p className="mt-3 text-xs italic" style={{ color: "var(--text-dim)" }}>
                     No delivery photo on file for this stop.
                   </p>
                 ) : null}
@@ -134,24 +148,38 @@ export function RouteDetailCard({ route, index, scheduleId }) {
             ))}
           </ul>
         </div>
+      ) : stopCount === 0 ? (
+        <div className="border-t px-5 py-8 text-center sm:px-6" style={{ borderColor: "var(--border)" }}>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No dropoff stops on this route yet.</p>
+        </div>
       ) : null}
 
       {route.notes ? (
-        <p className="mt-3 text-xs text-dispatch-muted">
-          <span className="font-semibold text-dispatch-text">Notes:</span> {route.notes}
-        </p>
+        <div className="border-t px-5 py-4 sm:px-6" style={{ borderColor: "var(--border)", background: "rgba(255,255,255,0.02)" }}>
+          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+            Notes
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            {route.notes}
+          </p>
+        </div>
       ) : null}
     </article>
   );
 }
 
-function DetailCell({ label, value }) {
+function DetailCell({ label, value, highlight = false }) {
   return (
-    <div className="rounded-lg bg-dispatch-surface px-3 py-2 ring-1 ring-dispatch-border/60">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-dispatch-light">
+    <div className="ops-field px-3 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
         {label}
       </p>
-      <p className="mt-0.5 text-sm font-semibold text-dispatch-text">{value}</p>
+      <p
+        className="mt-1 text-sm font-semibold"
+        style={{ color: highlight ? "var(--amber)" : "var(--text)" }}
+      >
+        {value}
+      </p>
     </div>
   );
 }

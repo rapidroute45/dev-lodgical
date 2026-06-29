@@ -4,24 +4,23 @@ import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { UserRole, MANAGER_ROLES, PAYROLL_VIEWER_ROLES } from "@/shared/utils/constants.js";
 import { usePayrollPendingSummaryQuery } from "@/modules/payroll/infrastructure/api/payroll.queries.js";
 import { formatMoney } from "@/modules/payroll/utils/format.js";
-import {
-  todayIsoDate,
-  formatDisplayDate,
-  addDaysToIsoDate,
-} from "@/shared/utils/time.js";
+import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
 import {
   useDashboardStatsQuery,
   useAvailableDriversQuery,
 } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { useTodayRoutesQuery } from "@/modules/manager-home/infrastructure/api/routes.queries.js";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
+import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import {
-  DonutStatCard,
-  RouteMixDonutCard,
-} from "@/modules/manager-home/presentation/components/DonutStatCard.jsx";
+  OpsStatCard,
+  OpsLifecycleStrip,
+  OpsPanel,
+  OpsEmpty,
+  OpsStatusBadge,
+} from "@/modules/manager-home/presentation/components/OpsWidgets.jsx";
 import {
   summarizeRoutes,
-  statusBadgeClass,
   formatStatusLabel,
 } from "@/modules/manager-home/utils/routeStatus.js";
 
@@ -53,16 +52,22 @@ function pct(part, total) {
   return Math.min(100, Math.round((part / total) * 100));
 }
 
-/** Ignore cached query rows until the API `date` matches the picker. */
 function dataForSelectedDate(data, selectedDate) {
   if (!data) return null;
   if (data.date && data.date !== selectedDate) return null;
   return data;
 }
 
+const STAGE_FILTERS = {
+  pending: new Set(["pending", "assigned"]),
+  in_progress: new Set(["active", "in_progress"]),
+  completed: new Set(["completed", "not_verified"]),
+};
+
 export function ManagerDashboardScreen() {
   const { user } = useAuth();
   const [date, setDate] = useState(todayIsoDate());
+  const [stageFilter, setStageFilter] = useState(null);
   const isToday = date === todayIsoDate();
   const isManager = user?.role && MANAGER_ROLES.includes(user.role);
   const canViewPayroll = user?.role && PAYROLL_VIEWER_ROLES.includes(user.role);
@@ -117,12 +122,7 @@ export function ManagerDashboardScreen() {
     };
   }, [routesFetched, routeSummary, stats]);
 
-  const {
-    total: routeTotal,
-    completed,
-    inProgress,
-    pending,
-  } = routeMetrics;
+  const { total: routeTotal, completed, inProgress, pending } = routeMetrics;
 
   const availableCount = stats?.availableDrivers ?? available?.count ?? 0;
 
@@ -137,35 +137,12 @@ export function ManagerDashboardScreen() {
   const driverPool = availableCount + assignedDriverCount;
   const availablePercent = pct(availableCount, driverPool);
 
-  const routeMixSegments = useMemo(
-    () => [
-      {
-        key: "completed",
-        value: completed,
-        color: "#22C55E",
-        legend: `Done ${completed}`,
-      },
-      {
-        key: "in_progress",
-        value: inProgress,
-        color: "#3B82F6",
-        legend: `Active ${inProgress}`,
-      },
-      {
-        key: "pending",
-        value: pending,
-        color: "#F59E0B",
-        legend: `Pending ${pending}`,
-      },
-      {
-        key: "other",
-        value: routeSummary.other,
-        color: "#94A3B8",
-        legend: `Other ${routeSummary.other}`,
-      },
-    ],
-    [completed, inProgress, pending, routeSummary.other, date]
-  );
+  const filteredRoutes = useMemo(() => {
+    if (!stageFilter) return routes;
+    const set = STAGE_FILTERS[stageFilter];
+    if (!set) return routes;
+    return routes.filter((r) => set.has(r.status ?? ""));
+  }, [routes, stageFilter]);
 
   const metricsLoading =
     statsLoading ||
@@ -173,10 +150,14 @@ export function ManagerDashboardScreen() {
     (statsFetching && !stats) ||
     (routesFetching && !routesFetched);
 
-  const routesLabel = isToday
-    ? "Today's routes"
-    : `Routes · ${formatDisplayDate(date)}`;
-  const routesSublabel = isToday ? "of today" : "on date";
+  const driversBusy = statsFetching || driversFetching || routesFetching;
+
+  const lifecycleStages = [
+    { key: "pending", label: "Pending", value: pending, color: "var(--amber)" },
+    { key: "in_progress", label: "In progress", value: inProgress, color: "var(--blue)" },
+    { key: "completed", label: "Completed", value: completed, color: "var(--green)" },
+    { key: "other", label: "Other", value: routeSummary.other, color: "var(--text-muted)" },
+  ];
 
   function refreshAll() {
     void refetchStats();
@@ -185,311 +166,255 @@ export function ManagerDashboardScreen() {
   }
 
   const topBar = (
-    <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 border-b border-dispatch-border bg-dispatch-surface/90 px-4 py-4 backdrop-blur-md sm:px-6 lg:px-8">
-      <div className="flex items-center gap-3 lg:hidden">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-dispatch-primary text-xs font-bold text-white">
-          D
-        </span>
-        <span className="text-sm font-bold text-dispatch-text">Dispatch</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => setDate((d) => addDaysToIsoDate(d, -1))}
-          className="rounded-lg border border-dispatch-border bg-dispatch-surface p-2 text-dispatch-muted hover:bg-dispatch-bg"
-          aria-label="Previous day"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <div className="min-w-[140px] rounded-xl border border-dispatch-border bg-dispatch-surface px-4 py-2 text-center">
-          <p className="text-xs text-dispatch-muted">Operations date</p>
-          <p className="text-sm font-semibold text-dispatch-text">{formatDisplayDate(date)}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setDate((d) => addDaysToIsoDate(d, 1))}
-          disabled={date >= todayIsoDate()}
-          className="rounded-lg border border-dispatch-border bg-dispatch-surface p-2 text-dispatch-muted hover:bg-dispatch-bg disabled:opacity-40"
-          aria-label="Next day"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={() => setDate(todayIsoDate())}
-          className="rounded-lg border border-dispatch-primary/30 bg-dispatch-primary-soft px-3 py-2 text-xs font-semibold text-dispatch-primary"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          onClick={refreshAll}
-          className="rounded-lg border border-dispatch-border bg-dispatch-surface px-3 py-2 text-sm font-medium text-dispatch-muted hover:bg-dispatch-bg"
-        >
-          Refresh
-        </button>
-      </div>
-    </header>
+    <OpsTopBar date={date} setDate={setDate} onRefresh={refreshAll} refreshing={driversBusy} />
   );
 
   if (user?.role === UserRole.ACCOUNTANT) {
     return <Navigate to="/payroll" replace />;
   }
-  if (user?.role === UserRole.DISPATCH_TEAM) {
-    return <Navigate to="/schedules" replace />;
-  }
+
   if (!isManager) {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-dispatch-bg p-6">
-        <div className="max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
-          <p className="text-lg font-semibold text-amber-900">Dashboard not available</p>
-          <p className="mt-2 text-sm text-amber-800">
+      <DashboardLayout topBar={topBar}>
+        <div className="ops-card ops-fade mx-auto mt-10 max-w-md p-8 text-center">
+          <p className="text-lg font-bold" style={{ color: "var(--text)" }}>
+            Dashboard not available
+          </p>
+          <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
             This dashboard is for dispatch managers and administrators. Your role:{" "}
-            <span className="font-medium capitalize">{user?.role ?? "unknown"}</span>.
+            <span className="font-semibold capitalize">{user?.role ?? "unknown"}</span>.
           </p>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (user?.isPending?.()) {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-dispatch-bg p-6">
-        <div className="max-w-md rounded-2xl border border-amber-200 bg-dispatch-surface p-8 text-center shadow-lg">
-          <p className="text-lg font-semibold text-dispatch-text">Account pending</p>
-          <p className="mt-2 text-sm text-dispatch-muted">
+      <DashboardLayout topBar={topBar}>
+        <div className="ops-card ops-fade mx-auto mt-10 max-w-md p-8 text-center">
+          <p className="text-lg font-bold" style={{ color: "var(--text)" }}>
+            Account pending
+          </p>
+          <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
             An administrator must assign your role before you can use the dispatch dashboard.
           </p>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
+  const routesSublabel = isToday ? "today" : "on date";
+
   return (
     <DashboardLayout topBar={topBar}>
-      <div className="w-full space-y-8">
-        <section>
-          <p className="text-sm font-medium text-dispatch-primary">Good day</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-dispatch-text sm:text-4xl">
-            {displayNameFromUser(user)}
-          </h1>
-          
-        </section>
-
-        <div className="grid gap-4 rounded-2xl border border-brand-100 bg-gradient-to-r from-[#EEF4FF] to-[#F8FAFF] p-5 sm:grid-cols-2">
+      <div className="mx-auto w-full max-w-7xl space-y-7 pb-16">
+        {/* Welcome + identity */}
+        <section className="ops-fade flex flex-col gap-4 pt-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-dispatch-muted">
-              Manager ID
+            <p className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
+              Good day
             </p>
-            <p className="mt-1 text-xl font-extrabold text-dispatch-blue">
-              {shortId(user?.id)}
-            </p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: "var(--text)" }}>
+              {displayNameFromUser(user)}
+            </h1>
           </div>
-          <div className="sm:border-l sm:border-brand-100 sm:pl-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-dispatch-muted">Role</p>
-            <p className="mt-1 text-lg font-bold text-auth-badge-text">
-              {formatRole(user?.role)}
-            </p>
-          </div>
-        </div>
-
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-dispatch-text">Key metrics</h2>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-            <RouteMixDonutCard
-              key={date}
-              label={routesLabel}
-              total={routeTotal}
-              segments={routeMixSegments}
-              loading={metricsLoading}
-            />
-            <DonutStatCard
-              label="Available drivers"
-              value={availableCount}
-              percent={availablePercent}
-              color="#22C55E"
-              trackColor="#DCFCE7"
-              sublabel="free"
-              loading={
-                statsLoading ||
-                driversLoading ||
-                (statsFetching && !stats) ||
-                (driversFetching && !available)
-              }
-            />
-            <DonutStatCard
-              label="Completed"
-              value={completed}
-              percent={pct(completed, routeTotal)}
-              color="#8B5CF6"
-              trackColor="#EDE9FE"
-              sublabel={routesSublabel}
-              loading={metricsLoading}
-            />
-            <DonutStatCard
-              label="In progress"
-              value={inProgress}
-              percent={pct(inProgress, routeTotal)}
-              color="#3B82F6"
-              trackColor="#DBEAFE"
-              sublabel={routesSublabel}
-              loading={metricsLoading}
-            />
-            {canViewPayroll ? (
-              <Link to="/payroll" className="block transition hover:opacity-90">
-                <DonutStatCard
-                  label="Payroll pending"
-                  value={formatMoney(payrollQuery.data?.totalPendingAmount ?? 0)}
-                  percent={0}
-                  color="#22C55E"
-                  sublabel="unbilled"
-                  loading={payrollQuery.isLoading}
-                />
-              </Link>
-            ) : (
-              <DonutStatCard
-                label="Payroll pending"
-                value="—"
-                percent={0}
-                color="#22C55E"
-                comingSoon
-              />
-            )}
-            <DonutStatCard
-              label="Pending assignment"
-              value={pending}
-              percent={pct(pending, routeTotal)}
-              color="#F59E0B"
-              trackColor="#FFEDD5"
-              sublabel={routesSublabel}
-              loading={metricsLoading}
-            />
+          <div className="ops-identity flex items-center gap-6 px-5 py-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                Manager ID
+              </p>
+              <p className="mt-0.5 font-mono text-lg font-extrabold" style={{ color: "var(--accent)" }}>
+                {shortId(user?.id)}
+              </p>
+            </div>
+            <div className="h-9 w-px" style={{ background: "var(--border)" }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                Role
+              </p>
+              <p className="mt-0.5 text-lg font-bold" style={{ color: "var(--text)" }}>
+                {formatRole(user?.role)}
+              </p>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-dispatch-border bg-dispatch-surface p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-dispatch-text">Live operations</h2>
-          <p className="mt-1 text-sm text-dispatch-muted">Route status breakdown for selected date</p>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              { label: "In progress", value: routeSummary.inProgress, color: "#3B82F6" },
-              { label: "Completed", value: routeSummary.completed, color: "#22C55E" },
-              { label: "Pending", value: routeSummary.pending, color: "#F59E0B" },
-              { label: "Other", value: routeSummary.other, color: "#94A3B8" },
-            ].map((item, i, arr) => (
-              <div
-                key={item.label}
-                className={`text-center ${i < arr.length - 1 ? "border-r border-dispatch-border" : ""}`}
+        {/* KPI stat cards */}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <OpsStatCard
+            icon="drivers"
+            label="Available drivers"
+            value={availableCount}
+            sublabel="free"
+            percent={availablePercent}
+            barColor="var(--green)"
+            loading={statsLoading || driversLoading || (statsFetching && !stats) || (driversFetching && !available)}
+            delay={0}
+          />
+          <OpsStatCard
+            icon="routes"
+            label={isToday ? "Routes today" : "Routes on date"}
+            value={routeTotal}
+            sublabel="scheduled"
+            percent={routeTotal > 0 ? 100 : 0}
+            barColor="var(--accent)"
+            loading={metricsLoading}
+            delay={80}
+          />
+          <OpsStatCard
+            icon="active"
+            label="In progress"
+            value={inProgress}
+            sublabel="active now"
+            percent={pct(inProgress, routeTotal)}
+            barColor="var(--blue)"
+            loading={metricsLoading}
+            delay={160}
+          />
+          <OpsStatCard
+            icon="payroll"
+            label="Payroll pending"
+            value={canViewPayroll ? formatMoney(payrollQuery.data?.totalPendingAmount ?? 0) : "—"}
+            sublabel="unbilled"
+            barColor="var(--accent-2)"
+            loading={canViewPayroll && payrollQuery.isLoading}
+            to={canViewPayroll ? "/payroll" : undefined}
+            delay={240}
+          />
+        </section>
+
+        {/* Route lifecycle */}
+        <section className="ops-fade space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>
+              Route lifecycle
+            </h2>
+            {stageFilter ? (
+              <button
+                type="button"
+                onClick={() => setStageFilter(null)}
+                className="text-xs font-semibold"
+                style={{ color: "var(--accent)" }}
               >
-                <p className="text-3xl font-extrabold" style={{ color: item.color }}>
-                  {routesLoading ? "…" : item.value}
-                </p>
-                <p className="mt-1 text-xs font-medium text-dispatch-muted">{item.label}</p>
-              </div>
-            ))}
+                Clear filter
+              </button>
+            ) : (
+              <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+                Tap a stage to filter routes
+              </span>
+            )}
           </div>
+          <OpsLifecycleStrip
+            stages={lifecycleStages}
+            activeKey={stageFilter}
+            onSelect={setStageFilter}
+            loading={metricsLoading}
+          />
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <section className="rounded-2xl border border-dispatch-border bg-dispatch-surface shadow-sm">
-            <div className="border-b border-dispatch-border px-6 py-4">
-              <h2 className="text-lg font-semibold text-dispatch-text">Available drivers</h2>
-              <p className="text-sm text-dispatch-muted">
-                {driversLoading
-                  ? "Loading…"
-                  : `${available?.count ?? 0} drivers with no route today`}
-              </p>
-            </div>
-            <div className="max-h-[360px] overflow-auto">
-              {driversLoading ? (
-                <p className="p-6 text-sm text-dispatch-muted">Loading drivers…</p>
-              ) : !available?.drivers?.length ? (
-                <p className="p-6 text-sm text-dispatch-muted">No available drivers for this date.</p>
-              ) : (
-                <ul className="divide-y divide-dispatch-border">
-                  {available.drivers.map((d) => (
-                    <li key={d.id} className="flex items-center gap-3 px-6 py-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-dispatch-primary-soft text-sm font-bold text-dispatch-primary">
-                        {(d.displayName || d.email || "?").charAt(0).toUpperCase()}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-dispatch-text">
-                          {d.displayName}
-                        </p>
-                        <p className="truncate text-xs text-dispatch-muted">{d.email}</p>
-                      </div>
-                      <span className="shrink-0 text-xs text-dispatch-light">
-                        {d.teamName || "No team"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
+        {/* Quick actions */}
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
+            { to: "/tracking", label: "Live tracking", icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
+            { to: "/available-drivers", label: "Available drivers", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M9 7a3 3 0 11-6 0 3 3 0 016 0z" },
+            { to: "/routes", label: "All routes", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3" },
+          ].map((a) => (
+            <Link key={a.to} to={a.to} className="ops-quick">
+              <span className="ops-quick__icon">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
+                </svg>
+              </span>
+              {a.label}
+            </Link>
+          ))}
+        </section>
 
-          <section className="rounded-2xl border border-dispatch-border bg-dispatch-surface shadow-sm">
-            <div className="border-b border-dispatch-border px-6 py-4">
-              <h2 className="text-lg font-semibold text-dispatch-text">
-                {isToday ? "Today's routes" : `Routes · ${formatDisplayDate(date)}`}
-              </h2>
-              <p className="text-sm text-dispatch-muted">
-                {routesLoading
-                  ? "Loading…"
-                  : `${routesData?.total ?? routes.length} route(s) scheduled`}
-              </p>
-            </div>
-            <div className="max-h-[360px] overflow-auto">
-              {routesLoading ? (
-                <p className="p-6 text-sm text-dispatch-muted">Loading routes…</p>
-              ) : routes.length === 0 ? (
-                <p className="p-6 text-sm text-dispatch-muted">No routes for this date.</p>
-              ) : (
-                <table className="w-full min-w-[480px] text-left text-sm">
-                  <thead className="sticky top-0 bg-dispatch-bg text-xs font-semibold uppercase tracking-wide text-dispatch-muted">
-                    <tr>
-                      <th className="px-4 py-3">Route</th>
-                      <th className="px-4 py-3">Driver</th>
-                      <th className="px-4 py-3">Team</th>
-                      <th className="px-4 py-3">Status</th>
+        {/* Panels */}
+        <div className="grid gap-5 xl:grid-cols-2">
+          <OpsPanel
+            title="Available drivers"
+            subtitle={driversLoading ? "Loading…" : `${available?.count ?? 0} drivers with no route ${isToday ? "today" : "on date"}`}
+          >
+            {driversLoading ? (
+              <OpsEmpty>Loading drivers…</OpsEmpty>
+            ) : !available?.drivers?.length ? (
+              <OpsEmpty>No available drivers for this date.</OpsEmpty>
+            ) : (
+              <ul>
+                {available.drivers.map((d) => (
+                  <li key={d.id} className="ops-row flex items-center gap-3 px-6 py-3">
+                    <span className="ops-avatar h-10 w-10 text-sm">
+                      {(d.displayName || d.email || "?").charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold" style={{ color: "var(--text)" }}>
+                        {d.displayName}
+                      </p>
+                      <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
+                        {d.email}
+                      </p>
+                    </div>
+                    <span className="ops-teamtag shrink-0">{d.teamName || "No team"}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </OpsPanel>
+
+          <OpsPanel
+            title={isToday ? "Today's routes" : `Routes · ${formatDisplayDate(date)}`}
+            subtitle={
+              routesLoading
+                ? "Loading…"
+                : stageFilter
+                  ? `${filteredRoutes.length} of ${routes.length} route(s) · filtered`
+                  : `${routesData?.total ?? routes.length} route(s) ${routesSublabel}`
+            }
+            action={
+              <Link to="/routes" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
+                View all
+              </Link>
+            }
+          >
+            {routesLoading ? (
+              <OpsEmpty>Loading routes…</OpsEmpty>
+            ) : filteredRoutes.length === 0 ? (
+              <OpsEmpty>{stageFilter ? "No routes in this stage." : "No routes for this date."}</OpsEmpty>
+            ) : (
+              <table className="w-full min-w-[460px] text-left text-sm">
+                <thead className="sticky top-0 text-xs font-semibold uppercase tracking-wide" style={{ background: "rgba(7,11,18,0.9)", color: "var(--text-dim)" }}>
+                  <tr>
+                    <th className="px-5 py-3">Route</th>
+                    <th className="px-4 py-3">Driver</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRoutes.map((r) => (
+                    <tr key={r.id} className="ops-row border-t" style={{ borderColor: "var(--border)" }}>
+                      <td className="px-5 py-3">
+                        <p className="font-medium" style={{ color: "var(--text)" }}>
+                          {r.routeName || "Route"}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+                          {r.location || "—"} · {r.arrivalTime}–{r.departureTime}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
+                        {r.driverName || r.driverEmail || "Unassigned"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <OpsStatusBadge status={r.status} label={formatStatusLabel(r.status)} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-dispatch-border">
-                    {routes.map((r) => (
-                      <tr key={r.id} className="hover:bg-dispatch-bg/80">
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-dispatch-text">
-                            {r.routeName || "Route"}
-                          </p>
-                          <p className="text-xs text-dispatch-muted">
-                            {r.location || "—"} · {r.arrivalTime}–{r.departureTime}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3 text-dispatch-muted">
-                          {r.driverName || r.driverEmail || "Unassigned"}
-                        </td>
-                        <td className="px-4 py-3 text-dispatch-muted">
-                          {r.teamName || "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${statusBadgeClass(r.status)}`}
-                          >
-                            {formatStatusLabel(r.status)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </section>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </OpsPanel>
         </div>
       </div>
     </DashboardLayout>

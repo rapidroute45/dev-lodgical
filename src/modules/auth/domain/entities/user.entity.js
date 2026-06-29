@@ -10,7 +10,13 @@ export class User {
     status,
     teamId = null,
     assignedCity = null,
+    assignedCities = [],
     phone = null,
+    team = null,
+    displayName = null,
+    createdAt = null,
+    updatedAt = null,
+    pendingRoleAssignment = false,
   }) {
     this.id = id;
     this.email = email;
@@ -19,7 +25,13 @@ export class User {
     this.status = status;
     this.teamId = teamId;
     this.assignedCity = assignedCity;
+    this.assignedCities = assignedCities;
     this.phone = phone;
+    this.team = team;
+    this.displayName = displayName;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    this.pendingRoleAssignment = pendingRoleAssignment;
   }
 
   static fromApi(raw) {
@@ -32,7 +44,13 @@ export class User {
       status: raw.status,
       teamId: raw.teamId ?? null,
       assignedCity: raw.assignedCity ?? null,
+      assignedCities: raw.assignedCities ?? [],
       phone: raw.phone ?? null,
+      team: raw.team ?? null,
+      displayName: raw.displayName ?? null,
+      createdAt: raw.createdAt ?? null,
+      updatedAt: raw.updatedAt ?? null,
+      pendingRoleAssignment: raw.pendingRoleAssignment ?? false,
     });
   }
 

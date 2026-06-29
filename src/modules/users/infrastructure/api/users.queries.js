@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as usersApi from "./users.api.js";
+import { useLocationQueryParams } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 export const usersKeys = {
   all: ["users"],
@@ -17,9 +18,11 @@ function invalidateUsers(qc) {
 }
 
 export function useAllUsersQuery(params, enabled = true) {
+  const scopeParams = useLocationQueryParams(params);
+  const merged = { ...params, ...scopeParams };
   return useQuery({
-    queryKey: usersKeys.list(params),
-    queryFn: () => usersApi.fetchAllUsers(params),
+    queryKey: usersKeys.list(merged),
+    queryFn: () => usersApi.fetchAllUsers(merged),
     enabled,
   });
 }

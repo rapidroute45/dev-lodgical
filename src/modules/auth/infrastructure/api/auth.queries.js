@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchMeRequest, updateProfileRequest } from "./auth.api.js";
+import { fetchMeRequest, updateProfileRequest, changePasswordRequest } from "./auth.api.js";
 
 export function useMeQuery(enabled = true) {
   return useQuery({
@@ -16,5 +16,11 @@ export function useUpdateProfileMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["auth", "me"] });
     },
+  });
+}
+
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: changePasswordRequest,
   });
 }

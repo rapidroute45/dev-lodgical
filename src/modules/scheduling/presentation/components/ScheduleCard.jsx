@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
-import { useScheduleQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { useScheduleGroupQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { sortRoutesByCategory } from "@/modules/scheduling/utils/routeSort.js";
 import { formatDisplayDate } from "@/shared/utils/time.js";
 import {
   formatScheduleStatus,
   scheduleStatusClass,
 } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { StatusBadge } from "./StatusBadge.jsx";
-import { RouteDetailCard } from "./RouteDetailCard.jsx";
+import { RouteSummaryRow } from "./RouteSummaryRow.jsx";
 
 const StoreIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -14,60 +15,73 @@ const StoreIcon = () => (
   </svg>
 );
 
-export function ScheduleCard({ schedule, expanded, onToggle, allowEdit = false }) {
-  const storeName = schedule.store?.storeName ?? "Unknown store";
-  const total = schedule.routeCount ?? 0;
-  const pending = schedule.pendingRouteCount ?? 0;
+export function ScheduleCard({ group, expanded, onToggle }) {
+  const schedules = group.schedules ?? [];
+  const storeName = group.store?.storeName ?? "Unknown store";
+  const total = group.routeCount ?? 0;
+  const pending = group.pendingRouteCount ?? 0;
+  const primaryScheduleId = group.primaryScheduleId ?? schedules[0]?.id;
 
-  const { data: full, isLoading: detailLoading } = useScheduleQuery(
-    schedule.id,
+  const detailQueries = useScheduleGroupQuery(
+    schedules.map((s) => s.id),
     expanded
   );
-
-  const routes = expanded ? (full?.routes ?? []) : [];
+  const detailLoading = detailQueries.some((q) => q.isLoading);
+  const routes = expanded
+    ? sortRoutesByCategory(
+        detailQueries.flatMap((q, batchIndex) =>
+          (q.data?.routes ?? []).map((route) => ({
+            ...route,
+            _batchIndex: batchIndex,
+            _scheduleId: q.data?.id ?? schedules[batchIndex]?.id,
+          }))
+        )
+      )
+    : [];
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-dispatch-border/80 bg-dispatch-surface shadow-md shadow-dispatch-primary/5 transition hover:shadow-lg">
+    <article className="ops-card ops-card--hover ops-fade overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-4 p-5 text-left transition hover:bg-dispatch-bg/40"
+        className="ops-cardbtn flex w-full items-center gap-4 p-5 text-left"
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-dispatch-primary to-dispatch-indigo text-white shadow-lg shadow-dispatch-primary/25">
+        <span className="ops-card__logo flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
           <StoreIcon />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-bold text-dispatch-text">{storeName}</h3>
+            <h3 className="text-base font-bold" style={{ color: "var(--text)" }}>{storeName}</h3>
             {pending > 0 ? (
               <StatusBadge
                 label={`${pending} pending route${pending === 1 ? "" : "s"}`}
-                className="bg-orange-50 text-orange-800 ring-orange-200"
+                className="ops-badge ops-badge--pending"
               />
             ) : (
               <StatusBadge
-                label={formatScheduleStatus(schedule.status)}
-                className={scheduleStatusClass(schedule.status)}
+                label={formatScheduleStatus(group.status)}
+                className={scheduleStatusClass(group.status)}
               />
             )}
           </div>
-          <p className="mt-1 text-sm text-dispatch-muted">
-            {schedule.city}, {schedule.state}
-            {schedule.store?.storeId ? ` · ${schedule.store.storeId}` : ""}
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+            {group.city}, {group.state}
+            {group.store?.storeId ? ` · ${group.store.storeId}` : ""}
           </p>
-          <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-dispatch-light">
+          <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold" style={{ color: "var(--text-dim)" }}>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-dispatch-primary" />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
               {total} route{total === 1 ? "" : "s"}
             </span>
-            <span>{formatDisplayDate(schedule.date)}</span>
+            <span>{formatDisplayDate(group.date)}</span>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
           <svg
-            className={`h-5 w-5 text-dispatch-muted transition ${expanded ? "rotate-180" : ""}`}
+            className={`h-5 w-5 transition ${expanded ? "rotate-180" : ""}`}
+            style={{ color: "var(--text-muted)" }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -76,20 +90,14 @@ export function ScheduleCard({ schedule, expanded, onToggle, allowEdit = false }
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
           <div className="flex flex-col items-end gap-1">
-            <Link
-              to={`/schedules/${schedule.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-[11px] font-bold text-dispatch-primary hover:underline"
-            >
-              Full view
-            </Link>
-            {allowEdit ? (
+            {primaryScheduleId ? (
               <Link
-                to={`/schedules/${schedule.id}/edit`}
+                to={`/schedules/${primaryScheduleId}/routes`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[11px] font-bold text-dispatch-muted hover:text-dispatch-primary hover:underline"
+                className="text-[11px] font-bold hover:underline"
+                style={{ color: "var(--accent)" }}
               >
-                Edit
+                Full view
               </Link>
             ) : null}
           </div>
@@ -97,34 +105,35 @@ export function ScheduleCard({ schedule, expanded, onToggle, allowEdit = false }
       </button>
 
       {expanded ? (
-        <div className="border-t border-dispatch-border bg-gradient-to-b from-dispatch-bg/80 to-dispatch-surface px-5 py-5">
-          <ScheduleMetaGrid schedule={full ?? schedule} loading={detailLoading} />
+        <div className="px-5 py-5" style={{ borderTop: "1px solid var(--border)", background: "rgba(255,255,255,0.015)" }}>
+          <ScheduleMetaGrid
+            group={group}
+            detailQueries={detailQueries}
+            loading={detailLoading}
+          />
 
-          <h4 className="mb-3 mt-5 text-sm font-bold text-dispatch-text">
+          <h4 className="mb-3 mt-5 text-sm font-bold" style={{ color: "var(--text)" }}>
             Routes {detailLoading ? "" : `(${routes.length})`}
           </h4>
 
           {detailLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-24 animate-pulse rounded-xl bg-dispatch-border/40"
-                />
+                <div key={i} className="ops-skel h-24 rounded-xl" />
               ))}
             </div>
           ) : routes.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-dispatch-border px-4 py-6 text-center text-sm text-dispatch-muted">
+            <p className="ops-dashed px-4 py-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>
               No routes on this schedule yet.
             </p>
           ) : (
             <div className="space-y-3">
               {routes.map((route, i) => (
-                <RouteDetailCard
+                <RouteSummaryRow
                   key={route.id}
                   route={route}
                   index={i + 1}
-                  scheduleId={schedule.id}
+                  to={`/routes/${route.id}`}
                 />
               ))}
             </div>
@@ -135,53 +144,45 @@ export function ScheduleCard({ schedule, expanded, onToggle, allowEdit = false }
   );
 }
 
-function ScheduleMetaGrid({ schedule, loading }) {
+function ScheduleMetaGrid({ group, detailQueries, loading }) {
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-xl bg-dispatch-border/30" />
+          <div key={i} className="ops-skel h-14 rounded-xl" />
         ))}
       </div>
     );
   }
 
+  const notes = detailQueries
+    .map((q) => q.data?.notes?.trim())
+    .filter(Boolean)
+    .join(" · ");
+
   const items = [
-    { label: "Schedule ID", value: schedule.id?.slice(-8).toUpperCase() ?? "—" },
-    { label: "Date", value: schedule.date ?? "—" },
-    { label: "City / State", value: `${schedule.city}, ${schedule.state}` },
+    { label: "Date", value: group.date ?? "—" },
+    { label: "City / State", value: `${group.city}, ${group.state}` },
+    { label: "Store", value: group.store?.storeName ?? "—" },
+    { label: "Store code", value: group.store?.storeId ?? "—" },
+    { label: "Address", value: group.store?.address ?? "—" },
     {
-      label: "Store",
-      value: schedule.store?.storeName ?? "—",
+      label: "Status",
+      value: formatScheduleStatus(group.status),
     },
-    {
-      label: "Store code",
-      value: schedule.store?.storeId ?? "—",
-    },
-    {
-      label: "Address",
-      value: schedule.store?.address ?? "—",
-    },
-    { label: "Status", value: formatScheduleStatus(schedule.status) },
-    { label: "Total routes", value: String(schedule.routeCount ?? schedule.routes?.length ?? 0) },
-    {
-      label: "Pending routes",
-      value: String(schedule.pendingRouteCount ?? 0),
-    },
-    { label: "Notes", value: schedule.notes?.trim() || "—" },
+    { label: "Total routes", value: String(group.routeCount ?? 0) },
+    { label: "Pending routes", value: String(group.pendingRouteCount ?? 0) },
+    { label: "Notes", value: notes || "—" },
   ];
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-xl border border-dispatch-border/60 bg-dispatch-surface px-3 py-2.5"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-wide text-dispatch-light">
+        <div key={item.label} className="ops-field px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
             {item.label}
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-dispatch-text break-words">
+          <p className="mt-0.5 text-sm font-semibold break-words" style={{ color: "var(--text)" }}>
             {item.value}
           </p>
         </div>

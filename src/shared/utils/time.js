@@ -87,3 +87,30 @@ export function defaultDepartureFromArrival(arrival) {
   const m = total % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
+
+/** Hours from driver start → route complete, or first→last stop completion as fallback. */
+export function routeDurationHours(startedAt, completedAt, dropoffs = []) {
+  if (startedAt && completedAt) {
+    const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    if (ms > 0) return Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
+  }
+
+  const stopTimes = dropoffs
+    .map((stop) => stop?.completedAt)
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter((value) => !Number.isNaN(value));
+
+  if (stopTimes.length >= 1) {
+    const ms = Math.max(...stopTimes) - Math.min(...stopTimes);
+    if (ms >= 0) return Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
+  }
+
+  return null;
+}
+
+export function formatRouteDurationHours(startedAt, completedAt, dropoffs = []) {
+  const hours = routeDurationHours(startedAt, completedAt, dropoffs);
+  if (hours == null) return "—";
+  return `${hours.toFixed(2)}h`;
+}

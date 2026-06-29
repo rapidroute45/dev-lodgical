@@ -1,14 +1,23 @@
+import { Link } from "react-router-dom";
+import "@/modules/landing/presentation/landing.css";
+
 /**
- * Split-panel auth layout — colors match mobile AuthGradientLayout + AuthWelcomeHero.
+ * Split-panel auth layout.
+ * theme="dark" matches the landing page Midnight Dispatch palette.
  */
 export function AuthLayout({
   side = "left",
+  theme = "light",
   badge = "Dispatch",
   title,
   description,
   footerNote,
   children,
 }) {
+  if (theme === "dark") {
+    return <AuthLayoutDark side={side} badge={badge} title={title} description={description} footerNote={footerNote}>{children}</AuthLayoutDark>;
+  }
+
   const gradient = (
     <div
       key="gradient"
@@ -62,6 +71,64 @@ export function AuthLayout({
     <div className="flex min-h-svh items-center justify-center bg-dispatch-bg p-4 sm:p-8">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl bg-dispatch-surface shadow-xl ring-1 ring-dispatch-border md:grid-cols-2">
         {side === "left" ? [gradient, form] : [form, gradient]}
+      </div>
+    </div>
+  );
+}
+
+function AuthLayoutDark({ side, badge, title, description, footerNote, children }) {
+  const hero = (
+    <div key="hero" className="auth-dark__hero min-h-[280px] md:min-h-full">
+      <span className="auth-dark__badge">{badge}</span>
+
+      <div className="mt-10 space-y-3 md:my-auto">
+        <h1 className="auth-dark__title">{title}</h1>
+        <p className="auth-dark__desc">{description}</p>
+      </div>
+
+      {footerNote && (
+        <div className="auth-dark__note mt-10">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4 shrink-0"
+            style={{ color: "var(--accent)" }}
+            aria-hidden="true"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span>{footerNote}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const form = (
+    <div key="form" className="auth-dark__form">
+      <div className="w-full max-w-lg">{children}</div>
+    </div>
+  );
+
+  return (
+    <div className="auth-dark">
+      <div className="auth-dark__mesh" aria-hidden="true" />
+      <Link to="/" className="auth-dark__brand auth-dark__brand--corner">
+        Dispatch.co
+      </Link>
+      <div className="auth-dark__wrap landing__section">
+        <div className="auth-dark__card grid md:grid-cols-2">
+          {side === "left" ? [hero, form] : [form, hero]}
+        </div>
+        <p className="mt-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+          <Link to="/" className="auth-dark__link">
+            ← Back to home
+          </Link>
+        </p>
       </div>
     </div>
   );
