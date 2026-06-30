@@ -12,7 +12,6 @@ import {
   buildSegmentProgressPaths,
   inferProgressIndexFromTrail,
   isOffPlannedSegment,
-  snapPointToPolyline,
 } from "@/modules/tracking/utils/plannedSegmentTrail.js";
 import {
   collectRouteAnchorPoints,
@@ -248,19 +247,20 @@ function LiveRouteMapLayers({
     return 0;
   }, [progressIndex, trustedSegmentPolyline, trail]);
 
-  const { completedPath, remainingPath } = useMemo(() => {
+  const { remainingPath } = useMemo(() => {
     if (offRoute || trustedSegmentPolyline.length < 2) {
-      return { completedPath: [], remainingPath: [] };
+      return { remainingPath: [] };
     }
     return buildSegmentProgressPaths(trustedSegmentPolyline, effectiveProgressIndex);
   }, [offRoute, trustedSegmentPolyline, effectiveProgressIndex]);
 
-  const actualTrailPath = useMemo(() => {
-    if (!offRoute) return [];
-    return smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
-      .map((point) => readMapCoords(point))
-      .filter(Boolean);
-  }, [offRoute, trail]);
+  const actualTrailPath = useMemo(
+    () =>
+      smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
+        .map((point) => readMapCoords(point))
+        .filter(Boolean),
+    [trail]
+  );
 
   const offRoutePlannedPath =
     offRoute && trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
@@ -273,17 +273,14 @@ function LiveRouteMapLayers({
         : [];
 
   const driverMarkerPoint = useMemo(() => {
-    const point =
+    return (
       latestRawPoint ??
-      (actualTrailPath.length >= 1 ? actualTrailPath[actualTrailPath.length - 1] : null);
-    if (!point || offRoute || trustedSegmentPolyline.length < 2) return point;
-    const snap = snapPointToPolyline(point, trustedSegmentPolyline);
-    return snap.snapped ? { lat: snap.lat, lng: snap.lng } : point;
-  }, [latestRawPoint, actualTrailPath, offRoute, trustedSegmentPolyline]);
+      (actualTrailPath.length >= 1 ? actualTrailPath[actualTrailPath.length - 1] : null)
+    );
+  }, [latestRawPoint, actualTrailPath]);
 
   const fitPoints = useMemo(() => {
     const paths = [
-      ...filterMapPathPoints(completedPath, routeAnchors),
       ...filterMapPathPoints(onRouteRemainingPath, routeAnchors),
       ...filterMapPathPoints(offRoutePlannedPath, routeAnchors),
       ...filterMapPathPoints(actualTrailPath, routeAnchors),
@@ -292,7 +289,6 @@ function LiveRouteMapLayers({
     for (const anchor of routeAnchors) paths.push(anchor);
     return paths;
   }, [
-    completedPath,
     onRouteRemainingPath,
     offRoutePlannedPath,
     actualTrailPath,
@@ -345,15 +341,6 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {!offRoute && completedPath.length >= 2 ? (
-        <Polyline
-          path={filterMapPathPoints(completedPath, routeAnchors)}
-          strokeColor="#2563eb"
-          strokeOpacity={0.9}
-          strokeWeight={5}
-        />
-      ) : null}
-
       {!offRoute && onRouteRemainingPath.length >= 2 ? (
         <Polyline
           path={filterMapPathPoints(onRouteRemainingPath, routeAnchors)}
@@ -370,13 +357,12 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {offRoute && actualTrailPath.length >= 2 ? (
+      {actualTrailPath.length >= 2 ? (
         <Polyline
           path={actualTrailPath}
           strokeColor="#2563eb"
           strokeOpacity={0.9}
           strokeWeight={5}
-          geodesic
         />
       ) : null}
     </Map>
@@ -463,7 +449,8 @@ export function RouteLiveGoogleMap({
       ) : null}
       {isLive && offRoute ? (
         <div className="ops-banner ops-banner--warning mb-2 text-xs">
-          Driver is off the planned route — blue line shows their actual GPS track.
+          Driver is off the planned route — grey dashed line is the planned path; blue shows where
+          they actually drove.
         </div>
       ) : null}
       <div className="live-tracking-map route-live-google-map">
@@ -503,14 +490,14 @@ export function RouteLiveGoogleMap({
             className="route-planning-map-legend-dot"
             style={{ background: "#94a3b8" }}
           />
-          Remaining planned route (grey)
+          Planned route ahead (grey)
         </span>
         <span className="route-planning-map-legend-item">
           <span
             className="route-planning-map-legend-dot"
-            style={{ background: "#2563eb", opacity: 0.5 }}
+            style={{ background: "#2563eb" }}
           />
-          Driven segment (blue) or off-route actual track
+          Driver track — where they went (blue)
         </span>
         <span className="route-planning-map-legend-item">
           <span className="route-planning-map-legend-dot route-planning-map-legend-dot--planned-dashed" />
