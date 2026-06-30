@@ -3,6 +3,7 @@ import {
   createRoute,
   createSchedule,
   createStore,
+  completeRouteOps,
   completeRouteStopOps,
   deleteRoute,
   deleteSchedule,
@@ -269,6 +270,20 @@ export function useCompleteRouteStopOpsMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ routeId, stopId }) => completeRouteStopOps(routeId, stopId),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["schedules"] });
+      qc.invalidateQueries({ queryKey: ["routes"] });
+      if (vars?.routeId) {
+        qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
+      }
+    },
+  });
+}
+
+export function useCompleteRouteOpsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId }) => completeRouteOps(routeId),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["schedules"] });
       qc.invalidateQueries({ queryKey: ["routes"] });

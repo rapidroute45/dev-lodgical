@@ -60,6 +60,11 @@ export async function completeRouteStopOps(routeId, stopId) {
   return res.data;
 }
 
+export async function completeRouteOps(routeId) {
+  const res = await api.post(`/routes/${routeId}/ops-complete-route`);
+  return res.data;
+}
+
 export async function returnRouteStopOps(routeId, stopId, body) {
   const res = await api.post(`/routes/${routeId}/stops/${stopId}/ops-return`, body);
   return res.data;

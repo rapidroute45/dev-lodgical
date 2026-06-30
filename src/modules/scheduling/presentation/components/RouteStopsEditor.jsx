@@ -11,7 +11,7 @@ import { ReturnReasonModal } from "./ReturnReasonModal.jsx";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { pickupFromStore, formatStorePickupAddress } from "@/modules/scheduling/utils/routeDraft.js";
 import { RoutePlanningMap } from "./RoutePlanningMap.jsx";
-import { useUpdateRouteStopStatusOpsMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { useUpdateRouteStopStatusOpsMutation, useCompleteRouteOpsMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 
 function isRouteCompleted(status) {
   return status === "completed" || status === "not_verified";
@@ -21,6 +21,14 @@ function countFinishedStops(dropoffs) {
   return dropoffs.filter(
     (stop) => stop.status === "completed" || stop.status === "returned"
   ).length;
+}
+
+function countPendingStops(dropoffs) {
+  return dropoffs.filter((stop) => stop.status === "pending" || !stop.status).length;
+}
+
+function canCompleteRouteFromWeb(status) {
+  return status === "active" || status === "in_progress";
 }
 
 export function RouteStopsEditor({
@@ -33,6 +41,7 @@ export function RouteStopsEditor({
   onBack,
 }) {
   const updateStopStatusOps = useUpdateRouteStopStatusOpsMutation();
+  const completeRouteOps = useCompleteRouteOpsMutation();
   const [localDropoffs, setLocalDropoffs] = useState([]);
   const [error, setError] = useState("");
   const [statusBusyId, setStatusBusyId] = useState(null);
@@ -60,6 +69,18 @@ export function RouteStopsEditor({
     () => countFinishedStops(localDropoffs),
     [localDropoffs]
   );
+  const pendingCount = useMemo(
+    () => countPendingStops(localDropoffs),
+    [localDropoffs]
+  );
+  const stopCount = localDropoffs.length;
+  const canCompleteRoute =
+    statusEditable &&
+    !routeCompleted &&
+    canCompleteRouteFromWeb(routeStatus) &&
+    stopCount > 0 &&
+    Boolean(route?.driverId ?? route?.driverName);
+  const completingRoute = completeRouteOps.isPending;
 
   const driverTrail = useMemo(() => {
     const path = route?.driverRoutePath ?? [];
@@ -168,6 +189,39 @@ export function RouteStopsEditor({
     }
   }
 
+  async function handleCompleteRoute() {
+    if (!routeId || !canCompleteRoute || completingRoute) return;
+
+    const label = pendingCount > 0
+      ? `Mark all ${pendingCount} pending stop${pendingCount === 1 ? "" : "s"} as delivered and complete this route? The driver will not need to use the mobile app.`
+      : "Complete this route now? Any remaining pending stops will be marked as delivered.";
+
+    if (!window.confirm(label)) return;
+
+    setError("");
+    try {
+      const result = await completeRouteOps.mutateAsync({ routeId });
+      const completedAt = new Date().toISOString();
+      setLocalDropoffs((prev) =>
+        prev.map((stop) =>
+          stop.status === "pending" || !stop.status
+            ? {
+                ...stop,
+                status: "completed",
+                completedAt,
+                returnReason: null,
+                returnReasonCustom: null,
+              }
+            : stop
+        )
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ?? err?.message ?? "Could not complete route."
+      );
+    }
+  }
+
   function handleGridChange(rows) {
     setLocalDropoffs(gridRowsToDropoffs(rows));
     setError("");
@@ -230,8 +284,6 @@ export function RouteStopsEditor({
       );
     }
   }
-
-  const stopCount = localDropoffs.length;
 
   return (
     <>
@@ -296,7 +348,7 @@ export function RouteStopsEditor({
         ) : (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             {statusEditable
-              ? "Use the status dropdown to mark delivered or failure (same options as the driver app)."
+              ? "Use Complete route above, or change each stop from the status dropdown."
               : "Stop completion updates automatically when the driver finishes deliveries."}
           </span>
         )}
@@ -325,7 +377,22 @@ export function RouteStopsEditor({
                 Waiting for driver to complete stops.
               </span>
             )}
+            {canCompleteRoute ? (
+              <button
+                type="button"
+                onClick={() => void handleCompleteRoute()}
+                disabled={completingRoute || saving || statusBusyId != null}
+                className="ops-btn ops-btn--accent px-3 py-1.5 text-xs font-bold disabled:opacity-50"
+              >
+                {completingRoute ? "Completing…" : "Complete route"}
+              </button>
+            ) : null}
           </div>
+          {canCompleteRoute ? (
+            <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+              Marks every pending stop as delivered and finishes the route from the web — no mobile app needed.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

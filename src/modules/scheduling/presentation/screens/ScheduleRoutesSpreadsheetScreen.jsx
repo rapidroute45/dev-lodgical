@@ -201,6 +201,14 @@ export function ScheduleRoutesSpreadsheetScreen() {
     setError(null);
   }
 
+  function handleRouteCompleted(routeId, patch) {
+    setRows((prev) =>
+      prev.map((row) => (row.id === routeId ? { ...row, ...patch } : row))
+    );
+    setMessage("Route marked as completed.");
+    setError(null);
+  }
+
   function existingRoutesForNaming() {
     return rows.map((row) => ({ routeName: row.routeName }));
   }
@@ -567,6 +575,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
               uploadingStopsCsv={uploadingStopsCsv}
               onDeleteRoute={handleDeleteRoute}
               deletingRouteId={deletingRouteId}
+              onRouteCompleted={handleRouteCompleted}
             />
             <BulkAddRoutesModal
               open={bulkModalOpen}
