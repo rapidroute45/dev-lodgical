@@ -7,6 +7,7 @@ import {
   useSchedulesQuery,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { useDashboardStatsQuery } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import {
@@ -44,14 +45,14 @@ function dataForSelectedDate(data, selectedDate) {
 const QUICK_ACTIONS = [
   { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
   { to: "/schedules", label: "Schedules", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
-  { to: "/routes", label: "Routes", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3" },
+  { to: "/routes", label: "Routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
   { to: "/stores", label: "Stores", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m4-14h6" },
 ];
 
 export function DispatchTeamDashboardScreen() {
   const { user } = useAuth();
   const { assignedCities, hasMultipleCities } = useAssignedCityScope();
-  const [date, setDate] = useState(todayIsoDate());
+  const { date } = useOpsDateScope();
   const [stageFilter, setStageFilter] = useState(null);
   const isToday = date === todayIsoDate();
 
@@ -103,8 +104,6 @@ export function DispatchTeamDashboardScreen() {
 
   const topBar = (
     <OpsTopBar
-      date={date}
-      setDate={setDate}
       onRefresh={refreshAll}
       refreshing={statsQuery.isFetching || routesQuery.isFetching || schedulesQuery.isFetching}
     />

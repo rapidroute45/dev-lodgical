@@ -6,6 +6,7 @@ import { useOpsTheme } from "@/modules/manager-home/presentation/context/OpsThem
 import { useFullscreen } from "@/shared/hooks/useFullscreen.js";
 import { DatePickerPopover } from "@/modules/scheduling/presentation/components/DatePickerPopover.jsx";
 import { NotificationBellDropdown } from "@/modules/notifications/presentation/components/NotificationBellDropdown.jsx";
+import { useOpsDateScopeOptional } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 
 function ThemeToggle() {
   const { theme, setTheme } = useOpsTheme();
@@ -73,12 +74,15 @@ function resolveNextDate(current, nextOrFn) {
 }
 
 export function OpsTopBar({
-  date = todayIsoDate(),
-  setDate,
+  date: dateProp,
+  setDate: setDateProp,
   onRefresh,
   refreshing,
   showDate = true,
 }) {
+  const dateScope = useOpsDateScopeOptional();
+  const date = dateProp ?? dateScope?.date ?? todayIsoDate();
+  const setDate = setDateProp ?? dateScope?.setDate;
   const navDate = date ?? todayIsoDate();
   const isToday = navDate >= todayIsoDate();
   const canChangeDate = showDate && typeof setDate === "function";

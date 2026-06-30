@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { MANAGER_ROLES } from "@/shared/utils/constants.js";
 import { useTeamsQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { useAvailableDriversQuery } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
-import { formatDisplayDate, todayIsoDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
+import { formatDisplayDate } from "@/shared/utils/time.js";
 import { DateNavigator } from "../components/DateNavigator.jsx";
 import { SectionCard } from "../components/SectionCard.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -13,7 +14,7 @@ import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 export function AvailableDriversScreen() {
   const { user } = useAuth();
   const isManager = user?.role && MANAGER_ROLES.includes(user.role);
-  const [date, setDate] = useState(todayIsoDate());
+  const { date, setDate } = useOpsDateScope();
 
   const { data: teams = [], isLoading: teamsLoading } = useTeamsQuery(isManager);
   const {
@@ -37,7 +38,7 @@ export function AvailableDriversScreen() {
   const totalAvailable = availableData?.count ?? 0;
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
   );
 
   const titleRow = (

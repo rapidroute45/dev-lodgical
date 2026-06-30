@@ -4,6 +4,7 @@ import {
   useRoutesQuery,
   useStoresQuery,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   addDaysToIsoDate,
   formatDisplayDate,
@@ -23,7 +24,7 @@ const FUTURE_DAYS = 365;
 export function DispatchTeamRoutesPanel({ city }) {
   const navigate = useNavigate();
   const memberCity = city?.trim() ?? "";
-  const [date, setDate] = useState(todayIsoDate());
+  const { date, setDate } = useOpsDateScope();
   const [state, setState] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);

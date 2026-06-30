@@ -4,7 +4,7 @@ import { DashboardLayout } from "@/modules/manager-home/presentation/layout/Dash
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { ScopedEmptyHint } from "@/modules/manager-home/presentation/components/ScopedEmptyHint.jsx";
 import { OpsStatCard } from "@/modules/manager-home/presentation/components/OpsWidgets.jsx";
-import { todayIsoDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   useSchedulesQuery,
   useStoresQuery,
@@ -21,8 +21,8 @@ export function SchedulesListScreen() {
   const { user } = useAuth();
   const { canMutateOps } = useOpsElevation();
   const allowCreate = canMutateOps(user?.role);
-  const [searchParams] = useSearchParams();
-  const [date, setDate] = useState(() => searchParams.get("date") ?? todayIsoDate());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { date, setDate } = useOpsDateScope();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -31,8 +31,15 @@ export function SchedulesListScreen() {
 
   useEffect(() => {
     const queryDate = searchParams.get("date");
-    if (queryDate) setDate(queryDate);
-  }, [searchParams]);
+    if (queryDate) {
+      setDate(queryDate);
+    }
+  }, [searchParams, setDate]);
+
+  useEffect(() => {
+    if (searchParams.get("date") === date) return;
+    setSearchParams({ date }, { replace: true });
+  }, [date, searchParams, setSearchParams]);
 
   useEffect(() => {
     setExpandedId(null);
@@ -72,7 +79,7 @@ export function SchedulesListScreen() {
   }, [schedules, groupedSchedules.length]);
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
   );
 
   return (

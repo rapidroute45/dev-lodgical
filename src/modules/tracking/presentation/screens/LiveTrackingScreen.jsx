@@ -7,7 +7,8 @@ import { useRoutesQuery } from "@/modules/scheduling/infrastructure/api/scheduli
 import { useTrackingSocket } from "@/modules/tracking/application/TrackingSocketProvider.jsx";
 import { LiveTrackingMap } from "@/modules/tracking/presentation/components/LiveTrackingMap.jsx";
 import { RouteLiveGoogleMap } from "@/modules/tracking/presentation/components/RouteLiveGoogleMap.jsx";
-import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
+import { formatDisplayDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { getLocationSharingStatus, getDriverLocationLastPingAt } from "@/modules/tracking/utils/locationSharingStatus.js";
@@ -198,7 +199,7 @@ function SelectedRouteMapPanel({ routeId, routeMeta, onClearSelection }) {
 }
 
 export function LiveTrackingScreen() {
-  const [date, setDate] = useState(todayIsoDate());
+  const { date } = useOpsDateScope();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const { connected, subscribe } = useTrackingSocket();
@@ -293,7 +294,7 @@ export function LiveTrackingScreen() {
   }, []);
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
   );
 
   return (

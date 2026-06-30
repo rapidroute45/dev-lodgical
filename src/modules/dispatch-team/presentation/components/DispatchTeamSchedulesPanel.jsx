@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useResolvedStoreLocation } from "@/modules/scheduling/presentation/hooks/useResolvedStoreLocation.js";
 import { Link } from "react-router-dom";
-import { todayIsoDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   useSchedulesQuery,
   useStoresQuery,
@@ -15,7 +15,7 @@ import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedules
 
 export function DispatchTeamSchedulesPanel({ city }) {
   const memberCity = city?.trim() ?? "";
-  const [date, setDate] = useState(todayIsoDate());
+  const { date, setDate } = useOpsDateScope();
   const [state, setState] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);

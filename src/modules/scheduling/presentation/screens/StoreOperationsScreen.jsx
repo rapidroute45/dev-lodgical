@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { OpsStatCard } from "@/modules/manager-home/presentation/components/OpsWidgets.jsx";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   useRoutesQuery,
   useSchedulesQuery,
@@ -10,7 +11,7 @@ import {
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
 import { sortRoutesByCategory } from "@/modules/scheduling/utils/routeSort.js";
-import { formatDisplayDate, todayIsoDate } from "@/shared/utils/time.js";
+import { formatDisplayDate } from "@/shared/utils/time.js";
 import {
   formatScheduleStatus,
   scheduleStatusClass,
@@ -23,13 +24,13 @@ import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 export function StoreOperationsScreen() {
   const { id: storeId } = useParams();
   const location = useLocation();
-  const [date, setDate] = useState(() => location.state?.date ?? todayIsoDate());
+  const { date, setDate } = useOpsDateScope();
 
   useEffect(() => {
     if (location.state?.date) {
       setDate(location.state.date);
     }
-  }, [location.state?.date]);
+  }, [location.state?.date, setDate]);
 
   const {
     data: store,
@@ -64,8 +65,6 @@ export function StoreOperationsScreen() {
 
   const topBar = (
     <OpsTopBar
-      date={date}
-      setDate={setDate}
       onRefresh={() => {
         void refetchStore();
         void refetchSchedules();

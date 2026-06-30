@@ -9,6 +9,7 @@ import { OpsElevationRoute } from "@/modules/auth/presentation/routes/OpsElevati
 import { TrackingSocketProvider } from "@/modules/tracking/application/TrackingSocketProvider.jsx";
 import { ChatProvider } from "@/modules/chat/application/ChatProvider.jsx";
 import { OpsLocationScopeProvider } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
+import { OpsDateScopeProvider } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { LoginScreen } from "@/modules/auth/presentation/screens/LoginScreen.jsx";
 import { RegisterScreen } from "@/modules/auth/presentation/screens/RegisterScreen.jsx";
 import { DashboardScreen } from "@/modules/dashboard/presentation/screens/DashboardScreen.jsx";
@@ -69,6 +70,7 @@ export default function App() {
           <TrackingSocketProvider>
           <ChatProvider>
           <OpsLocationScopeProvider>
+          <OpsDateScopeProvider>
           <Routes>
             <Route
               path="/login"
@@ -429,6 +431,7 @@ export default function App() {
             <Route path="/" element={<LandingScreen />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </OpsDateScopeProvider>
           </OpsLocationScopeProvider>
           </ChatProvider>
           </TrackingSocketProvider>

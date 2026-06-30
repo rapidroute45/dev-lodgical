@@ -5,6 +5,7 @@ import { UserRole, MANAGER_ROLES, PAYROLL_VIEWER_ROLES } from "@/shared/utils/co
 import { usePayrollPendingSummaryQuery } from "@/modules/payroll/infrastructure/api/payroll.queries.js";
 import { formatMoney } from "@/modules/payroll/utils/format.js";
 import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   useDashboardStatsQuery,
   useAvailableDriversQuery,
@@ -66,7 +67,7 @@ const STAGE_FILTERS = {
 
 export function ManagerDashboardScreen() {
   const { user } = useAuth();
-  const [date, setDate] = useState(todayIsoDate());
+  const { date } = useOpsDateScope();
   const [stageFilter, setStageFilter] = useState(null);
   const isToday = date === todayIsoDate();
   const isManager = user?.role && MANAGER_ROLES.includes(user.role);
@@ -166,7 +167,7 @@ export function ManagerDashboardScreen() {
   }
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={refreshAll} refreshing={driversBusy} />
+    <OpsTopBar onRefresh={refreshAll} refreshing={driversBusy} />
   );
 
   if (user?.role === UserRole.ACCOUNTANT) {
@@ -318,8 +319,8 @@ export function ManagerDashboardScreen() {
           {[
             { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
             { to: "/tracking", label: "Live tracking", icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
-            { to: "/available-drivers", label: "Available drivers", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M9 7a3 3 0 11-6 0 3 3 0 016 0z" },
-            { to: "/routes", label: "All routes", icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3" },
+            { to: "/available-drivers", label: "Available drivers", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" },
+            { to: "/routes", label: "All routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
           ].map((a) => (
             <Link key={a.to} to={a.to} className="ops-quick">
               <span className="ops-quick__icon">

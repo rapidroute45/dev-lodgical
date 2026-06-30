@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchSchedules } from "@/modules/scheduling/infrastructure/api/scheduling.api.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 
 /**
  * Navigate to the same store's schedule (or routes spreadsheet) when the top-bar date changes.
@@ -15,6 +16,7 @@ export function useScheduleDateNavigation({
   onMissingSchedule,
 }) {
   const navigate = useNavigate();
+  const { setDate: setGlobalDate } = useOpsDateScope();
 
   return useCallback(
     async (newDateOrFn) => {
@@ -24,6 +26,8 @@ export function useScheduleDateNavigation({
           : newDateOrFn;
 
       if (!newDate || newDate === currentDate) return;
+
+      setGlobalDate(newDate);
 
       if (beforeNavigate) {
         const proceed = await beforeNavigate(newDate);
@@ -62,6 +66,16 @@ export function useScheduleDateNavigation({
         navigate(`/schedules?date=${encodeURIComponent(newDate)}`);
       }
     },
-    [storeId, currentDate, target, city, state, beforeNavigate, onMissingSchedule, navigate]
+    [
+      storeId,
+      currentDate,
+      target,
+      city,
+      state,
+      beforeNavigate,
+      onMissingSchedule,
+      navigate,
+      setGlobalDate,
+    ]
   );
 }

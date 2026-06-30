@@ -23,6 +23,7 @@ import {
 import { sortRoutesByCategory } from "@/modules/scheduling/utils/routeSort.js";
 import { BulkAddRoutesModal } from "../components/BulkAddRoutesModal.jsx";
 import { formatDisplayDate, todayIsoDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { apiErrorMessage } from "@/shared/utils/api.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import {
@@ -43,6 +44,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { setDate: setGlobalDate } = useOpsDateScope();
   const { id: scheduleId } = useParams();
   const { data: schedule, isLoading: primaryLoading, isError, refetch: refetchSchedule } = useScheduleQuery(
     scheduleId,
@@ -391,6 +393,8 @@ export function ScheduleRoutesSpreadsheetScreen() {
         typeof newDateOrFn === "function" ? newDateOrFn(displayDate) : newDateOrFn;
       if (!newDate || newDate === displayDate) return;
 
+      setGlobalDate(newDate);
+
       if (dirtyIds.size > 0) {
         const saved = await saveChanges();
         if (!saved) return;
@@ -431,6 +435,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
       schedule?.state,
       navigate,
       setSearchParams,
+      setGlobalDate,
     ]
   );
 

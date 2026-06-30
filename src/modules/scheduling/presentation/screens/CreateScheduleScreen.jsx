@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAssignedCityScope } from "@/modules/scheduling/presentation/hooks/useAssignedCityScope.js";
 import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { useAutoSaveCreateScheduleDraft } from "@/modules/scheduling/presentation/hooks/useAutoSaveCreateScheduleDraft.js";
 import { useResolvedStoreLocation } from "@/modules/scheduling/presentation/hooks/useResolvedStoreLocation.js";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
-import { todayIsoDate, defaultDepartureFromArrival } from "@/shared/utils/time.js";
+import { defaultDepartureFromArrival } from "@/shared/utils/time.js";
 import {
   useCreateRouteMutation,
   useCreateScheduleMutation,
@@ -47,8 +48,8 @@ export function CreateScheduleScreen() {
   const { user } = useAuth();
   const { assignedCity, assignedCities, isCityLocked, isCityScoped } = useAssignedCityScope();
   const { effectiveCity, effectiveState } = useOpsLocationScope();
+  const { date, setDate } = useOpsDateScope();
   const allowCreateStore = canManageStores(user?.role);
-  const [date, setDate] = useState(todayIsoDate());
   const [city, setCity] = useState(assignedCity ?? "");
   const [state, setState] = useState("");
   const [selectedStore, setSelectedStore] = useState(null);
@@ -303,7 +304,7 @@ export function CreateScheduleScreen() {
   }
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={() => {}} refreshing={false} />
+    <OpsTopBar onRefresh={() => {}} refreshing={false} />
   );
 
   return (

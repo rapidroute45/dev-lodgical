@@ -8,7 +8,7 @@ import {
   useRoutesQuery,
   useStoresQuery,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
+import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { StoreFilterSection } from "../components/StoreFilterSection.jsx";
 import { RouteStatusFilter } from "../components/RouteStatusFilter.jsx";
 import { RouteSummaryRow } from "../components/RouteSummaryRow.jsx";
@@ -53,7 +53,7 @@ function summarizeRoutes(routes) {
 }
 
 export function RoutesListScreen() {
-  const [date, setDate] = useState(todayIsoDate());
+  const { date } = useOpsDateScope();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);
   const [search, setSearch] = useState("");
@@ -106,7 +106,7 @@ export function RoutesListScreen() {
   const groupedRoutes = useMemo(() => groupRoutesByStore(filteredRoutes), [filteredRoutes]);
 
   const topBar = (
-    <OpsTopBar date={date} setDate={setDate} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
   );
 
   return (
