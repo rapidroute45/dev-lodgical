@@ -12,9 +12,9 @@ const PICKUP_ICON = L.divIcon({
 
 const DRIVER_ICON = L.divIcon({
   className: "live-tracking-driver-icon",
-  html: '<div class="live-tracking-driver-dot"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
+  html: '<div class="route-driver-live-marker"><span class="route-driver-live-marker__pulse"></span><span class="route-driver-live-marker__core"></span></div>',
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
 });
 
 

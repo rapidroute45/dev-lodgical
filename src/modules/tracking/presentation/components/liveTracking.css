@@ -28,12 +28,66 @@
 }
 
 .live-tracking-driver-dot {
-  width: 18px;
-  height: 18px;
+  position: relative;
+  width: 28px;
+  height: 28px;
   border-radius: 9999px;
-  background: #2563eb;
+  background: #dc2626;
   border: 3px solid #ffffff;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.45);
+}
+
+.route-driver-live-marker {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.route-driver-live-marker__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(220, 38, 38, 0.35);
+  animation: route-driver-pulse 1.8s ease-out infinite;
+}
+
+.route-driver-live-marker__core {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: #dc2626;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 10px rgba(220, 38, 38, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes route-driver-pulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+.route-planning-map-legend-dot--driver {
+  background: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+.route-planning-map-legend-dot--planned-dashed {
+  background: transparent;
+  border: 2px dashed #94a3b8;
+  box-shadow: none;
 }
 
 .live-tracking-stop-dot {

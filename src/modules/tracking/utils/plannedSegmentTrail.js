@@ -1,4 +1,5 @@
 export const OFF_ROUTE_THRESHOLD_M = 50;
+export const ROUTE_SNAP_RADIUS_M = 40;
 
 /** Haversine distance in meters. */
 export function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -20,6 +21,7 @@ function projectOnSegment(point, a, b) {
     return {
       lat: a.lat,
       lng: a.lng,
+      t: 0,
       distanceM: haversineMeters(point.lat, point.lng, a.lat, a.lng),
     };
   }
@@ -32,6 +34,7 @@ function projectOnSegment(point, a, b) {
   return {
     lat,
     lng,
+    t,
     distanceM: haversineMeters(point.lat, point.lng, lat, lng),
   };
 }
@@ -39,7 +42,7 @@ function projectOnSegment(point, a, b) {
 /** Shortest distance from a GPS point to any segment of the planned polyline. */
 export function distanceToPolylineM(gps, polyline) {
   if (!polyline?.length) {
-    return { distanceM: Infinity, nearestIndex: 0 };
+    return { distanceM: Infinity, nearestIndex: 0, projectedLat: gps.lat, projectedLng: gps.lng };
   }
 
   if (polyline.length === 1) {
@@ -47,21 +50,100 @@ export function distanceToPolylineM(gps, polyline) {
     return {
       distanceM: haversineMeters(gps.lat, gps.lng, only.lat, only.lng),
       nearestIndex: 0,
+      projectedLat: only.lat,
+      projectedLng: only.lng,
     };
   }
 
   let bestIndex = 0;
   let bestDistanceM = Infinity;
+  let bestLat = gps.lat;
+  let bestLng = gps.lng;
 
   for (let i = 0; i < polyline.length - 1; i += 1) {
     const projected = projectOnSegment(gps, polyline[i], polyline[i + 1]);
     if (projected.distanceM < bestDistanceM) {
       bestDistanceM = projected.distanceM;
-      bestIndex = i;
+      bestLat = projected.lat;
+      bestLng = projected.lng;
+      bestIndex = projected.t >= 0.5 ? i + 1 : i;
     }
   }
 
-  return { distanceM: bestDistanceM, nearestIndex: bestIndex };
+  return {
+    distanceM: bestDistanceM,
+    nearestIndex: bestIndex,
+    projectedLat: bestLat,
+    projectedLng: bestLng,
+  };
+}
+
+/** Snap one GPS point onto the nearest segment when within maxSnapM. */
+export function snapPointToPolyline(gps, polyline, maxSnapM = ROUTE_SNAP_RADIUS_M) {
+  if (!polyline?.length || !Number.isFinite(gps?.lat) || !Number.isFinite(gps?.lng)) {
+    return {
+      lat: gps?.lat,
+      lng: gps?.lng,
+      snapped: false,
+      nearestIndex: 0,
+      distanceM: Infinity,
+    };
+  }
+
+  const { distanceM, nearestIndex, projectedLat, projectedLng } = distanceToPolylineM(gps, polyline);
+
+  if (distanceM <= maxSnapM) {
+    return {
+      lat: projectedLat,
+      lng: projectedLng,
+      snapped: true,
+      nearestIndex,
+      distanceM,
+    };
+  }
+
+  return {
+    lat: gps.lat,
+    lng: gps.lng,
+    snapped: false,
+    nearestIndex,
+    distanceM,
+  };
+}
+
+/** Snap trail points onto the planned segment for map display (monotonic progress). */
+export function snapTrailToSegment(
+  trail,
+  segmentPolyline,
+  progressIndex = 0,
+  maxSnapM = ROUTE_SNAP_RADIUS_M
+) {
+  if (!Array.isArray(segmentPolyline) || segmentPolyline.length < 2 || !trail?.length) {
+    return trail ?? [];
+  }
+
+  let currentProgress = Math.max(0, Math.floor(progressIndex ?? 0));
+  const snappedTrail = [];
+
+  for (const point of trail) {
+    const lat = point?.lat ?? point?.latitude;
+    const lng = point?.lng ?? point?.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    const snap = snapPointToPolyline({ lat, lng }, segmentPolyline, maxSnapM);
+    if (snap.snapped) {
+      currentProgress = Math.max(currentProgress, snap.nearestIndex);
+      snappedTrail.push({
+        lat: snap.lat,
+        lng: snap.lng,
+        recordedAt: point.recordedAt ?? null,
+      });
+    } else {
+      snappedTrail.push({ lat, lng, recordedAt: point.recordedAt ?? null });
+    }
+  }
+
+  return snappedTrail;
 }
 
 /** True when the driver's latest GPS is farther than threshold from the planned segment. */
@@ -75,18 +157,25 @@ export function isOffPlannedSegment(latestPoint, segmentPolyline, thresholdM = O
 }
 
 /**
- * Grey segment = full polyline; blue prefix = points [0..progressIndex] inclusive.
+ * Non-overlapping on-route segment paths.
+ * completedPath = driven prefix [0..progressIndex]; remainingPath = ahead [progressIndex..end].
  */
 export function buildSegmentProgressPaths(segmentPolyline, progressIndex = 0) {
   if (!Array.isArray(segmentPolyline) || segmentPolyline.length < 2) {
-    return { greyPath: [], bluePath: [] };
+    return { completedPath: [], remainingPath: [], greyPath: [], bluePath: [] };
   }
 
   const clamped = Math.max(0, Math.min(segmentPolyline.length - 1, Math.floor(progressIndex)));
-  const bluePath = segmentPolyline.slice(0, clamped + 1);
+  const completedPath = segmentPolyline.slice(0, clamped + 1);
+  const remainingPath = segmentPolyline.slice(clamped);
+
   return {
-    greyPath: segmentPolyline,
-    bluePath: bluePath.length >= 2 ? bluePath : [],
+    completedPath: completedPath.length >= 2 ? completedPath : [],
+    remainingPath: remainingPath.length >= 2 ? remainingPath : [],
+    /** @deprecated use remainingPath */
+    greyPath: remainingPath.length >= 2 ? remainingPath : [],
+    /** @deprecated use completedPath */
+    bluePath: completedPath.length >= 2 ? completedPath : [],
   };
 }
 

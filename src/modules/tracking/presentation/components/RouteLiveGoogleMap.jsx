@@ -8,7 +8,12 @@ import {
 } from "@vis.gl/react-google-maps";
 import { CONFIG } from "@/shared/utils/constants.js";
 import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
-import { isOffPlannedSegment } from "@/modules/tracking/utils/plannedSegmentTrail.js";
+import {
+  buildSegmentProgressPaths,
+  inferProgressIndexFromTrail,
+  isOffPlannedSegment,
+  snapPointToPolyline,
+} from "@/modules/tracking/utils/plannedSegmentTrail.js";
 import {
   collectRouteAnchorPoints,
   filterMapPathPoints,
@@ -32,6 +37,20 @@ import "@/modules/scheduling/presentation/components/routePlanningMap.css";
 import "../components/liveTracking.css";
 
 const DEFAULT_CENTER = { lat: 31.5204, lng: 74.3587 };
+
+/** Dashed grey polyline for off-route planned segment. */
+const OFF_ROUTE_PLANNED_LINE = {
+  strokeColor: "#94a3b8",
+  strokeOpacity: 0,
+  strokeWeight: 4,
+  icons: [
+    {
+      icon: { path: "M 0,-1 0,1", strokeOpacity: 0.65, scale: 3 },
+      offset: "0",
+      repeat: "16px",
+    },
+  ],
+};
 
 function FitMapToPoints({ points, followDriver, driverPoint }) {
   const map = useMap();
@@ -86,6 +105,7 @@ function LiveRouteMapLayers({
   onResolvedCounts,
   onOffRouteChange,
   plannedSegment = null,
+  progressIndex = null,
 }) {
   const geocoding = useMapsLibrary("geocoding");
   const [resolvedPickup, setResolvedPickup] = useState(() => {
@@ -173,14 +193,6 @@ function LiveRouteMapLayers({
     });
   }, [resolvedPickup, resolvedDropoffs, driverPoint]);
 
-  const trailPath = useMemo(
-    () =>
-      smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
-        .map((point) => readMapCoords(point))
-        .filter(Boolean),
-    [trail]
-  );
-
   const straightPath = useMemo(() => {
     const path = [];
     if (resolvedPickup?.position) path.push(resolvedPickup.position);
@@ -211,30 +223,82 @@ function LiveRouteMapLayers({
       : [];
   }, [segmentPolyline, nextStopPosition]);
 
-  const driverMarkerPoint =
-    driverPoint ?? (trailPath.length >= 1 ? trailPath[trailPath.length - 1] : null);
-
-  const greyPath = trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : plannedPath;
-  const actualTrailPath = trailPath;
+  const latestRawPoint = useMemo(() => {
+    if (driverPoint) return driverPoint;
+    if (!trail?.length) return null;
+    return readMapCoords(trail[trail.length - 1]);
+  }, [driverPoint, trail]);
 
   const offRoute = useMemo(() => {
-    const latest = driverMarkerPoint ?? (trail.length ? trail[trail.length - 1] : null);
     const segmentForCheck = trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
-    return isOffPlannedSegment(latest, segmentForCheck);
-  }, [driverMarkerPoint, trail, trustedSegmentPolyline]);
+    return isOffPlannedSegment(latestRawPoint, segmentForCheck);
+  }, [latestRawPoint, trustedSegmentPolyline]);
 
   useEffect(() => {
     onOffRouteChange?.(offRoute);
   }, [offRoute, onOffRouteChange]);
 
+  const effectiveProgressIndex = useMemo(() => {
+    if (typeof progressIndex === "number" && Number.isFinite(progressIndex)) {
+      return progressIndex;
+    }
+    if (trustedSegmentPolyline.length >= 2 && trail?.length) {
+      return inferProgressIndexFromTrail(trustedSegmentPolyline, trail);
+    }
+    return 0;
+  }, [progressIndex, trustedSegmentPolyline, trail]);
+
+  const { completedPath, remainingPath } = useMemo(() => {
+    if (offRoute || trustedSegmentPolyline.length < 2) {
+      return { completedPath: [], remainingPath: [] };
+    }
+    return buildSegmentProgressPaths(trustedSegmentPolyline, effectiveProgressIndex);
+  }, [offRoute, trustedSegmentPolyline, effectiveProgressIndex]);
+
+  const actualTrailPath = useMemo(() => {
+    if (!offRoute) return [];
+    return smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
+      .map((point) => readMapCoords(point))
+      .filter(Boolean);
+  }, [offRoute, trail]);
+
+  const offRoutePlannedPath =
+    offRoute && trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
+
+  const onRouteRemainingPath =
+    !offRoute && remainingPath.length >= 2
+      ? remainingPath
+      : !offRoute && trustedSegmentPolyline.length < 2 && plannedPath.length >= 2
+        ? plannedPath
+        : [];
+
+  const driverMarkerPoint = useMemo(() => {
+    const point =
+      latestRawPoint ??
+      (actualTrailPath.length >= 1 ? actualTrailPath[actualTrailPath.length - 1] : null);
+    if (!point || offRoute || trustedSegmentPolyline.length < 2) return point;
+    const snap = snapPointToPolyline(point, trustedSegmentPolyline);
+    return snap.snapped ? { lat: snap.lat, lng: snap.lng } : point;
+  }, [latestRawPoint, actualTrailPath, offRoute, trustedSegmentPolyline]);
+
   const fitPoints = useMemo(() => {
-    const boundedGrey = filterMapPathPoints(greyPath, routeAnchors);
-    const boundedTrail = filterMapPathPoints(actualTrailPath, routeAnchors);
-    const points = [...boundedGrey, ...boundedTrail];
-    if (driverMarkerPoint) points.push(driverMarkerPoint);
-    for (const anchor of routeAnchors) points.push(anchor);
-    return points;
-  }, [greyPath, actualTrailPath, driverMarkerPoint, routeAnchors]);
+    const paths = [
+      ...filterMapPathPoints(completedPath, routeAnchors),
+      ...filterMapPathPoints(onRouteRemainingPath, routeAnchors),
+      ...filterMapPathPoints(offRoutePlannedPath, routeAnchors),
+      ...filterMapPathPoints(actualTrailPath, routeAnchors),
+    ];
+    if (driverMarkerPoint) paths.push(driverMarkerPoint);
+    for (const anchor of routeAnchors) paths.push(anchor);
+    return paths;
+  }, [
+    completedPath,
+    onRouteRemainingPath,
+    offRoutePlannedPath,
+    actualTrailPath,
+    driverMarkerPoint,
+    routeAnchors,
+  ]);
 
   const center = fitPoints[0] ?? DEFAULT_CENTER;
 
@@ -281,16 +345,32 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {greyPath.length >= 2 ? (
+      {!offRoute && completedPath.length >= 2 ? (
         <Polyline
-          path={filterMapPathPoints(greyPath, routeAnchors)}
+          path={filterMapPathPoints(completedPath, routeAnchors)}
+          strokeColor="#2563eb"
+          strokeOpacity={0.9}
+          strokeWeight={5}
+        />
+      ) : null}
+
+      {!offRoute && onRouteRemainingPath.length >= 2 ? (
+        <Polyline
+          path={filterMapPathPoints(onRouteRemainingPath, routeAnchors)}
           strokeColor="#94a3b8"
           strokeOpacity={0.85}
           strokeWeight={4}
         />
       ) : null}
 
-      {actualTrailPath.length >= 2 ? (
+      {offRoute && offRoutePlannedPath.length >= 2 ? (
+        <Polyline
+          path={filterMapPathPoints(offRoutePlannedPath, routeAnchors)}
+          {...OFF_ROUTE_PLANNED_LINE}
+        />
+      ) : null}
+
+      {offRoute && actualTrailPath.length >= 2 ? (
         <Polyline
           path={actualTrailPath}
           strokeColor="#2563eb"
@@ -399,6 +479,7 @@ export function RouteLiveGoogleMap({
             onResolvedCounts={handleResolvedCounts}
             onOffRouteChange={handleOffRouteChange}
             plannedSegment={plannedSegment}
+            progressIndex={progressIndex}
           />
         </APIProvider>
       </div>
@@ -413,24 +494,27 @@ export function RouteLiveGoogleMap({
         </span>
         <span className="route-planning-map-legend-item">
           <span
-            className="route-planning-map-legend-dot"
-            style={{ background: "#ea580c" }}
+            className="route-planning-map-legend-dot route-planning-map-legend-dot--driver"
           />
-          Driver live — orange <strong>D</strong>
+          Driver live — red pulsing marker
         </span>
         <span className="route-planning-map-legend-item">
           <span
             className="route-planning-map-legend-dot"
             style={{ background: "#94a3b8" }}
           />
-          Planned route to next stop
+          Remaining planned route (grey)
         </span>
         <span className="route-planning-map-legend-item">
           <span
             className="route-planning-map-legend-dot"
             style={{ background: "#2563eb", opacity: 0.5 }}
           />
-          Actual driver GPS track
+          Driven segment (blue) or off-route actual track
+        </span>
+        <span className="route-planning-map-legend-item">
+          <span className="route-planning-map-legend-dot route-planning-map-legend-dot--planned-dashed" />
+          Planned route when off-track (dashed)
         </span>
       </div>
     </div>

@@ -1,5 +1,7 @@
 const EARTH_RADIUS_M = 6_371_000;
-const MIN_SEPARATION_M = 5;
+const MIN_SEPARATION_M = 8;
+const STATIONARY_RADIUS_M = 4;
+const STATIONARY_MAX_MS = 8_000;
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -19,6 +21,12 @@ function normalizePoint(point) {
   return { lat, lng, recordedAt: point.recordedAt ?? null };
 }
 
+function msBetween(a, b) {
+  const at = Date.parse(a ?? "") || 0;
+  const bt = Date.parse(b ?? "") || 0;
+  return Math.abs(bt - at);
+}
+
 /** Display-only trail smoothing — does not mutate stored GPS. */
 export function smoothTrailForDisplay(points) {
   const normalized = (points ?? []).map(normalizePoint).filter(Boolean);
@@ -29,7 +37,11 @@ export function smoothTrailForDisplay(points) {
     const prev = deduped[deduped.length - 1];
     const next = normalized[i];
     const dist = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
-    if (dist >= MIN_SEPARATION_M) {
+    const isLast = i === normalized.length - 1;
+    const isStationaryJitter =
+      dist < STATIONARY_RADIUS_M && msBetween(prev.recordedAt, next.recordedAt) <= STATIONARY_MAX_MS;
+
+    if (isLast || (dist >= MIN_SEPARATION_M && !isStationaryJitter)) {
       deduped.push(next);
     }
   }
