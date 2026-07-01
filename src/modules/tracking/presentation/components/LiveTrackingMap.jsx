@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmDrivingPath } from "@/modules/tracking/utils/drivingRoutePath.js";
+import { DEFAULT_MAP_CENTER } from "@/modules/tracking/utils/cityMapCenter.js";
 
 const PICKUP_ICON = L.divIcon({
   className: "live-tracking-stop-icon",
@@ -27,8 +28,14 @@ function dropoffIcon(sequence) {
   });
 }
 
-function fitMapToPoints(map, points) {
-  if (!map || points.length === 0) return;
+function fitMapToPoints(map, points, scopeCenter) {
+  if (!map) return;
+  if (points.length === 0) {
+    if (scopeCenter?.lat != null && scopeCenter?.lng != null) {
+      map.setView([scopeCenter.lat, scopeCenter.lng], scopeCenter.zoom ?? 11);
+    }
+    return;
+  }
   if (points.length === 1) {
     map.setView(points[0], 14);
     return;
@@ -46,6 +53,7 @@ export function LiveTrackingMap({
   pickup = null,
   selectedRouteId = null,
   onSelectRoute,
+  scopeCenter = null,
   className = "",
 }) {
   const containerRef = useRef(null);
@@ -63,7 +71,10 @@ export function LiveTrackingMap({
     const map = L.map(containerRef.current, {
       zoomControl: true,
       attributionControl: true,
-    }).setView([34.18, -118.31], 11);
+    }).setView(
+      [DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng],
+      DEFAULT_MAP_CENTER.zoom
+    );
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -165,8 +176,27 @@ export function LiveTrackingMap({
       layersRef.current.stops.addLayer(marker);
     }
 
-    fitMapToPoints(map, points);
-  }, [drivers, trail, stops, pickup, selectedRouteId, onSelectRoute]);
+    fitMapToPoints(map, points, scopeCenter);
+  }, [drivers, trail, stops, pickup, selectedRouteId, onSelectRoute, scopeCenter]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !scopeCenter) return;
+
+    const hasLivePoints = drivers.some((driver) => {
+      const lat = driver.driverLocation?.lat ?? driver.lat;
+      const lng = driver.driverLocation?.lng ?? driver.lng;
+      return lat != null && lng != null;
+    });
+    const hasTrail = trail.length > 0;
+    const hasStops =
+      (pickup?.lat ?? pickup?.destinationLat) != null ||
+      stops.some((stop) => (stop.destinationLat ?? stop.lat) != null);
+
+    if (!hasLivePoints && !hasTrail && !hasStops) {
+      map.setView([scopeCenter.lat, scopeCenter.lng], scopeCenter.zoom ?? 11);
+    }
+  }, [scopeCenter, drivers, trail, stops, pickup]);
 
   useEffect(() => {
     const map = mapRef.current;

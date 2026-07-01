@@ -8,6 +8,9 @@ import { useTrackingSocket } from "@/modules/tracking/application/TrackingSocket
 import { LiveTrackingMap } from "@/modules/tracking/presentation/components/LiveTrackingMap.jsx";
 import { RouteLiveGoogleMap } from "@/modules/tracking/presentation/components/RouteLiveGoogleMap.jsx";
 import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
+import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
+import { useScopeMapCenter } from "@/modules/tracking/presentation/hooks/useScopeMapCenter.js";
+import { countryForState } from "@/modules/tracking/utils/cityMapCenter.js";
 import { formatDisplayDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
@@ -147,14 +150,20 @@ function SelectedRouteMapPanel({ routeId, routeMeta, onClearSelection }) {
   const pickup = data?.pickup ?? route?.pickup ?? null;
   const dropoffs = data?.dropoffs ?? [];
   const isCompleted = isCompletedRouteTracking(route?.status ?? routeMeta?.status);
-  const geocodeContext = useMemo(
-    () => ({
+  const geocodeContext = useMemo(() => {
+    const state = data?.scheduleState ?? routeMeta?.schedule?.state ?? "";
+    return {
       city: data?.scheduleCity ?? route?.location ?? routeMeta?.schedule?.city ?? "",
-      state: data?.scheduleState ?? routeMeta?.schedule?.state ?? "",
-      country: "Pakistan",
-    }),
-    [data?.scheduleCity, data?.scheduleState, route?.location, routeMeta?.schedule?.city, routeMeta?.schedule?.state]
-  );
+      state,
+      country: countryForState(state),
+    };
+  }, [
+    data?.scheduleCity,
+    data?.scheduleState,
+    route?.location,
+    routeMeta?.schedule?.city,
+    routeMeta?.schedule?.state,
+  ]);
 
   return (
     <div className="space-y-3">
@@ -200,6 +209,8 @@ function SelectedRouteMapPanel({ routeId, routeMeta, onClearSelection }) {
 
 export function LiveTrackingScreen() {
   const { date } = useOpsDateScope();
+  const { effectiveCity, effectiveState } = useOpsLocationScope();
+  const scopeMapCenter = useScopeMapCenter(effectiveCity, effectiveState);
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const { connected, subscribe } = useTrackingSocket();
@@ -329,6 +340,7 @@ export function LiveTrackingScreen() {
                   drivers={mapDrivers}
                   selectedRouteId={selectedRouteId}
                   onSelectRoute={handleSelectRoute}
+                  scopeCenter={scopeMapCenter}
                 />
                 {liveItems.length === 0 && !isLoading ? (
                   <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
