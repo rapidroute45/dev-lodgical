@@ -25,6 +25,10 @@ import {
   formatStationaryLabel,
   isDriverStationary,
 } from "@/modules/tracking/utils/stationaryStatus.js";
+import {
+  formatBreakLabel,
+  isDriverOnBreak,
+} from "@/modules/tracking/utils/breakStatus.js";
 import "../components/liveTracking.css";
 
 const STATUS_TABS = [
@@ -66,12 +70,15 @@ function mergeLiveDriver(items, payload) {
     return items.filter((item) => item.id !== payload.routeId);
   }
 
+  const index = items.findIndex((item) => item.id === payload.routeId);
+  const existing = index === -1 ? null : items[index];
+
   const nextItem = {
     id: payload.routeId,
-    routeName: payload.routeName,
-    driverName: payload.driverName,
-    driverId: payload.driverId,
-    status: payload.status ?? "in_progress",
+    routeName: payload.routeName ?? existing?.routeName,
+    driverName: payload.driverName ?? existing?.driverName,
+    driverId: payload.driverId ?? existing?.driverId,
+    status: payload.status ?? existing?.status ?? "in_progress",
     driverLocation: {
       lat: payload.lat,
       lng: payload.lng,
@@ -79,20 +86,51 @@ function mergeLiveDriver(items, payload) {
       ingestedAt: payload.ingestedAt ?? payload.recordedAt,
       sharingInBackground: Boolean(payload.backgroundSharing),
     },
-    progress: payload.progress,
-    dwell: payload.dwell ?? null,
+    progress: payload.progress ?? existing?.progress,
+    dwell: payload.dwell ?? existing?.dwell ?? null,
+    driverBreak:
+      payload.break ??
+      payload.driverBreak ??
+      existing?.driverBreak ??
+      null,
     schedule: {
-      city: payload.city,
-      state: payload.state,
-      storeName: payload.storeName,
+      city: payload.city ?? existing?.schedule?.city,
+      state: payload.state ?? existing?.schedule?.state,
+      storeName: payload.storeName ?? existing?.schedule?.storeName,
     },
   };
 
-  const index = items.findIndex((item) => item.id === payload.routeId);
   if (index === -1) return [...items, nextItem];
   const copy = [...items];
   copy[index] = { ...copy[index], ...nextItem };
   return copy;
+}
+
+function mergeBreakUpdate(items, payload, active) {
+  if (!payload?.routeId) return items;
+  return items.map((item) => {
+    if (item.id !== payload.routeId) return item;
+    if (!active) {
+      return { ...item, driverBreak: null };
+    }
+    const startedAt = payload.startedAt ?? item.driverBreak?.startedAt;
+    const endsAt = payload.endsAt ?? item.driverBreak?.endsAt;
+    const durationMinutes = payload.durationMinutes ?? item.driverBreak?.durationMinutes ?? 0;
+    const remainingMinutes =
+      endsAt != null
+        ? Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 60_000))
+        : item.driverBreak?.remainingMinutes ?? 0;
+    return {
+      ...item,
+      driverBreak: {
+        active: true,
+        startedAt,
+        endsAt,
+        durationMinutes,
+        remainingMinutes,
+      },
+    };
+  });
 }
 
 function mergeStationaryAlert(items, payload) {
@@ -230,8 +268,16 @@ export function LiveTrackingScreen() {
 
   useEffect(() => {
     const hasActiveDwell = liveItems.some((item) => item.dwell?.active);
-    if (!hasActiveDwell) return undefined;
+    const hasActiveBreak = liveItems.some((item) => isDriverOnBreak(item.driverBreak));
+    if (!hasActiveDwell && !hasActiveBreak) return undefined;
     const timer = window.setInterval(() => setTick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, [liveItems]);
+
+  useEffect(() => {
+    const hasActiveBreak = liveItems.some((item) => isDriverOnBreak(item.driverBreak));
+    if (!hasActiveBreak) return undefined;
+    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [liveItems]);
 
@@ -244,6 +290,14 @@ export function LiveTrackingScreen() {
       }
       if (payload?.type === "driver:stationary") {
         setLiveItems((prev) => mergeStationaryAlert(prev, payload));
+        return;
+      }
+      if (payload?.type === "driver:break-started") {
+        setLiveItems((prev) => mergeBreakUpdate(prev, payload, true));
+        return;
+      }
+      if (payload?.type === "driver:break-ended") {
+        setLiveItems((prev) => mergeBreakUpdate(prev, payload, false));
         return;
       }
       setLiveItems((prev) => mergeLiveDriver(prev, payload));
@@ -393,6 +447,8 @@ export function LiveTrackingScreen() {
                   const isActive = route.id === selectedRouteId;
                   const stationary = live ? isDriverStationary(live.dwell) : false;
                   const stationaryLabel = live ? formatStationaryLabel(live.dwell) : null;
+                  const breakLabel = live ? formatBreakLabel(live.driverBreak) : null;
+                  const onBreak = live ? isDriverOnBreak(live.driverBreak) : false;
                   const locationSharing = live
                     ? getLocationSharingStatus(live.driverLocation)
                     : null;
@@ -450,8 +506,11 @@ export function LiveTrackingScreen() {
                                 Location · {locationSharing.label}
                               </span>
                             ) : null}
-                            {stationaryLabel ? (
+                            {stationaryLabel && !onBreak ? (
                               <p className="mt-1 text-xs font-bold" style={{ color: "var(--rose)" }}>{stationaryLabel}</p>
+                            ) : null}
+                            {breakLabel ? (
+                              <p className="mt-1 text-xs font-bold" style={{ color: "var(--amber)" }}>{breakLabel}</p>
                             ) : null}
                           </>
                         ) : isCompleted ? (

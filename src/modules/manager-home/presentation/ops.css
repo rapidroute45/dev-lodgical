@@ -320,6 +320,171 @@ button.ops-dateseg__label:hover {
   color: var(--accent);
 }
 
+/* Floating city clock — self-contained tokens (renders outside .ops-shell) */
+.ops-city-clock {
+  --clock-bg: #0c121c;
+  --clock-header: rgba(15, 22, 35, 0.96);
+  --clock-border: rgba(34, 211, 238, 0.42);
+  --clock-border-soft: rgba(148, 163, 184, 0.16);
+  --clock-text: #f1f5f9;
+  --clock-muted: #94a3b8;
+  --clock-accent: #22d3ee;
+  --clock-accent-2: #6366f1;
+  --clock-live: #34d399;
+  --clock-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(34, 211, 238, 0.18),
+    0 0 28px rgba(34, 211, 238, 0.14);
+
+  position: fixed;
+  z-index: 9999;
+  min-width: 14.5rem;
+  max-width: 20rem;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 1px solid var(--clock-border);
+  background: linear-gradient(165deg, rgba(18, 28, 44, 0.98) 0%, var(--clock-bg) 100%);
+  box-shadow: var(--clock-shadow);
+  backdrop-filter: blur(14px);
+  user-select: none;
+}
+.ops-city-clock--light {
+  --clock-bg: #ffffff;
+  --clock-header: rgba(248, 250, 252, 0.98);
+  --clock-border: rgba(8, 145, 178, 0.35);
+  --clock-border-soft: rgba(15, 23, 42, 0.1);
+  --clock-text: #0f172a;
+  --clock-muted: #64748b;
+  --clock-accent: #0891b2;
+  --clock-accent-2: #4f46e5;
+  --clock-live: #059669;
+  --clock-shadow:
+    0 14px 36px rgba(15, 23, 42, 0.14),
+    0 0 0 1px rgba(8, 145, 178, 0.12),
+    0 0 24px rgba(8, 145, 178, 0.08);
+  background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+}
+.ops-city-clock__shine {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--clock-accent) 35%,
+    var(--clock-accent-2) 65%,
+    transparent
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+.ops-city-clock__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--clock-border-soft);
+  background: var(--clock-header);
+  cursor: grab;
+}
+.ops-city-clock__header:active {
+  cursor: grabbing;
+}
+.ops-city-clock__live {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--clock-live);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+  animation: ops-city-clock-pulse 2s ease-in-out infinite;
+}
+@keyframes ops-city-clock-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.92); }
+}
+.ops-city-clock__grip {
+  color: var(--clock-muted);
+  font-size: 0.68rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  opacity: 0.85;
+}
+.ops-city-clock__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--clock-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ops-city-clock__close {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.4rem;
+  color: var(--clock-muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ops-city-clock__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--clock-text);
+}
+.ops-city-clock--light .ops-city-clock__close:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+.ops-city-clock__body {
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+.ops-city-clock__time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.ops-city-clock__time {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--clock-text);
+  line-height: 1.1;
+  background: linear-gradient(90deg, var(--clock-text), var(--clock-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.ops-city-clock--light .ops-city-clock__time {
+  background: linear-gradient(90deg, #0f172a, var(--clock-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.ops-city-clock__tz {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--clock-accent);
+  opacity: 0.9;
+}
+.ops-city-clock__date {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clock-muted);
+}
+.ops-city-clock__fallback {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clock-muted);
+}
+
 .ops-dot {
   background: var(--green);
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);

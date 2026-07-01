@@ -1,7 +1,8 @@
 const EARTH_RADIUS_M = 6_371_000;
 const MIN_SEPARATION_M = 8;
-const STATIONARY_RADIUS_M = 4;
+const STATIONARY_RADIUS_M = 20;
 const STATIONARY_MAX_MS = 8_000;
+const STATIONARY_CLUSTER_RADIUS_M = 20;
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -27,6 +28,45 @@ function msBetween(a, b) {
   return Math.abs(bt - at);
 }
 
+function maxSpreadMeters(points) {
+  if (points.length <= 1) return 0;
+  const center = points.reduce(
+    (acc, point) => ({ lat: acc.lat + point.lat, lng: acc.lng + point.lng }),
+    { lat: 0, lng: 0 }
+  );
+  center.lat /= points.length;
+  center.lng /= points.length;
+
+  let maxSpread = 0;
+  for (const point of points) {
+    maxSpread = Math.max(maxSpread, haversineMeters(center.lat, center.lng, point.lat, point.lng));
+  }
+  return maxSpread;
+}
+
+/** Collapse consecutive points that all fall within one stationary cluster. */
+function collapseStationaryClusters(points) {
+  if (points.length <= 2) return points;
+
+  const collapsed = [];
+  let cluster = [points[0]];
+
+  for (let i = 1; i < points.length; i += 1) {
+    const next = points[i];
+    const candidate = [...cluster, next];
+    if (maxSpreadMeters(candidate) <= STATIONARY_CLUSTER_RADIUS_M) {
+      cluster = candidate;
+      continue;
+    }
+
+    collapsed.push(cluster[cluster.length - 1]);
+    cluster = [next];
+  }
+
+  collapsed.push(cluster[cluster.length - 1]);
+  return collapsed;
+}
+
 /** Display-only trail smoothing — does not mutate stored GPS. */
 export function smoothTrailForDisplay(points) {
   const normalized = (points ?? []).map(normalizePoint).filter(Boolean);
@@ -46,13 +86,14 @@ export function smoothTrailForDisplay(points) {
     }
   }
 
-  if (deduped.length <= 2) return deduped;
+  const clustered = collapseStationaryClusters(deduped);
+  if (clustered.length <= 2) return clustered;
 
   const smoothed = [];
-  for (let i = 0; i < deduped.length; i += 1) {
-    const prev = deduped[i - 1] ?? deduped[i];
-    const curr = deduped[i];
-    const next = deduped[i + 1] ?? deduped[i];
+  for (let i = 0; i < clustered.length; i += 1) {
+    const prev = clustered[i - 1] ?? clustered[i];
+    const curr = clustered[i];
+    const next = clustered[i + 1] ?? clustered[i];
     smoothed.push({
       lat: (prev.lat + curr.lat + next.lat) / 3,
       lng: (prev.lng + curr.lng + next.lng) / 3,

@@ -9,6 +9,10 @@ import {
   formatStationaryLabel,
   isDriverStationary,
 } from "@/modules/tracking/utils/stationaryStatus.js";
+import {
+  formatBreakLabel,
+  isDriverOnBreak,
+} from "@/modules/tracking/utils/breakStatus.js";
 import { getLocationSharingStatus, getStaleLocationHint, getDriverLocationLastPingAt } from "@/modules/tracking/utils/locationSharingStatus.js";
 import { isCompletedRouteTracking } from "@/modules/tracking/utils/routeTrackingAccess.js";
 import { applyDriverLocationPayloadToTrail } from "@/modules/tracking/utils/locationTrail.js";
@@ -45,6 +49,8 @@ export function RouteTrackingScreen() {
   const [trail, setTrail] = useState([]);
   const [progress, setProgress] = useState(null);
   const [dwell, setDwell] = useState(null);
+  const [driverBreak, setDriverBreak] = useState(null);
+  const [breakTick, setBreakTick] = useState(0);
   const [followDriver, setFollowDriver] = useState(false);
   const [segmentProgressIndex, setSegmentProgressIndex] = useState(null);
   const [rerouteNotice, setRerouteNotice] = useState(null);
@@ -57,7 +63,14 @@ export function RouteTrackingScreen() {
     setSegmentProgressIndex(
       data.driverRouteProgressIndex ?? data.route?.driverRouteProgressIndex ?? null
     );
+    setDriverBreak(data.route?.driverBreak ?? null);
   }, [data]);
+
+  useEffect(() => {
+    if (!isDriverOnBreak(driverBreak)) return undefined;
+    const timer = window.setInterval(() => setBreakTick((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [driverBreak?.endsAt]);
 
   useEffect(() => {
     if (!subscribe || !routeId) return undefined;
@@ -72,6 +85,23 @@ export function RouteTrackingScreen() {
           minutes: payload.dwellMinutes,
           alertSent: true,
         });
+        return;
+      }
+      if (payload?.type === "driver:break-started" && payload.routeId === routeId) {
+        setDriverBreak({
+          active: true,
+          startedAt: payload.startedAt,
+          endsAt: payload.endsAt,
+          durationMinutes: payload.durationMinutes,
+          remainingMinutes: Math.max(
+            0,
+            Math.ceil((new Date(payload.endsAt).getTime() - Date.now()) / 60_000)
+          ),
+        });
+        return;
+      }
+      if (payload?.type === "driver:break-ended" && payload.routeId === routeId) {
+        setDriverBreak(null);
         return;
       }
       if (payload?.type === "driver:segment-rerouted" && payload.routeId === routeId) {
@@ -97,8 +127,11 @@ export function RouteTrackingScreen() {
       }
       if (payload.progress) setProgress(payload.progress);
       if (payload.dwell) setDwell(payload.dwell);
+      if (payload.break !== undefined) setDriverBreak(payload.break);
     });
   }, [subscribe, routeId, refetch, refetchPlannedSegment]);
+
+  void breakTick;
 
   const route = data?.route;
   const isCompleted = isCompletedRouteTracking(route?.status);
@@ -121,6 +154,8 @@ export function RouteTrackingScreen() {
   );
   const stationaryLabel = formatStationaryLabel(dwell);
   const isStationary = isDriverStationary(dwell);
+  const breakLabel = formatBreakLabel(driverBreak);
+  const onBreak = isDriverOnBreak(driverBreak);
   const locationSharing = getLocationSharingStatus(driverLocation);
   const staleLocationHint = getStaleLocationHint(driverLocation);
 
@@ -152,7 +187,8 @@ export function RouteTrackingScreen() {
                   : driverLocation
                     ? `Location shared ${formatLastSeen(getDriverLocationLastPingAt(driverLocation))}`
                     : "Waiting for route start location"}
-                {!isCompleted && isStationary && stationaryLabel ? ` · ${stationaryLabel}` : ""}
+                {!isCompleted && isStationary && stationaryLabel && !onBreak ? ` · ${stationaryLabel}` : ""}
+                {!isCompleted && breakLabel ? ` · ${breakLabel}` : ""}
               </p>
             </div>
           </div>

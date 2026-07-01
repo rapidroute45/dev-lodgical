@@ -58,6 +58,24 @@ export function TrackingSocketProvider({ children }) {
       }
     });
 
+    socket.on("driver:break-started", (payload) => {
+      for (const listener of listenersRef.current) {
+        listener({ type: "driver:break-started", ...payload });
+      }
+    });
+
+    socket.on("driver:break-movement", (payload) => {
+      for (const listener of listenersRef.current) {
+        listener({ type: "driver:break-movement", ...payload });
+      }
+    });
+
+    socket.on("driver:break-ended", (payload) => {
+      for (const listener of listenersRef.current) {
+        listener({ type: "driver:break-ended", ...payload });
+      }
+    });
+
     socket.on("route:updated", (payload) => {
       for (const listener of listenersRef.current) {
         listener({ type: "route:updated", ...payload });

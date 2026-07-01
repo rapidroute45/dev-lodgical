@@ -4,7 +4,9 @@ import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocat
 
 export function LocationScopeControls() {
   const {
-    canManageScope,
+    canPickScope,
+    isGlobalScope,
+    isLocked,
     state,
     city,
     setState,
@@ -18,43 +20,54 @@ export function LocationScopeControls() {
   const [statePickerOpen, setStatePickerOpen] = useState(false);
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
-  if (!canManageScope) return null;
+  if (!canPickScope) return null;
+
+  const allStatesLabel = isGlobalScope ? "All states" : "All my states";
+  const allCitiesLabel = isGlobalScope ? "All cities" : "All my cities";
+  const allStatesSubtitle = isGlobalScope ? "Every state" : "Every state you can access";
+  const allCitiesSubtitle = state
+    ? `In ${state}`
+    : isGlobalScope
+      ? "Every city"
+      : "Every city you can access";
 
   const stateItems = [
-    { id: "", title: "All states", subtitle: "Every state" },
+    { id: "", title: allStatesLabel, subtitle: allStatesSubtitle },
     ...allowedStates.map((s) => ({ id: s, title: s })),
   ];
 
   const cityItems = [
-    { id: "", title: "All cities", subtitle: state ? `In ${state}` : "Every city" },
+    { id: "", title: allCitiesLabel, subtitle: allCitiesSubtitle },
     ...citiesForSelectedState.map((c) => ({ id: c, title: c })),
   ];
 
   return (
     <>
       <div
-        className={`ops-scope-seg flex items-center gap-1 ${isScoped ? "ops-scope-seg--active" : ""}`}
+        className={`ops-scope-seg flex items-center gap-1 ${isScoped ? "ops-scope-seg--active" : ""} ${isLocked ? "ops-scope-seg--locked" : ""}`}
         role="group"
         aria-label="Location scope"
       >
         <button
           type="button"
-          onClick={() => setStatePickerOpen(true)}
+          onClick={() => !isLocked && setStatePickerOpen(true)}
+          disabled={isLocked}
           className="ops-scope-seg__btn px-2.5 py-1.5 text-xs font-semibold"
         >
-          {state ?? "All states"}
+          {state ?? allStatesLabel}
         </button>
         <span className="ops-scope-seg__divider" aria-hidden="true">
           /
         </span>
         <button
           type="button"
-          onClick={() => setCityPickerOpen(true)}
+          onClick={() => !isLocked && setCityPickerOpen(true)}
+          disabled={isLocked}
           className="ops-scope-seg__btn px-2.5 py-1.5 text-xs font-semibold"
         >
-          {city ?? "All cities"}
+          {city ?? allCitiesLabel}
         </button>
-        {isScoped ? (
+        {isScoped && !isLocked ? (
           <button
             type="button"
             onClick={resetScope}

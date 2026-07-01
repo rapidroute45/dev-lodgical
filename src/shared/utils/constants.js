@@ -100,6 +100,11 @@ export function canManageLocationScope(role) {
   return MANAGER_ROLES.includes(role);
 }
 
+/** Admin, dispatch manager, and dispatch team may use the ops header location picker. */
+export function canUseLocationScopePicker(role) {
+  return isDispatchOps(role);
+}
+
 export function isAdmin(role) {
   return role === UserRole.ADMIN;
 }

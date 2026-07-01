@@ -56,6 +56,9 @@ function mapTypeToRoute(type, data) {
     case "payroll_approved":
       return data?.billId ? `/payroll/${data.billId}` : "/payroll";
     case "driver_dwelling":
+    case "driver_break_started":
+    case "driver_break_movement":
+    case "driver_break_ended":
     case "stop_auto_completed":
     case "stop_completed":
     case "driver_off_route":
