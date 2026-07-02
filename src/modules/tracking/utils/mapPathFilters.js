@@ -1,23 +1,99 @@
 import { haversineMeters } from "./plannedSegmentTrail.js";
 
 export const GPS_PATH_MAX_JUMP_M = 50_000;
-/** Max consecutive trail segment length on the live map (~300 m). */
+/** Split polylines when consecutive points are farther apart (offline / data gap). */
+export const TRAIL_SEGMENT_GAP_M = 3_000;
+/** Split when time gap is large and movement is non-trivial. */
+export const TRAIL_SEGMENT_GAP_SEC = 10 * 60;
+/** Reject display segments implying impossible driving speed (180 km/h). */
+export const TRAIL_MAX_SEGMENT_SPEED_MPS = 50;
+
+/** @deprecated Use speed + segment gap filtering via prepareTrailSegmentsForDisplay */
 export const TRAIL_DISPLAY_MAX_JUMP_M = 300;
+
 export const MAP_REGION_MAX_SPAN_M = 800_000;
 export const SEGMENT_POLYLINE_END_THRESHOLD_M = 50_000;
 
-/** Remove GPS teleport spikes from a trail for map display. */
-export function filterTrailOutliers(points, maxJumpM = GPS_PATH_MAX_JUMP_M) {
-  const normalized = (points ?? [])
-    .map((point) => {
-      if (point?.lat == null || point?.lng == null) return null;
-      const lat = Number(point.lat);
-      const lng = Number(point.lng);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      return { lat, lng, recordedAt: point.recordedAt ?? null };
-    })
-    .filter(Boolean);
+function normalizeTrailPoint(point) {
+  if (point?.lat == null || point?.lng == null) return null;
+  const lat = Number(point.lat);
+  const lng = Number(point.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng, recordedAt: point.recordedAt ?? null };
+}
 
+export function normalizeTrailPoints(points) {
+  return (points ?? []).map(normalizeTrailPoint).filter(Boolean);
+}
+
+/** Remove GPS teleport spikes — compares each point to its immediate predecessor in time order. */
+export function filterTrailSpeedOutliers(
+  points,
+  maxSpeedMps = TRAIL_MAX_SEGMENT_SPEED_MPS,
+  defaultIntervalSec = 15
+) {
+  const normalized = normalizeTrailPoints(points);
+  if (normalized.length <= 1) return normalized;
+
+  const kept = [normalized[0]];
+  for (let i = 1; i < normalized.length; i += 1) {
+    const prev = kept[kept.length - 1];
+    const next = normalized[i];
+    const prevMs = Date.parse(prev.recordedAt ?? "");
+    const nextMs = Date.parse(next.recordedAt ?? "");
+    const dtSec =
+      Number.isFinite(prevMs) && Number.isFinite(nextMs) && nextMs > prevMs
+        ? (nextMs - prevMs) / 1000
+        : defaultIntervalSec;
+    const distanceM = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
+    if (distanceM / Math.max(0.001, dtSec) <= maxSpeedMps) {
+      kept.push(next);
+    }
+  }
+  return kept;
+}
+
+/**
+ * Split a trail into drawable polylines at large spatial or temporal gaps.
+ * Avoids drawing straight lines across a city after offline periods or sparse uploads.
+ */
+export function splitTrailIntoSegments(
+  points,
+  maxGapM = TRAIL_SEGMENT_GAP_M,
+  maxGapSec = TRAIL_SEGMENT_GAP_SEC
+) {
+  const normalized = normalizeTrailPoints(points);
+  if (normalized.length === 0) return [];
+  if (normalized.length === 1) return [];
+
+  const segments = [[normalized[0]]];
+  for (let i = 1; i < normalized.length; i += 1) {
+    const prev = normalized[i - 1];
+    const next = normalized[i];
+    const distanceM = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
+    const prevMs = Date.parse(prev.recordedAt ?? "");
+    const nextMs = Date.parse(next.recordedAt ?? "");
+    const dtSec =
+      Number.isFinite(prevMs) && Number.isFinite(nextMs) && nextMs > prevMs
+        ? (nextMs - prevMs) / 1000
+        : 0;
+
+    const spatialGap = distanceM > maxGapM;
+    const temporalGap = dtSec > maxGapSec && distanceM > 200;
+
+    if (spatialGap || temporalGap) {
+      segments.push([next]);
+    } else {
+      segments[segments.length - 1].push(next);
+    }
+  }
+
+  return segments.filter((segment) => segment.length >= 2);
+}
+
+/** Legacy jump filter from last-kept point — prefer filterTrailSpeedOutliers + splitTrailIntoSegments. */
+export function filterTrailOutliers(points, maxJumpM = GPS_PATH_MAX_JUMP_M) {
+  const normalized = normalizeTrailPoints(points);
   if (normalized.length <= 1) return normalized;
 
   const kept = [normalized[0]];

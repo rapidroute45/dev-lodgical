@@ -7,8 +7,6 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import { CONFIG } from "@/shared/utils/constants.js";
-import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
-import { filterTrailSpeedOutliers } from "@/modules/tracking/utils/trailSpeedFilter.js";
 import {
   buildSegmentProgressPaths,
   inferProgressIndexFromTrail,
@@ -17,19 +15,21 @@ import {
 import {
   collectRouteAnchorPoints,
   filterMapPathPoints,
-  filterTrailOutliers,
-  TRAIL_DISPLAY_MAX_JUMP_M,
   polylineEndsNearTarget,
 } from "@/modules/tracking/utils/mapPathFilters.js";
+import {
+  flattenTrailSegments,
+  prepareTrailSegmentsForDisplay,
+} from "@/modules/tracking/utils/trailDisplay.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import { useGoogleDrivingRoutePath } from "@/modules/tracking/utils/drivingRoutePath.js";
 import {
+  RouteDriverMarker,
   RouteDropoffMarker,
   RoutePickupMarker,
   RouteStartMarker,
 } from "@/modules/tracking/presentation/components/RouteGoogleMapMarkers.jsx";
-import { AnimatedRouteDriverMarker } from "@/modules/tracking/presentation/components/AnimatedDriverMarker.jsx";
 import {
   GoogleMapsKeyHelp,
   useGoogleMapsKeyError,
@@ -108,6 +108,7 @@ function LiveRouteMapLayers({
   onOffRouteChange,
   plannedSegment = null,
   progressIndex = null,
+  isLive = true,
 }) {
   const geocoding = useMapsLibrary("geocoding");
   const [resolvedPickup, setResolvedPickup] = useState(() => {
@@ -262,16 +263,14 @@ function LiveRouteMapLayers({
     return buildSegmentProgressPaths(trustedSegmentPolyline, effectiveProgressIndex);
   }, [offRoute, trustedSegmentPolyline, effectiveProgressIndex]);
 
+  const trailSegments = useMemo(
+    () => prepareTrailSegmentsForDisplay(trail ?? [], { source: "RouteLiveGoogleMap", isLive }),
+    [trail, isLive]
+  );
+
   const actualTrailPath = useMemo(
-    () =>
-      smoothTrailForDisplay(
-        filterTrailSpeedOutliers(
-          filterTrailOutliers(trail ?? [], TRAIL_DISPLAY_MAX_JUMP_M)
-        )
-      )
-        .map((point) => readMapCoords(point))
-        .filter(Boolean),
-    [trail]
+    () => flattenTrailSegments(trailSegments).map((point) => readMapCoords(point)).filter(Boolean),
+    [trailSegments]
   );
 
   const offRoutePlannedPath =
@@ -353,8 +352,8 @@ function LiveRouteMapLayers({
       )}
 
       {driverMarkerPoint ? (
-        <AnimatedRouteDriverMarker
-          targetPosition={driverMarkerPoint}
+        <RouteDriverMarker
+          position={driverMarkerPoint}
           title={driverName ? `${driverName} (live)` : "Driver (live)"}
         />
       ) : null}
@@ -375,14 +374,17 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {actualTrailPath.length >= 2 ? (
-        <Polyline
-          path={actualTrailPath}
-          strokeColor="#2563eb"
-          strokeOpacity={0.9}
-          strokeWeight={5}
-        />
-      ) : null}
+      {trailSegments.map((segment, index) =>
+        segment.length >= 2 ? (
+          <Polyline
+            key={`trail-segment-${index}`}
+            path={segment.map((point) => readMapCoords(point)).filter(Boolean)}
+            strokeColor="#2563eb"
+            strokeOpacity={0.9}
+            strokeWeight={5}
+          />
+        ) : null
+      )}
     </Map>
   );
 }
@@ -415,6 +417,7 @@ export function RouteLiveGoogleMap({
     dropoffs.some((stop) => stop.address?.trim()) ||
     readMapCoords(driverLocation) ||
     (trail?.length >= 1);
+    console.warn("RouteLiveGoogleMap", { pickup, dropoffs, driverLocation, trail, hasRoutePoints, mappedDropoffs, offRoute })
 
   const mapDrivers = driverLocation
     ? [
@@ -486,6 +489,7 @@ export function RouteLiveGoogleMap({
             onOffRouteChange={handleOffRouteChange}
             plannedSegment={plannedSegment}
             progressIndex={progressIndex}
+            isLive={isLive}
           />
         </APIProvider>
       </div>

@@ -1,13 +1,9 @@
-import { filterTrailSpeedOutliers } from "@/modules/tracking/utils/trailSpeedFilter.js";
-
 function trailPointKey(point) {
   const recordedAt =
     point?.recordedAt instanceof Date
       ? point.recordedAt.toISOString()
       : String(point?.recordedAt ?? "");
-  const lat = Number(point?.lat ?? 0).toFixed(5);
-  const lng = Number(point?.lng ?? 0).toFixed(5);
-  return `${lat},${lng},${recordedAt}`;
+  return `${point?.lat ?? ""},${point?.lng ?? ""},${recordedAt}`;
 }
 
 export function normalizeTrailPoint(point) {
@@ -32,13 +28,11 @@ export function appendTrailPoints(existingTrail, incomingPoints) {
     next.push(point);
   }
 
-  return filterTrailSpeedOutliers(
-    next.sort((a, b) => {
-      const at = Date.parse(a.recordedAt ?? "") || 0;
-      const bt = Date.parse(b.recordedAt ?? "") || 0;
-      return at - bt;
-    })
-  );
+  return next.sort((a, b) => {
+    const at = Date.parse(a.recordedAt ?? "") || 0;
+    const bt = Date.parse(b.recordedAt ?? "") || 0;
+    return at - bt;
+  });
 }
 
 export function applyDriverLocationPayloadToTrail(prevTrail, payload) {

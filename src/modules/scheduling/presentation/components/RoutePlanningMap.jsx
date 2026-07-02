@@ -10,7 +10,10 @@ import {
   useGoogleMapsKeyError,
 } from "@/modules/tracking/utils/googleMapsKeyError.jsx";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
-import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
+import {
+  flattenTrailSegments,
+  prepareTrailSegmentsForDisplay,
+} from "@/modules/tracking/utils/trailDisplay.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import "./routePlanningMap.css";
 
@@ -44,12 +47,14 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
   const [resolvedDropoffs, setResolvedDropoffs] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const trailPath = useMemo(
-    () =>
-      smoothTrailForDisplay(driverTrail ?? [])
-        .map((point) => readMapCoords(point))
-        .filter(Boolean),
+  const trailSegments = useMemo(
+    () => prepareTrailSegmentsForDisplay(driverTrail ?? [], { source: "RoutePlanningMap" }),
     [driverTrail]
+  );
+
+  const trailPath = useMemo(
+    () => flattenTrailSegments(trailSegments).map((point) => readMapCoords(point)).filter(Boolean),
+    [trailSegments]
   );
 
   useEffect(() => {
@@ -140,15 +145,18 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
             />
           ) : null
         )}
-        {trailPath.length >= 2 ? (
-          <Polyline
-            path={trailPath}
-            strokeColor="#2563eb"
-            strokeOpacity={0.92}
-            strokeWeight={5}
-            geodesic
-          />
-        ) : null}
+        {trailSegments.map((segment, index) =>
+          segment.length >= 2 ? (
+            <Polyline
+              key={`driver-trail-${index}`}
+              path={segment.map((point) => readMapCoords(point)).filter(Boolean)}
+              strokeColor="#2563eb"
+              strokeOpacity={0.92}
+              strokeWeight={5}
+              geodesic
+            />
+          ) : null
+        )}
       </Map>
       {loading && stopPoints.length === 0 && trailPath.length === 0 ? (
         <div
