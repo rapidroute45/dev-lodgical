@@ -1,6 +1,8 @@
 import { haversineMeters } from "./plannedSegmentTrail.js";
 
 export const GPS_PATH_MAX_JUMP_M = 50_000;
+/** Max consecutive trail segment length on the live map (~300 m). */
+export const TRAIL_DISPLAY_MAX_JUMP_M = 300;
 export const MAP_REGION_MAX_SPAN_M = 800_000;
 export const SEGMENT_POLYLINE_END_THRESHOLD_M = 50_000;
 

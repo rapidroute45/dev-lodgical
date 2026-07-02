@@ -3,6 +3,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmDrivingPath } from "@/modules/tracking/utils/drivingRoutePath.js";
 import { DEFAULT_MAP_CENTER } from "@/modules/tracking/utils/cityMapCenter.js";
+import {
+  filterTrailOutliers,
+  TRAIL_DISPLAY_MAX_JUMP_M,
+} from "@/modules/tracking/utils/mapPathFilters.js";
+import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
 
 const PICKUP_ICON = L.divIcon({
   className: "live-tracking-stop-icon",
@@ -141,7 +146,10 @@ export function LiveTrackingMap({
     }
 
     if (trail.length > 0) {
-      const trailPoints = trail.map((p) => [p.lat, p.lng]);
+      const displayTrail = smoothTrailForDisplay(
+        filterTrailOutliers(trail, TRAIL_DISPLAY_MAX_JUMP_M)
+      );
+      const trailPoints = displayTrail.map((p) => [p.lat, p.lng]);
       points.push(...trailPoints);
       const polyline = L.polyline(trailPoints, {
         color: "#2563eb",

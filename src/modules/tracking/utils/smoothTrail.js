@@ -87,19 +87,5 @@ export function smoothTrailForDisplay(points) {
   }
 
   const clustered = collapseStationaryClusters(deduped);
-  if (clustered.length <= 2) return clustered;
-
-  const smoothed = [];
-  for (let i = 0; i < clustered.length; i += 1) {
-    const prev = clustered[i - 1] ?? clustered[i];
-    const curr = clustered[i];
-    const next = clustered[i + 1] ?? clustered[i];
-    smoothed.push({
-      lat: (prev.lat + curr.lat + next.lat) / 3,
-      lng: (prev.lng + curr.lng + next.lng) / 3,
-      recordedAt: curr.recordedAt,
-    });
-  }
-
-  return smoothed;
+  return clustered;
 }

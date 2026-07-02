@@ -17,6 +17,7 @@ import {
   collectRouteAnchorPoints,
   filterMapPathPoints,
   filterTrailOutliers,
+  TRAIL_DISPLAY_MAX_JUMP_M,
   polylineEndsNearTarget,
 } from "@/modules/tracking/utils/mapPathFilters.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
@@ -262,7 +263,7 @@ function LiveRouteMapLayers({
 
   const actualTrailPath = useMemo(
     () =>
-      smoothTrailForDisplay(filterTrailOutliers(trail ?? []))
+      smoothTrailForDisplay(filterTrailOutliers(trail ?? [], TRAIL_DISPLAY_MAX_JUMP_M))
         .map((point) => readMapCoords(point))
         .filter(Boolean),
     [trail]
