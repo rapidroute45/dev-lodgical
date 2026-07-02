@@ -113,6 +113,20 @@
   text-align: center;
 }
 
+.live-tracking-route-start-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #15803d;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.4);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+
 .live-tracking-stop-number {
   width: 20px;
   height: 20px;

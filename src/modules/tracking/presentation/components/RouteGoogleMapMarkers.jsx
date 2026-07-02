@@ -2,6 +2,7 @@ import { AdvancedMarker } from "@vis.gl/react-google-maps";
 
 const MARKER_COLORS = {
   pickup: "#16a34a",
+  routeStart: "#15803d",
   dropoff: "#2563eb",
   driver: "#dc2626",
 };
@@ -50,6 +51,14 @@ export function RoutePickupMarker({ position, title = "Pickup" }) {
   return (
     <AdvancedMarker position={position} title={title} zIndex={30}>
       <MarkerBubble label="P" color={MARKER_COLORS.pickup} size={24} />
+    </AdvancedMarker>
+  );
+}
+
+export function RouteStartMarker({ position, title = "Route start" }) {
+  return (
+    <AdvancedMarker position={position} title={title} zIndex={28}>
+      <MarkerBubble label="S" color={MARKER_COLORS.routeStart} size={22} />
     </AdvancedMarker>
   );
 }

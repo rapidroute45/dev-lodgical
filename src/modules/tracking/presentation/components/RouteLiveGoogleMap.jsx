@@ -26,6 +26,7 @@ import {
   RouteDriverMarker,
   RouteDropoffMarker,
   RoutePickupMarker,
+  RouteStartMarker,
 } from "@/modules/tracking/presentation/components/RouteGoogleMapMarkers.jsx";
 import {
   GoogleMapsKeyHelp,
@@ -183,6 +184,11 @@ function LiveRouteMapLayers({
 
   const driverPoint = readMapCoords(driverLocation);
 
+  const routeStartPoint = useMemo(() => {
+    if (!trail?.length) return null;
+    return readMapCoords(trail[0]);
+  }, [trail]);
+
   const routeAnchors = useMemo(() => {
     const pendingDropoff = resolvedDropoffs[0] ?? null;
     return collectRouteAnchorPoints({
@@ -285,6 +291,7 @@ function LiveRouteMapLayers({
       ...filterMapPathPoints(offRoutePlannedPath, routeAnchors),
       ...filterMapPathPoints(actualTrailPath, routeAnchors),
     ];
+    if (routeStartPoint) paths.push(routeStartPoint);
     if (driverMarkerPoint) paths.push(driverMarkerPoint);
     for (const anchor of routeAnchors) paths.push(anchor);
     return paths;
@@ -292,6 +299,7 @@ function LiveRouteMapLayers({
     onRouteRemainingPath,
     offRoutePlannedPath,
     actualTrailPath,
+    routeStartPoint,
     driverMarkerPoint,
     routeAnchors,
   ]);
@@ -321,6 +329,10 @@ function LiveRouteMapLayers({
           position={resolvedPickup.position}
           title={resolvedPickup.name || "Store / pickup"}
         />
+      ) : null}
+
+      {routeStartPoint ? (
+        <RouteStartMarker position={routeStartPoint} title="Route start" />
       ) : null}
 
       {resolvedDropoffs.map((stop) =>
@@ -420,6 +432,7 @@ export function RouteLiveGoogleMap({
             <LiveTrackingMap
               drivers={mapDrivers}
               trail={trail}
+              routeStart={trail?.length ? trail[0] : null}
               stops={dropoffs}
               pickup={pickup}
             />
@@ -474,6 +487,13 @@ export function RouteLiveGoogleMap({
         <span className="route-planning-map-legend-item">
           <span className="route-planning-map-legend-dot route-planning-map-legend-dot--pickup" />
           Pickup (store) — green <strong>P</strong>
+        </span>
+        <span className="route-planning-map-legend-item">
+          <span
+            className="route-planning-map-legend-dot"
+            style={{ background: "#15803d" }}
+          />
+          Route start — dark green <strong>S</strong>
         </span>
         <span className="route-planning-map-legend-item">
           <span className="route-planning-map-legend-dot route-planning-map-legend-dot--dropoff" />

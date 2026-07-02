@@ -11,6 +11,13 @@ const PICKUP_ICON = L.divIcon({
   iconAnchor: [10, 10],
 });
 
+const START_ICON = L.divIcon({
+  className: "live-tracking-stop-icon",
+  html: '<div class="live-tracking-route-start-dot">S</div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
 const DRIVER_ICON = L.divIcon({
   className: "live-tracking-driver-icon",
   html: '<div class="route-driver-live-marker"><span class="route-driver-live-marker__pulse"></span><span class="route-driver-live-marker__core"></span></div>',
@@ -49,6 +56,7 @@ function fitMapToPoints(map, points, scopeCenter) {
 export function LiveTrackingMap({
   drivers = [],
   trail = [],
+  routeStart = null,
   stops = [],
   pickup = null,
   selectedRouteId = null,
@@ -148,6 +156,19 @@ export function LiveTrackingMap({
 
     layersRef.current.stops.clearLayers();
 
+    const startLat = routeStart?.lat;
+    const startLng = routeStart?.lng;
+    if (startLat != null && startLng != null) {
+      const startPoint = [startLat, startLng];
+      points.push(startPoint);
+      const startMarker = L.marker(startPoint, {
+        icon: START_ICON,
+        title: "Route start",
+      });
+      startMarker.bindPopup("<strong>Route start</strong><br/>Where GPS sharing began");
+      layersRef.current.stops.addLayer(startMarker);
+    }
+
     const pickupLat = pickup?.lat ?? pickup?.destinationLat;
     const pickupLng = pickup?.lng ?? pickup?.destinationLng;
     if (pickupLat != null && pickupLng != null) {
@@ -177,7 +198,7 @@ export function LiveTrackingMap({
     }
 
     fitMapToPoints(map, points, scopeCenter);
-  }, [drivers, trail, stops, pickup, selectedRouteId, onSelectRoute, scopeCenter]);
+  }, [drivers, trail, routeStart, stops, pickup, selectedRouteId, onSelectRoute, scopeCenter]);
 
   useEffect(() => {
     const map = mapRef.current;
