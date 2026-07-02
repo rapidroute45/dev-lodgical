@@ -8,6 +8,8 @@ import {
   TRAIL_DISPLAY_MAX_JUMP_M,
 } from "@/modules/tracking/utils/mapPathFilters.js";
 import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
+import { filterTrailSpeedOutliers, isPlausibleLiveDriverJump } from "@/modules/tracking/utils/trailSpeedFilter.js";
+import { animateLeafletMarker } from "@/modules/tracking/presentation/components/useMarkerAnimation.js";
 
 const PICKUP_ICON = L.divIcon({
   className: "live-tracking-stop-icon",
@@ -77,6 +79,9 @@ export function LiveTrackingMap({
     planned: L.layerGroup(),
     stops: L.layerGroup(),
   });
+  const driverMarkersRef = useRef(new Map());
+  const driverPositionsRef = useRef(new Map());
+  const animationCleanupRef = useRef(new Map());
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -109,45 +114,83 @@ export function LiveTrackingMap({
     const map = mapRef.current;
     if (!map) return;
 
-    layersRef.current.drivers.clearLayers();
     const points = [];
+    const activeDriverIds = new Set();
 
     for (const driver of drivers) {
       const lat = driver.driverLocation?.lat ?? driver.lat;
       const lng = driver.driverLocation?.lng ?? driver.lng;
       if (lat == null || lng == null) continue;
 
+      const driverId = String(driver.id ?? driver.routeId ?? `${lat},${lng}`);
+      activeDriverIds.add(driverId);
       const point = [lat, lng];
       points.push(point);
 
-      const marker = L.marker(point, {
-        icon: DRIVER_ICON,
-        title: driver.routeName ?? driver.driverName ?? "Driver",
-      });
+      const prev = driverPositionsRef.current.get(driverId);
+      const nextLoc = {
+        lat,
+        lng,
+        recordedAt: driver.driverLocation?.updatedAt ?? driver.driverLocation?.recordedAt,
+      };
+      const prevLoc = prev
+        ? { lat: prev[0], lng: prev[1], recordedAt: prev[2] }
+        : null;
 
-      const progress = driver.progress;
-      const progressLabel = progress
-        ? `${progress.completedDropoffs + progress.returnedDropoffs}/${progress.totalDropoffs} stops`
-        : "";
+      if (prevLoc && !isPlausibleLiveDriverJump(prevLoc, nextLoc)) {
+        points[points.length - 1] = prev;
+        continue;
+      }
 
-      marker.bindPopup(
-        `<strong>${driver.driverName ?? "Driver"}</strong><br/>${driver.routeName ?? "Route"}<br/>${progressLabel}`
-      );
+      let marker = driverMarkersRef.current.get(driverId);
+      if (!marker) {
+        marker = L.marker(point, {
+          icon: DRIVER_ICON,
+          title: driver.routeName ?? driver.driverName ?? "Driver",
+        });
 
-      marker.on("click", () => {
-        onSelectRoute?.(driver.id ?? driver.routeId);
-      });
+        const progress = driver.progress;
+        const progressLabel = progress
+          ? `${progress.completedDropoffs + progress.returnedDropoffs}/${progress.totalDropoffs} stops`
+          : "";
+
+        marker.bindPopup(
+          `<strong>${driver.driverName ?? "Driver"}</strong><br/>${driver.routeName ?? "Route"}<br/>${progressLabel}`
+        );
+
+        marker.on("click", () => {
+          onSelectRoute?.(driver.id ?? driver.routeId);
+        });
+
+        driverMarkersRef.current.set(driverId, marker);
+        layersRef.current.drivers.addLayer(marker);
+      } else if (prev) {
+        animationCleanupRef.current.get(driverId)?.();
+        const cancel = animateLeafletMarker(marker, prev.slice(0, 2), point);
+        animationCleanupRef.current.set(driverId, cancel);
+      } else {
+        marker.setLatLng(point);
+      }
+
+      driverPositionsRef.current.set(driverId, [lat, lng, nextLoc.recordedAt ?? null]);
 
       if ((driver.id ?? driver.routeId) === selectedRouteId) {
         marker.openPopup();
       }
+    }
 
-      layersRef.current.drivers.addLayer(marker);
+    for (const [driverId, marker] of driverMarkersRef.current.entries()) {
+      if (activeDriverIds.has(driverId)) continue;
+      animationCleanupRef.current.get(driverId)?.();
+      animationCleanupRef.current.delete(driverId);
+      driverMarkersRef.current.delete(driverId);
+      driverPositionsRef.current.delete(driverId);
+      layersRef.current.drivers.removeLayer(marker);
     }
 
     if (trail.length > 0) {
       const displayTrail = smoothTrailForDisplay(
-        filterTrailOutliers(trail, TRAIL_DISPLAY_MAX_JUMP_M)
+        filterTrailSpeedOutliers(filterTrailOutliers(trail, TRAIL_DISPLAY_MAX_JUMP_M))
       );
       const trailPoints = displayTrail.map((p) => [p.lat, p.lng]);
       points.push(...trailPoints);

@@ -8,6 +8,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import { CONFIG } from "@/shared/utils/constants.js";
 import { smoothTrailForDisplay } from "@/modules/tracking/utils/smoothTrail.js";
+import { filterTrailSpeedOutliers } from "@/modules/tracking/utils/trailSpeedFilter.js";
 import {
   buildSegmentProgressPaths,
   inferProgressIndexFromTrail,
@@ -24,11 +25,11 @@ import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modu
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import { useGoogleDrivingRoutePath } from "@/modules/tracking/utils/drivingRoutePath.js";
 import {
-  RouteDriverMarker,
   RouteDropoffMarker,
   RoutePickupMarker,
   RouteStartMarker,
 } from "@/modules/tracking/presentation/components/RouteGoogleMapMarkers.jsx";
+import { AnimatedRouteDriverMarker } from "@/modules/tracking/presentation/components/AnimatedDriverMarker.jsx";
 import {
   GoogleMapsKeyHelp,
   useGoogleMapsKeyError,
@@ -263,7 +264,11 @@ function LiveRouteMapLayers({
 
   const actualTrailPath = useMemo(
     () =>
-      smoothTrailForDisplay(filterTrailOutliers(trail ?? [], TRAIL_DISPLAY_MAX_JUMP_M))
+      smoothTrailForDisplay(
+        filterTrailSpeedOutliers(
+          filterTrailOutliers(trail ?? [], TRAIL_DISPLAY_MAX_JUMP_M)
+        )
+      )
         .map((point) => readMapCoords(point))
         .filter(Boolean),
     [trail]
@@ -348,8 +353,8 @@ function LiveRouteMapLayers({
       )}
 
       {driverMarkerPoint ? (
-        <RouteDriverMarker
-          position={driverMarkerPoint}
+        <AnimatedRouteDriverMarker
+          targetPosition={driverMarkerPoint}
           title={driverName ? `${driverName} (live)` : "Driver (live)"}
         />
       ) : null}

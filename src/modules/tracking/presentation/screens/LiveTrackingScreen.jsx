@@ -135,6 +135,7 @@ function mergeBreakUpdate(items, payload, active) {
 
 function mergeStationaryAlert(items, payload) {
   if (!payload?.routeId) return items;
+  if (payload.outsideStop !== true) return items;
   return items.map((item) => {
     if (item.id !== payload.routeId) return item;
     const startedAt = item.dwell?.startedAt ?? new Date(Date.now() - payload.dwellMinutes * 60_000).toISOString();
@@ -144,7 +145,8 @@ function mergeStationaryAlert(items, payload) {
         active: true,
         minutes: payload.dwellMinutes,
         alertSent: true,
-        thresholdMinutes: 2,
+        thresholdMinutes: 3,
+        outsideStop: payload.outsideStop !== false,
         startedAt,
       },
     };

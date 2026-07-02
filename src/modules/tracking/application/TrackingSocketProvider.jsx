@@ -58,6 +58,12 @@ export function TrackingSocketProvider({ children }) {
       }
     });
 
+    socket.on("dispatch:alert", (payload) => {
+      for (const listener of listenersRef.current) {
+        listener({ type: "dispatch:alert", ...payload });
+      }
+    });
+
     socket.on("driver:break-started", (payload) => {
       for (const listener of listenersRef.current) {
         listener({ type: "driver:break-started", ...payload });
