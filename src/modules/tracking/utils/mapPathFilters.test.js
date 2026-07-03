@@ -6,7 +6,7 @@ import {
   splitTrailIntoSegments,
   TRAIL_SEGMENT_GAP_M,
 } from "./mapPathFilters.js";
-import { prepareTrailSegmentsForDisplay } from "./trailDisplay.js";
+import { prepareTrailSegmentsForDisplay, prepareDrawableTrailSegments } from "./trailDisplay.js";
 
 function point(lat, lng, recordedAt) {
   return { lat, lng, recordedAt };
@@ -60,10 +60,28 @@ test("prepareTrailSegmentsForDisplay returns drawable segments for long routes",
   const trail = [];
   for (let i = 0; i < 20; i += 1) {
     trail.push(
-      point(36.2 - i * 0.005, -115.1 - i * 0.002, new Date(base + i * 15_000).toISOString())
+      point(36.2 - i * 0.0003, -115.1 - i * 0.00012, new Date(base + i * 1_000).toISOString())
     );
   }
   const segments = prepareTrailSegmentsForDisplay(trail);
   assert.ok(segments.length >= 1);
   assert.ok(segments[0].length >= 2);
+});
+
+test("prepareDrawableTrailSegments skips diagonal through sparse GPS jumps", () => {
+  const trail = [
+    point(31.52, 74.358, "2026-07-03T10:00:00.000Z"),
+    point(31.525, 74.365, "2026-07-03T10:00:05.000Z"),
+    point(31.54, 74.38, "2026-07-03T10:05:00.000Z"),
+    point(31.541, 74.381, "2026-07-03T10:05:05.000Z"),
+  ];
+  const drawable = prepareDrawableTrailSegments(trail, { source: "test" });
+  const hasLongDiagonal = drawable.some((segment) => {
+    if (segment.points.length < 2) return false;
+    const first = segment.points[0];
+    const last = segment.points[segment.points.length - 1];
+    const latDelta = Math.abs(first.lat - last.lat);
+    return latDelta > 0.015 && segment.snapped === true;
+  });
+  assert.equal(hasLongDiagonal, false);
 });

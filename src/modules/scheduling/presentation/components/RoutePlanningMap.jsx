@@ -12,7 +12,8 @@ import {
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import {
   flattenTrailSegments,
-  prepareTrailSegmentsForDisplay,
+  prepareDrawableTrailSegments,
+  trailSegmentPolylineOptions,
 } from "@/modules/tracking/utils/trailDisplay.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import "./routePlanningMap.css";
@@ -48,7 +49,11 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
   const [loading, setLoading] = useState(false);
 
   const trailSegments = useMemo(
-    () => prepareTrailSegmentsForDisplay(driverTrail ?? [], { source: "RoutePlanningMap" }),
+    () =>
+      prepareDrawableTrailSegments(driverTrail ?? [], {
+        source: "RoutePlanningMap",
+        isLive: false,
+      }),
     [driverTrail]
   );
 
@@ -145,15 +150,12 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
             />
           ) : null
         )}
-        {trailSegments.map((segment, index) =>
-          segment.length >= 2 ? (
+        {trailSegments.map((segment) =>
+          segment.points.length >= 2 ? (
             <Polyline
-              key={`driver-trail-${index}`}
-              path={segment.map((point) => readMapCoords(point)).filter(Boolean)}
-              strokeColor="#2563eb"
-              strokeOpacity={0.92}
-              strokeWeight={5}
-              geodesic
+              key={segment.key}
+              path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
+              {...trailSegmentPolylineOptions(segment.snapped)}
             />
           ) : null
         )}
@@ -240,10 +242,16 @@ export function RoutePlanningMap({
           Dropoff stops
         </span>
         {showDriverTrailLegend ? (
-          <span className="route-planning-map-legend-item">
-            <span className="route-planning-map-legend-line route-planning-map-legend-line--driver" />
-            Driver route
-          </span>
+          <>
+            <span className="route-planning-map-legend-item">
+              <span className="route-planning-map-legend-line route-planning-map-legend-line--driver" />
+              Driver route
+            </span>
+            <span className="route-planning-map-legend-item">
+              <span className="route-planning-map-legend-line route-planning-map-legend-line--uncertain" />
+              Uncertain GPS
+            </span>
+          </>
         ) : null}
       </div>
     </div>

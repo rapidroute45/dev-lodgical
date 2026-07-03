@@ -58,6 +58,12 @@
   border-top-color: #2563eb;
 }
 
+.route-planning-map-legend-line--uncertain {
+  border-top-color: #64748b;
+  border-top-style: dashed;
+  opacity: 0.85;
+}
+
 /* ---------- Dark ops shell overrides (chrome only, not the map tiles) ---------- */
 .ops-shell .route-planning-map-wrap {
   border-color: var(--border);

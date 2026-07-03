@@ -16,6 +16,7 @@ import {
 import { getLocationSharingStatus, getStaleLocationHint, getDriverLocationLastPingAt } from "@/modules/tracking/utils/locationSharingStatus.js";
 import { isCompletedRouteTracking } from "@/modules/tracking/utils/routeTrackingAccess.js";
 import { applyDriverLocationPayloadToTrail } from "@/modules/tracking/utils/locationTrail.js";
+import { logGps } from "@/modules/tracking/utils/gpsTrackingDebug.js";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { todayIsoDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -42,7 +43,9 @@ function locationBadgeVariant(mode) {
 export function RouteTrackingScreen() {
   const { id: routeId } = useParams();
   const { subscribe, connected } = useTrackingSocket();
-  const { data, isLoading, refetch } = useRouteTrackingQuery(routeId, Boolean(routeId));
+  const { data, isLoading, refetch } = useRouteTrackingQuery(routeId, Boolean(routeId), {
+    socketConnected: connected,
+  });
   const { data: plannedSegment, refetch: refetchPlannedSegment } = useRoutePlannedSegmentQuery(routeId, Boolean(routeId));
 
   const [driverLocation, setDriverLocation] = useState(null);
@@ -54,12 +57,20 @@ export function RouteTrackingScreen() {
   const [followDriver, setFollowDriver] = useState(false);
   const [segmentProgressIndex, setSegmentProgressIndex] = useState(null);
   const [rerouteNotice, setRerouteNotice] = useState(null);
+  const [trackingStats, setTrackingStats] = useState(null);
 
   useEffect(() => {
     if (!data) return;
     setDriverLocation(data.route?.driverLocation ?? null);
     setTrail(data.locationTrail ?? []);
     setProgress(data.progress ?? null);
+    setTrackingStats(data.tracking ?? null);
+    logGps("web.tracking.poll", {
+      routeId,
+      tracking: data.tracking ?? null,
+      trailPointCount: data.locationTrail?.length ?? 0,
+      driverLocation: data.route?.driverLocation ?? null,
+    });
     setSegmentProgressIndex(
       data.driverRouteProgressIndex ?? data.route?.driverRouteProgressIndex ?? null
     );
@@ -128,6 +139,16 @@ export function RouteTrackingScreen() {
       if (payload.progress) setProgress(payload.progress);
       if (payload.dwell) setDwell(payload.dwell);
       if (payload.break !== undefined) setDriverBreak(payload.break);
+      if (payload.tracking) {
+        setTrackingStats(payload.tracking);
+        logGps("web.tracking.socketUpdate", {
+          routeId,
+          tracking: payload.tracking,
+          lat: payload.lat,
+          lng: payload.lng,
+          recordedAt: payload.recordedAt,
+        });
+      }
     });
   }, [subscribe, routeId, refetch, refetchPlannedSegment]);
 
@@ -206,6 +227,14 @@ export function RouteTrackingScreen() {
               >
                 {followDriver ? "Following driver" : "Follow driver"}
               </button>
+            ) : null}
+            {!isCompleted && trackingStats ? (
+              <span
+                className="ops-badge ops-badge--active tabular-nums"
+                title="GPS points received vs expected since route start"
+              >
+                Points: {trackingStats.pointsReceived}/{trackingStats.pointsExpected}
+              </span>
             ) : null}
             <Link
               to={`/routes/${routeId}`}

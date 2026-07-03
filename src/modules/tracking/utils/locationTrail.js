@@ -12,6 +12,7 @@ export function normalizeTrailPoint(point) {
     lat: point.lat,
     lng: point.lng,
     recordedAt: point.recordedAt ?? null,
+    snapped: point.snapped !== false,
   };
 }
 

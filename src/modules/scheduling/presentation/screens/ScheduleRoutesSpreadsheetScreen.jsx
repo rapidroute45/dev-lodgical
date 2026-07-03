@@ -46,14 +46,15 @@ export function ScheduleRoutesSpreadsheetScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { setDate: setGlobalDate } = useOpsDateScope();
   const { id: scheduleId } = useParams();
-  const { data: schedule, isLoading: primaryLoading, isError, refetch: refetchSchedule } = useScheduleQuery(
-    scheduleId,
-    Boolean(scheduleId)
-  );
   const { data: teams = [] } = useTeamsQuery();
   const updateRoute = useUpdateRouteMutation();
   const createRoute = useCreateRouteMutation();
   const deleteRoute = useDeleteRouteMutation();
+
+  const { data: schedule, isLoading: primaryLoading, isError, refetch: refetchSchedule } = useScheduleQuery(
+    scheduleId,
+    Boolean(scheduleId)
+  );
 
   const { data: siblingList, isLoading: siblingsLoading, refetch: refetchSiblings } = useSchedulesQuery(
     { date: schedule?.date, storeId: schedule?.storeId ?? schedule?.store?.id },
@@ -142,7 +143,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
 
     setRows((prev) => {
       const dirty = dirtyIdsRef.current;
-      const pendingNew = prev.filter((row) => row.isNew);
+      const pendingNew = prev.filter((row) => row.isNew && dirty.has(row.id));
       const prevById = new Map(prev.map((row) => [row.id, row]));
       const serverRows = routesToSpreadsheetRows(mergedSchedule.routes).map((serverRow) => {
         if (dirty.has(serverRow.id) && prevById.has(serverRow.id)) {
@@ -294,7 +295,6 @@ export function ScheduleRoutesSpreadsheetScreen() {
         next.delete(row.id);
         return next;
       });
-      await Promise.all(groupQueries.map((q) => q.refetch()));
       setServerSyncKey((key) => key + 1);
       setMessage(`Deleted ${label}. Team lead has been notified.`);
     } catch (err) {
@@ -316,6 +316,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
     try {
       let created = 0;
       let updated = 0;
+      const savedDraftIds = [];
 
       for (const routeId of dirtyIds) {
         const row = rows.find((r) => r.id === routeId);
@@ -335,6 +336,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
             scheduleId: row.scheduleId || scheduleId,
             ...draftRoutePayload(draft),
           });
+          savedDraftIds.push(routeId);
           created += 1;
           continue;
         }
@@ -354,7 +356,9 @@ export function ScheduleRoutesSpreadsheetScreen() {
         updated += 1;
       }
 
-      await Promise.all(groupQueries.map((q) => q.refetch()));
+      if (savedDraftIds.length > 0) {
+        setRows((prev) => prev.filter((row) => !savedDraftIds.includes(row.id)));
+      }
       setDirtyIds(new Set());
       setServerSyncKey((key) => key + 1);
       const parts = [];

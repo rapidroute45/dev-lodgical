@@ -12,12 +12,13 @@ export function useLiveRoutesQuery(params, enabled = true) {
   });
 }
 
-export function useRouteTrackingQuery(routeId, enabled = true) {
+export function useRouteTrackingQuery(routeId, enabled = true, options = {}) {
+  const { socketConnected = false } = options;
   return useQuery({
     queryKey: ["routes", routeId, "tracking"],
     queryFn: () => fetchRouteTracking(routeId),
     enabled: enabled && Boolean(routeId),
-    refetchInterval: 15_000,
+    refetchInterval: socketConnected ? 60_000 : 5_000,
   });
 }
 

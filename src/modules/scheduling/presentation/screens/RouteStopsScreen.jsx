@@ -40,7 +40,7 @@ export function RouteStopsScreen() {
     isError: routeError,
     refetch,
     isFetching,
-  } = useRouteQuery(routeId, Boolean(routeId) && !isDraft, { refetchInterval: 10_000 });
+  } = useRouteQuery(routeId, Boolean(routeId) && !isDraft);
 
   const updateRoute = useUpdateRouteMutation();
   const [saving, setSaving] = useState(false);
@@ -108,7 +108,6 @@ export function RouteStopsScreen() {
         },
       });
       setMessage(`Saved ${stopCount} stop${stopCount === 1 ? "" : "s"}.`);
-      await refetch();
     } catch (err) {
       throw err;
     } finally {

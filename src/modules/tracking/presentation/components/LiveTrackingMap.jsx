@@ -3,7 +3,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchOsrmDrivingPath } from "@/modules/tracking/utils/drivingRoutePath.js";
 import { DEFAULT_MAP_CENTER } from "@/modules/tracking/utils/cityMapCenter.js";
-import { prepareTrailSegmentsForDisplay } from "@/modules/tracking/utils/trailDisplay.js";
+import {
+  prepareDrawableTrailSegments,
+  trailSegmentLeafletOptions,
+} from "@/modules/tracking/utils/trailDisplay.js";
 
 const PICKUP_ICON = L.divIcon({
   className: "live-tracking-stop-icon",
@@ -143,19 +146,17 @@ console.warn("layersRef",layersRef)
     }
 
     if (trail.length > 0) {
-      const trailSegments = prepareTrailSegmentsForDisplay(trail, {
+      const drawableSegments = prepareDrawableTrailSegments(trail, {
         source: "LiveTrackingMap",
         routeId: selectedRouteId ?? null,
+        isLive: true,
       });
       layersRef.current.trail.clearLayers();
-      for (const segment of trailSegments) {
-        const trailPoints = segment.map((p) => [p.lat, p.lng]);
+      for (const segment of drawableSegments) {
+        if (segment.points.length < 2) continue;
+        const trailPoints = segment.points.map((p) => [p.lat, p.lng]);
         points.push(...trailPoints);
-        const polyline = L.polyline(trailPoints, {
-          color: "#2563eb",
-          weight: 4,
-          opacity: 0.75,
-        });
+        const polyline = L.polyline(trailPoints, trailSegmentLeafletOptions(segment.snapped));
         layersRef.current.trail.addLayer(polyline);
       }
     } else {

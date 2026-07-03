@@ -19,7 +19,8 @@ import {
 } from "@/modules/tracking/utils/mapPathFilters.js";
 import {
   flattenTrailSegments,
-  prepareTrailSegmentsForDisplay,
+  prepareDrawableTrailSegments,
+  trailSegmentPolylineOptions,
 } from "@/modules/tracking/utils/trailDisplay.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
@@ -264,12 +265,19 @@ function LiveRouteMapLayers({
   }, [offRoute, trustedSegmentPolyline, effectiveProgressIndex]);
 
   const trailSegments = useMemo(
-    () => prepareTrailSegmentsForDisplay(trail ?? [], { source: "RouteLiveGoogleMap", isLive }),
+    () =>
+      prepareDrawableTrailSegments(trail ?? [], {
+        source: "RouteLiveGoogleMap",
+        isLive,
+      }),
     [trail, isLive]
   );
 
   const actualTrailPath = useMemo(
-    () => flattenTrailSegments(trailSegments).map((point) => readMapCoords(point)).filter(Boolean),
+    () =>
+      flattenTrailSegments(trailSegments.map((segment) => segment.points))
+        .map((point) => readMapCoords(point))
+        .filter(Boolean),
     [trailSegments]
   );
 
@@ -355,6 +363,7 @@ function LiveRouteMapLayers({
         <RouteDriverMarker
           position={driverMarkerPoint}
           title={driverName ? `${driverName} (live)` : "Driver (live)"}
+          animate={isLive}
         />
       ) : null}
 
@@ -374,14 +383,12 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {trailSegments.map((segment, index) =>
-        segment.length >= 2 ? (
+      {trailSegments.map((segment) =>
+        segment.points.length >= 2 ? (
           <Polyline
-            key={`trail-segment-${index}`}
-            path={segment.map((point) => readMapCoords(point)).filter(Boolean)}
-            strokeColor="#2563eb"
-            strokeOpacity={0.9}
-            strokeWeight={5}
+            key={segment.key}
+            path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
+            {...trailSegmentPolylineOptions(segment.snapped)}
           />
         ) : null
       )}

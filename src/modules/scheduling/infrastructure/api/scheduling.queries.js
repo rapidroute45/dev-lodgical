@@ -1,5 +1,11 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  markSchedulingListsStale,
+  patchScheduleAfterRouteCreate,
+  patchScheduleAfterRouteDelete,
+  patchScheduleAfterRouteUpdate,
+} from "./scheduleCache.js";
+import {
   createRoute,
   createSchedule,
   createStore,
@@ -113,13 +119,14 @@ export function useScheduleQuery(id, enabled = true) {
 
 export function useScheduleGroupQuery(scheduleIds, enabled = true, options = {}) {
   const ids = scheduleIds ?? [];
-  const { refetchInterval } = options;
+  const { refetchInterval, staleTime = 30_000 } = options;
   return useQueries({
     queries: ids.map((id) => ({
       queryKey: ["schedules", id],
       queryFn: () => fetchSchedule(id),
       enabled: enabled && Boolean(id),
       refetchInterval,
+      staleTime,
     })),
   });
 }
@@ -224,13 +231,10 @@ export function useCreateRouteMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createRoute,
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["schedules"] });
-      qc.invalidateQueries({ queryKey: ["routes"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      if (vars?.scheduleId) {
-        qc.invalidateQueries({ queryKey: ["schedules", vars.scheduleId] });
-      }
+    onSuccess: (createdRoute, vars) => {
+      const scheduleId = vars?.scheduleId ?? createdRoute?.scheduleId;
+      patchScheduleAfterRouteCreate(qc, scheduleId, createdRoute);
+      markSchedulingListsStale(qc);
     },
   });
 }
@@ -239,14 +243,12 @@ export function useUpdateRouteMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ routeId, body }) => updateRoute(routeId, body),
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["schedules"] });
-      qc.invalidateQueries({ queryKey: ["routes"] });
-      if (vars?.scheduleId) {
-        qc.invalidateQueries({ queryKey: ["schedules", vars.scheduleId] });
-      }
+    onSuccess: (updatedRoute, vars) => {
+      const scheduleId = vars?.scheduleId ?? updatedRoute?.scheduleId;
+      patchScheduleAfterRouteUpdate(qc, scheduleId, updatedRoute ?? { id: vars.routeId });
+      markSchedulingListsStale(qc);
       if (vars?.routeId) {
-        qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
+        qc.setQueryData(["routes", vars.routeId], updatedRoute);
       }
     },
   });
@@ -256,12 +258,9 @@ export function useDeleteRouteMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ routeId }) => deleteRoute(routeId),
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["schedules"] });
-      qc.invalidateQueries({ queryKey: ["routes"] });
-      if (vars?.scheduleId) {
-        qc.invalidateQueries({ queryKey: ["schedules", vars.scheduleId] });
-      }
+    onSuccess: (_data, vars) => {
+      patchScheduleAfterRouteDelete(qc, vars?.scheduleId, vars?.routeId);
+      markSchedulingListsStale(qc);
     },
   });
 }

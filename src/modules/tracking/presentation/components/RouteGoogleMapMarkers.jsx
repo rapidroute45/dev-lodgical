@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { AdvancedMarker } from "@vis.gl/react-google-maps";
 
 const MARKER_COLORS = {
@@ -6,6 +7,12 @@ const MARKER_COLORS = {
   dropoff: "#2563eb",
   driver: "#dc2626",
 };
+
+const MARKER_TWEEN_MS = 1_000;
+
+function lerp(start, end, progress) {
+  return start + (end - start) * progress;
+}
 
 function MarkerBubble({ label, color, size = 22 }) {
   return (
@@ -75,9 +82,56 @@ export function RouteDropoffMarker({ position, sequence, title }) {
   );
 }
 
-export function RouteDriverMarker({ position, title = "Driver (live)" }) {
+export function RouteDriverMarker({ position, title = "Driver (live)", animate = false }) {
+  const [displayPosition, setDisplayPosition] = useState(position);
+  const displayRef = useRef(position);
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    displayRef.current = displayPosition;
+  }, [displayPosition]);
+
+  useEffect(() => {
+    if (!position) {
+      setDisplayPosition(null);
+      return;
+    }
+
+    if (!animate) {
+      setDisplayPosition(position);
+      return;
+    }
+
+    const from = displayRef.current ?? position;
+    if (from.lat === position.lat && from.lng === position.lng) {
+      return;
+    }
+
+    const startedAt = performance.now();
+
+    const step = (now) => {
+      const progress = Math.min(1, (now - startedAt) / MARKER_TWEEN_MS);
+      setDisplayPosition({
+        lat: lerp(from.lat, position.lat, progress),
+        lng: lerp(from.lng, position.lng, progress),
+      });
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (frameRef.current != null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, [animate, position?.lat, position?.lng]);
+
+  if (!displayPosition) return null;
+
   return (
-    <AdvancedMarker position={position} title={title} zIndex={50}>
+    <AdvancedMarker position={displayPosition} title={title} zIndex={50}>
       <DriverLiveMarker />
     </AdvancedMarker>
   );

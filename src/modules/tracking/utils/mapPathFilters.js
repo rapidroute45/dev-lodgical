@@ -3,13 +3,14 @@ import { haversineMeters } from "./plannedSegmentTrail.js";
 export const GPS_PATH_MAX_JUMP_M = 50_000;
 /** Split polylines when consecutive points are farther apart (offline / data gap). */
 export const TRAIL_SEGMENT_GAP_M = 3_000;
+/** Tighter gap for live/completed map display — avoids diagonals through blocks. */
+export const TRAIL_DISPLAY_URBAN_GAP_M = 120;
+/** Split drawable edges longer than this (meters). */
+export const TRAIL_DISPLAY_MAX_JUMP_M = 300;
 /** Split when time gap is large and movement is non-trivial. */
 export const TRAIL_SEGMENT_GAP_SEC = 10 * 60;
 /** Reject display segments implying impossible driving speed (180 km/h). */
 export const TRAIL_MAX_SEGMENT_SPEED_MPS = 50;
-
-/** @deprecated Use speed + segment gap filtering via prepareTrailSegmentsForDisplay */
-export const TRAIL_DISPLAY_MAX_JUMP_M = 300;
 
 export const MAP_REGION_MAX_SPAN_M = 800_000;
 export const SEGMENT_POLYLINE_END_THRESHOLD_M = 50_000;

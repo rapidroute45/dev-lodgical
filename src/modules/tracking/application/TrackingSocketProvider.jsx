@@ -5,6 +5,7 @@ import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 import { tokenStorage } from "@/shared/utils/storage.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { OPS_ROLES } from "@/shared/utils/constants.js";
+import { logGps } from "@/modules/tracking/utils/gpsTrackingDebug.js";
 
 const TrackingSocketContext = createContext(null);
 
@@ -47,6 +48,15 @@ export function TrackingSocketProvider({ children }) {
     socket.on("connect_error", () => setConnected(false));
 
     socket.on("driver:location", (payload) => {
+      logGps("web.socket.driverLocation", {
+        routeId: payload?.routeId ?? null,
+        driverId: payload?.driverId ?? null,
+        lat: payload?.lat ?? null,
+        lng: payload?.lng ?? null,
+        recordedAt: payload?.recordedAt ?? null,
+        trailPointCount: payload?.trailPoints?.length ?? 0,
+        tracking: payload?.tracking ?? null,
+      });
       for (const listener of listenersRef.current) {
         listener(payload);
       }
