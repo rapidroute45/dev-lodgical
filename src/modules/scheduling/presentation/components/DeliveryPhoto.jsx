@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { mediaUrl } from "@/shared/utils/mediaUrl.js";
+import { clientDebugLog } from "@/shared/utils/clientDebugLog.js";
 
 export function DeliveryPhoto({ photoPath, alt, className = "" }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const src = mediaUrl(photoPath);
+
+  useEffect(() => {
+    setLoadError(false);
+  }, [photoPath, src]);
 
   if (!src) return null;
 
@@ -31,10 +36,40 @@ export function DeliveryPhoto({ photoPath, alt, className = "" }) {
         style={{ borderColor: "var(--border)", background: "rgba(255,255,255,0.03)" }}
       >
         <img
+          key={src}
           src={src}
           alt={alt ?? "Delivery proof"}
           className="h-36 w-full object-cover transition group-hover:scale-[1.02] sm:h-44"
-          onError={() => setLoadError(true)}
+          onLoad={() => {
+            // #region agent log
+            clientDebugLog({
+              location: "DeliveryPhoto.jsx:onLoad",
+              message: "POD image loaded",
+              hypothesisId: "H-POD-url",
+              runId: "post-fix",
+              data: { photoPath, src },
+            });
+            // #endregion
+          }}
+          onError={async () => {
+            let httpStatus = null;
+            try {
+              const head = await fetch(src, { method: "HEAD" });
+              httpStatus = head.status;
+            } catch {
+              httpStatus = null;
+            }
+            // #region agent log
+            clientDebugLog({
+              location: "DeliveryPhoto.jsx:onError",
+              message: "POD image load failed",
+              hypothesisId: "H-POD-url",
+              runId: "post-fix",
+              data: { photoPath, src, httpStatus },
+            });
+            // #endregion
+            setLoadError(true);
+          }}
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
           <span className="rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100">

@@ -43,6 +43,9 @@ export default defineConfig(({ mode }) => {
   /** Local Dev-co default (see Dev-co/.env PORT). Override in .env.development. */
   const apiProxyTarget =
     env.VITE_API_PROXY_TARGET || 'http://localhost:4000'
+  /** Where POD/images live in dev (mobile → Railway). Falls back to API target. */
+  const uploadsProxyTarget =
+    env.VITE_UPLOADS_PROXY_TARGET?.trim() || apiProxyTarget
 
   return {
     plugins: [firebaseSwConfigPlugin(env), react(), tailwindcss()],
@@ -60,7 +63,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
         '/uploads': {
-          target: apiProxyTarget,
+          target: uploadsProxyTarget,
           changeOrigin: true,
           secure: false,
         },
