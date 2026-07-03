@@ -9,13 +9,13 @@ import {
 import { CreateStoreModal } from "../components/CreateStoreModal.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
-import { todayIsoDate } from "@/shared/utils/time.js";
+import { canManageStores } from "@/shared/utils/constants.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 
 export function StoresListScreen() {
   const { user } = useAuth();
-  const { canMutateOps } = useOpsElevation();
-  const allowCreateStore = canMutateOps(user?.role);
+  const { dispatchUnlocked } = useOpsElevation();
+  const allowCreateStore = canManageStores(user?.role, dispatchUnlocked);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [createModal, setCreateModal] = useState(false);

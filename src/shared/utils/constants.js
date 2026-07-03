@@ -91,8 +91,15 @@ export function roleRequiresCity(role) {
   return ROLES_REQUIRING_CITY.includes(role);
 }
 
-export function canManageStores(role) {
-  return MANAGER_ROLES.includes(role);
+export function canManageStores(role, dispatchUnlocked = false) {
+  if (isDispatchManager(role)) return true;
+  if (isAdmin(role)) return dispatchUnlocked;
+  return false;
+}
+
+/** Admin (unlocked) and dispatch manager may create teams. */
+export function canManageTeams(role, dispatchUnlocked = false) {
+  return canManageStores(role, dispatchUnlocked);
 }
 
 /** Admin and dispatch manager may use global state/city scope in the ops header. */

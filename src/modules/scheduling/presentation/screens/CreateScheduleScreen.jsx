@@ -30,6 +30,7 @@ import { RoutesSpreadsheetTable } from "../components/RoutesSpreadsheetTable.jsx
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { apiErrorMessage } from "@/shared/utils/api.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { canManageStores } from "@/shared/utils/constants.js";
 import { useDriverStopsCsvUpload } from "../hooks/useDriverStopsCsvUpload.js";
 
@@ -46,10 +47,11 @@ export function CreateScheduleScreen() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { dispatchUnlocked } = useOpsElevation();
   const { assignedCity, assignedCities, isCityLocked, isCityScoped } = useAssignedCityScope();
   const { effectiveCity, effectiveState } = useOpsLocationScope();
   const { date, setDate } = useOpsDateScope();
-  const allowCreateStore = canManageStores(user?.role);
+  const allowCreateStore = canManageStores(user?.role, dispatchUnlocked);
   const [city, setCity] = useState(assignedCity ?? "");
   const [state, setState] = useState("");
   const [selectedStore, setSelectedStore] = useState(null);
