@@ -156,7 +156,7 @@ console.warn("layersRef",layersRef)
         if (segment.points.length < 2) continue;
         const trailPoints = segment.points.map((p) => [p.lat, p.lng]);
         points.push(...trailPoints);
-        const polyline = L.polyline(trailPoints, trailSegmentLeafletOptions(segment.kind ?? segment.snapped));
+        const polyline = L.polyline(trailPoints, trailSegmentLeafletOptions(segment.snapped));
         layersRef.current.trail.addLayer(polyline);
       }
     } else {

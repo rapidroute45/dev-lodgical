@@ -391,7 +391,7 @@ function LiveRouteMapLayers({
           <Polyline
             key={segment.key}
             path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
-            {...trailSegmentPolylineOptions(segment.kind ?? segment.snapped)}
+            {...trailSegmentPolylineOptions(segment.snapped)}
           />
         ) : null
       )}
@@ -427,7 +427,6 @@ export function RouteLiveGoogleMap({
     dropoffs.some((stop) => stop.address?.trim()) ||
     readMapCoords(driverLocation) ||
     (trail?.length >= 1);
-    console.warn("RouteLiveGoogleMap", { pickup, dropoffs, driverLocation, trail, hasRoutePoints, mappedDropoffs, offRoute })
 
   const mapDrivers = driverLocation
     ? [

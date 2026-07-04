@@ -54,6 +54,40 @@ export function filterTrailSpeedOutliers(
   return kept;
 }
 
+/** Remove out-and-back GPS spikes already stored in the trail (display + merge cleanup). */
+export function filterTrailOutAndBackSpikes(points, minSpikeM = 120, returnWindowSec = 600) {
+  const normalized = normalizeTrailPoints(points);
+  if (normalized.length <= 2) return normalized;
+
+  const kept = [normalized[0]];
+  for (let i = 1; i < normalized.length; i += 1) {
+    const ref = kept[kept.length - 1];
+    const point = normalized[i];
+    const next = normalized[i + 1];
+    const distFromRef = haversineMeters(ref.lat, ref.lng, point.lat, point.lng);
+
+    if (distFromRef > minSpikeM && next) {
+      const prevMs = Date.parse(ref.recordedAt ?? "");
+      const pointMs = Date.parse(point.recordedAt ?? "");
+      const nextMs = Date.parse(next.recordedAt ?? "");
+      const dtToNext =
+        Number.isFinite(pointMs) && Number.isFinite(nextMs) ? (nextMs - pointMs) / 1000 : 0;
+      const returnToRef = haversineMeters(ref.lat, ref.lng, next.lat, next.lng);
+      if (
+        dtToNext > 0 &&
+        dtToNext <= returnWindowSec &&
+        returnToRef < Math.min(120, distFromRef * 0.65)
+      ) {
+        continue;
+      }
+    }
+
+    kept.push(point);
+  }
+
+  return kept;
+}
+
 /**
  * Split a trail into drawable polylines at large spatial or temporal gaps.
  * Avoids drawing straight lines across a city after offline periods or sparse uploads.

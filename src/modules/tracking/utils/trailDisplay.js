@@ -1,5 +1,6 @@
 import {
   filterTrailSpeedOutliers,
+  filterTrailOutAndBackSpikes,
   splitTrailIntoSegments,
   TRAIL_DISPLAY_MAX_JUMP_M,
   TRAIL_SEGMENT_GAP_M,
@@ -21,7 +22,6 @@ function normalizeDrawablePoint(point) {
     lng,
     recordedAt: point.recordedAt ?? null,
     snapped: point.snapped !== false,
-    estimated: point.estimated === true,
   };
 }
 
@@ -43,12 +43,26 @@ export function prepareTrailSegmentsForDisplay(trail, context = {}) {
 
   logGpsPipeline("display_start", { pointCount: input.length }, context);
 
-  const speedFiltered = filterTrailSpeedOutliers(input);
-  if (speedFiltered.length < input.length) {
+  const spikeFiltered = filterTrailOutAndBackSpikes(input);
+  if (spikeFiltered.length < input.length) {
+    logGpsPipeline(
+      "display_spike_filter",
+      {
+        action: "discard",
+        reason: "out_and_back_spike",
+        dropped: input.length - spikeFiltered.length,
+        kept: spikeFiltered.length,
+      },
+      context
+    );
+  }
+
+  const speedFiltered = filterTrailSpeedOutliers(spikeFiltered);
+  if (speedFiltered.length < spikeFiltered.length) {
     const keptKeys = new Set(
       speedFiltered.map((point) => `${point.lat},${point.lng},${point.recordedAt ?? ""}`)
     );
-    const dropped = input.filter((point) => {
+    const dropped = spikeFiltered.filter((point) => {
       const key = `${point?.lat},${point?.lng},${point?.recordedAt ?? ""}`;
       return !keptKeys.has(key);
     });
@@ -57,7 +71,7 @@ export function prepareTrailSegmentsForDisplay(trail, context = {}) {
       {
         action: "discard",
         reason: "impossible_speed",
-        dropped: input.length - speedFiltered.length,
+        dropped: spikeFiltered.length - speedFiltered.length,
         kept: speedFiltered.length,
         samples: dropped.slice(0, 3).map(summarizeTrailPoint),
       },
@@ -126,15 +140,14 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
     prepareTrailSegmentsForDisplay(group.points, {
       source,
       isLive,
-      isSnapped: group.kind === "snapped",
+      isSnapped: group.snapped !== false,
       displayGapM: jumpGapM,
     }).forEach((points, index) => {
       if (points.length < 2) return;
       drawable.push({
         points,
-        snapped: group.kind === "snapped",
-        kind: group.kind ?? (group.snapped === false ? "unsnapped" : "snapped"),
-        key: `${group.kind ?? (group.snapped === false ? "unsnapped" : "snapped")}-${groupIndex}-${index}`,
+        snapped: group.snapped !== false,
+        key: `${group.snapped === false ? "unsnapped" : "snapped"}-${groupIndex}-${index}`,
       });
     });
   });
@@ -162,20 +175,14 @@ export function flattenTrailSegments(segments) {
 }
 
 /** Leaflet polyline options from a drawable segment. */
-export function trailSegmentLeafletOptions(snappedOrKind) {
-  const kind =
-    snappedOrKind === true
-      ? "snapped"
-      : snappedOrKind === false
-        ? "unsnapped"
-        : snappedOrKind;
-  const google = trailSegmentPolylineOptions(kind);
-  if (kind === "unsnapped" || kind === "estimated") {
+export function trailSegmentLeafletOptions(snapped) {
+  const google = trailSegmentPolylineOptions(snapped);
+  if (snapped === false) {
     return {
       color: google.strokeColor,
       weight: google.strokeWeight,
       opacity: google.strokeOpacity,
-      dashArray: kind === "estimated" ? "6 8" : "8 10",
+      dashArray: "8 10",
     };
   }
   return {

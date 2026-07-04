@@ -15,7 +15,7 @@ import {
 } from "@/modules/tracking/utils/breakStatus.js";
 import { getLocationSharingStatus, getStaleLocationHint, getDriverLocationLastPingAt } from "@/modules/tracking/utils/locationSharingStatus.js";
 import { isCompletedRouteTracking } from "@/modules/tracking/utils/routeTrackingAccess.js";
-import { applyDriverLocationPayloadToTrail } from "@/modules/tracking/utils/locationTrail.js";
+import { applyDriverLocationPayloadToTrail, mergeDriverLocationFromPoll, mergeTrailFromPoll } from "@/modules/tracking/utils/locationTrail.js";
 import { logGps } from "@/modules/tracking/utils/gpsTrackingDebug.js";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { todayIsoDate } from "@/shared/utils/time.js";
@@ -61,8 +61,8 @@ export function RouteTrackingScreen() {
 
   useEffect(() => {
     if (!data) return;
-    setDriverLocation(data.route?.driverLocation ?? null);
-    setTrail(data.locationTrail ?? []);
+    setDriverLocation((prev) => mergeDriverLocationFromPoll(prev, data.route?.driverLocation ?? null));
+    setTrail((prev) => mergeTrailFromPoll(prev, data.locationTrail ?? []));
     setProgress(data.progress ?? null);
     setTrackingStats(data.tracking ?? null);
     logGps("web.tracking.poll", {

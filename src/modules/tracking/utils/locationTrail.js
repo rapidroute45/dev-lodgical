@@ -13,7 +13,6 @@ export function normalizeTrailPoint(point) {
     lng: point.lng,
     recordedAt: point.recordedAt ?? null,
     snapped: point.snapped !== false,
-    estimated: point.estimated === true,
   };
 }
 
@@ -55,8 +54,38 @@ export function applyDriverLocationPayloadToTrail(prevTrail, payload) {
   ]);
 }
 
+function locationTimestampMs(location) {
+  return Date.parse(location?.ingestedAt ?? location?.updatedAt ?? location?.recordedAt ?? "") || 0;
+}
+
+/** Keep newer driver location when REST poll returns stale DB snapshot. */
+export function mergeDriverLocationFromPoll(previous, incoming) {
+  if (!incoming) return previous ?? null;
+  if (!previous) return incoming;
+
+  const prevMs = locationTimestampMs(previous);
+  const nextMs = locationTimestampMs(incoming);
+  if (nextMs >= prevMs) return incoming;
+  return previous;
+}
+
+/** Keep longer trail on poll unless incoming is clearly newer (more points or newer tail). */
+export function mergeTrailFromPoll(previous, incoming) {
+  const prev = Array.isArray(previous) ? previous : [];
+  const next = Array.isArray(incoming) ? incoming : [];
+  if (next.length === 0) return prev;
+  if (prev.length === 0) return next;
+
+  const prevTailMs = Date.parse(prev[prev.length - 1]?.recordedAt ?? "") || 0;
+  const nextTailMs = Date.parse(next[next.length - 1]?.recordedAt ?? "") || 0;
+  if (next.length > prev.length || nextTailMs >= prevTailMs) return next;
+  return prev;
+}
+
 /** Max distance (m) between live marker and trail tail before trusting trail instead. */
 const MARKER_TRAIL_MAX_DISTANCE_M = 2000;
+/** Prefer trail tail when driverLocation is this far from tail and not newer. */
+const MARKER_TRAIL_BACKWARD_JUMP_M = 250;
 
 /**
  * Prefer driverLocation for the live marker unless it is implausibly far from the trail
@@ -80,6 +109,18 @@ export function resolveLiveDriverMarkerPoint(driverLocation, trail) {
   if (distanceM > MARKER_TRAIL_MAX_DISTANCE_M) {
     return { lat: lastTrail.lat, lng: lastTrail.lng };
   }
+
+  const driverMs = locationTimestampMs(driverLocation);
+  const trailMs = Date.parse(lastTrail.recordedAt ?? "") || 0;
+  if (
+    distanceM > MARKER_TRAIL_BACKWARD_JUMP_M &&
+    trailMs > 0 &&
+    driverMs > 0 &&
+    driverMs <= trailMs
+  ) {
+    return { lat: lastTrail.lat, lng: lastTrail.lng };
+  }
+
   return { lat: driver.lat, lng: driver.lng };
 }
 
