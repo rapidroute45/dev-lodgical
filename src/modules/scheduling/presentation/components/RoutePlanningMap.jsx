@@ -155,7 +155,7 @@ function GeocodedMarkers({ pickup, dropoffs, driverTrail = [], addressKey }) {
             <Polyline
               key={segment.key}
               path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
-              {...trailSegmentPolylineOptions(segment.snapped)}
+              {...trailSegmentPolylineOptions(segment.kind ?? segment.snapped)}
             />
           ) : null
         )}

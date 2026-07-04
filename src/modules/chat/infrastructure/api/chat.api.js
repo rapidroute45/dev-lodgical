@@ -74,3 +74,28 @@ export async function leaveGroup(conversationId) {
   const res = await api.post(`/chat/groups/${conversationId}/leave`);
   return res.data.data;
 }
+
+export async function markConversationDelivered(conversationId) {
+  await api.post(`/chat/conversations/${conversationId}/delivered`);
+}
+
+export async function editChatMessage(conversationId, messageId, body) {
+  const res = await api.patch(`/chat/conversations/${conversationId}/messages/${messageId}`, {
+    body,
+  });
+  return res.data.data;
+}
+
+export async function deleteChatMessage(conversationId, messageId, scope = "me") {
+  const res = await api.delete(
+    `/chat/conversations/${conversationId}/messages/${messageId}?scope=${scope}`
+  );
+  return res.data.data;
+}
+
+export async function fetchMessageInfo(conversationId, messageId) {
+  const res = await api.get(
+    `/chat/conversations/${conversationId}/messages/${messageId}/info`
+  );
+  return res.data.data;
+}

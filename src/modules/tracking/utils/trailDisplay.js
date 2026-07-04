@@ -6,7 +6,7 @@ import {
   TRAIL_SEGMENT_GAP_SEC,
 } from "./mapPathFilters.js";
 import { logGpsPipeline, summarizeTrailPoint } from "./gpsPipelineLog.js";
-import { smoothTrailForDisplay } from "./smoothTrail.js";
+import { smoothTrailForDisplay, MIN_SEPARATION_SNAPPED_M } from "./smoothTrail.js";
 import { splitTrailBySnappedFlag, trailSegmentPolylineOptions } from "./trailSnappedSegments.js";
 
 export { trailSegmentPolylineOptions } from "./trailSnappedSegments.js";
@@ -21,6 +21,7 @@ function normalizeDrawablePoint(point) {
     lng,
     recordedAt: point.recordedAt ?? null,
     snapped: point.snapped !== false,
+    estimated: point.estimated === true,
   };
 }
 
@@ -64,7 +65,9 @@ export function prepareTrailSegmentsForDisplay(trail, context = {}) {
     );
   }
 
-  const smoothed = smoothTrailForDisplay(speedFiltered);
+  const smoothed = smoothTrailForDisplay(speedFiltered, {
+    minSeparationM: context.isSnapped ? MIN_SEPARATION_SNAPPED_M : undefined,
+  });
   if (smoothed.length !== speedFiltered.length) {
     logGpsPipeline(
       "display_smooth",
@@ -123,13 +126,15 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
     prepareTrailSegmentsForDisplay(group.points, {
       source,
       isLive,
+      isSnapped: group.kind === "snapped",
       displayGapM: jumpGapM,
     }).forEach((points, index) => {
       if (points.length < 2) return;
       drawable.push({
         points,
-        snapped: group.snapped !== false,
-        key: `${group.snapped === false ? "unsnapped" : "snapped"}-${groupIndex}-${index}`,
+        snapped: group.kind === "snapped",
+        kind: group.kind ?? (group.snapped === false ? "unsnapped" : "snapped"),
+        key: `${group.kind ?? (group.snapped === false ? "unsnapped" : "snapped")}-${groupIndex}-${index}`,
       });
     });
   });
@@ -157,14 +162,20 @@ export function flattenTrailSegments(segments) {
 }
 
 /** Leaflet polyline options from a drawable segment. */
-export function trailSegmentLeafletOptions(snapped) {
-  const google = trailSegmentPolylineOptions(snapped);
-  if (snapped === false) {
+export function trailSegmentLeafletOptions(snappedOrKind) {
+  const kind =
+    snappedOrKind === true
+      ? "snapped"
+      : snappedOrKind === false
+        ? "unsnapped"
+        : snappedOrKind;
+  const google = trailSegmentPolylineOptions(kind);
+  if (kind === "unsnapped" || kind === "estimated") {
     return {
       color: google.strokeColor,
       weight: google.strokeWeight,
       opacity: google.strokeOpacity,
-      dashArray: "8 10",
+      dashArray: kind === "estimated" ? "6 8" : "8 10",
     };
   }
   return {

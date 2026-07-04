@@ -5,12 +5,16 @@ import {
   createConversation,
   createGroup,
   createInternalConversation,
+  deleteChatMessage,
+  editChatMessage,
   fetchChatDrivers,
   fetchChatOpsPeers,
   fetchConversations,
   fetchGroupCandidates,
+  fetchMessageInfo,
   fetchMessages,
   leaveGroup,
+  markConversationDelivered,
   sendChatMessage,
   sendDocument,
   sendVoiceMessage,
@@ -185,3 +189,41 @@ export function useLeaveGroupMutation() {
     },
   });
 }
+
+export function useEditChatMessageMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, body }) =>
+      editChatMessage(conversationId, messageId, body),
+    onSuccess: (message) => {
+      qc.setQueryData(chatKeys.messages(message.conversationId), (old) => {
+        if (!old) return [message];
+        return old.map((m) => (m.id === message.id ? message : m));
+      });
+    },
+  });
+}
+
+export function useDeleteChatMessageMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, scope }) =>
+      deleteChatMessage(conversationId, messageId, scope),
+    onSuccess: (result, variables) => {
+      if (result.scope === "me") {
+        qc.setQueryData(chatKeys.messages(variables.conversationId), (old) =>
+          old ? old.filter((m) => m.id !== variables.messageId) : old
+        );
+        return;
+      }
+      if (result.message) {
+        qc.setQueryData(chatKeys.messages(variables.conversationId), (old) => {
+          if (!old) return old;
+          return old.map((m) => (m.id === result.message.id ? result.message : m));
+        });
+      }
+    },
+  });
+}
+
+export { markConversationDelivered, fetchMessageInfo };

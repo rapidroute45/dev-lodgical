@@ -7,13 +7,17 @@ import { mediaUrl } from "@/shared/utils/mediaUrl.js";
 import { hasPhone, openWhatsApp } from "@/shared/utils/whatsapp.js";
 import { useChatSocket } from "../../application/ChatProvider.jsx";
 import { VoiceMessageBubble } from "../components/VoiceMessageBubble.jsx";
+import { MessageStatusTicks } from "../components/MessageStatusTicks.jsx";
 import {
   useChatMessagesQuery,
   useConversationsQuery,
+  useDeleteChatMessageMutation,
+  useEditChatMessageMutation,
   useLeaveGroupMutation,
   useSendChatMessageMutation,
   useSendDocumentMutation,
   useSendVoiceMessageMutation,
+  fetchMessageInfo,
 } from "../../infrastructure/api/chat.queries.js";
 
 function formatMessageTime(iso) {
@@ -61,8 +65,14 @@ export function ChatThreadScreen() {
   const voiceMutation = useSendVoiceMessageMutation();
   const documentMutation = useSendDocumentMutation();
   const leaveMutation = useLeaveGroupMutation();
+  const editMutation = useEditChatMessageMutation();
+  const deleteMutation = useDeleteChatMessageMutation();
 
   const [recording, setRecording] = useState(false);
+  const [menu, setMenu] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [infoData, setInfoData] = useState(null);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -77,6 +87,13 @@ export function ChatThreadScreen() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  const openMessageMenu = (item, event) => {
+    event.preventDefault();
+    setMenu({ item, x: event.clientX, y: event.clientY });
+  };
+
+  const closeMenu = () => setMenu(null);
 
   useEffect(() => () => {
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
@@ -324,6 +341,7 @@ export function ChatThreadScreen() {
                       <div
                         className={`ops-chat-bubble ${mine ? "ops-chat-bubble--mine" : "ops-chat-bubble--other"}`}
                         style={{ color: "var(--text)" }}
+                        onContextMenu={(e) => openMessageMenu(item, e)}
                       >
                         {isGroup && !mine ? (
                           <p className="mb-0.5 text-[11px] font-bold" style={{ color: "var(--accent)" }}>
@@ -375,22 +393,23 @@ export function ChatThreadScreen() {
                               </span>
                             ) : null}
                           </a>
+                        ) : item.deletedForAll ? (
+                          <p className="whitespace-pre-wrap text-sm italic leading-relaxed opacity-80">
+                            {item.body}
+                          </p>
                         ) : (
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>
                         )}
+                        {item.editedAt && !item.deletedForAll ? (
+                          <span className="text-[10px] italic opacity-70">edited</span>
+                        ) : null}
 
                         <span className="mt-1 flex items-center justify-end gap-1">
                           <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>
                             {formatMessageTime(item.createdAt)}
                           </span>
                           {mine ? (
-                            <span
-                              className="text-[10px]"
-                              style={{ color: read ? "var(--accent)" : "var(--text-dim)" }}
-                              title={read ? "Read" : delivered ? "Delivered" : "Sent"}
-                            >
-                              {delivered || read ? "✓✓" : "✓"}
-                            </span>
+                            <MessageStatusTicks delivered={delivered} read={read} light={mine} />
                           ) : null}
                         </span>
                       </div>
@@ -502,6 +521,132 @@ export function ChatThreadScreen() {
           </form>
         </div>
       </div>
+
+      {menu ? (
+        <>
+          <button type="button" className="fixed inset-0 z-40 cursor-default" aria-label="Close menu" onClick={closeMenu} />
+          <div
+            className="fixed z-50 min-w-[160px] rounded-lg border py-1 shadow-lg"
+            style={{
+              left: menu.x,
+              top: menu.y,
+              background: "var(--surface)",
+              borderColor: "var(--border)",
+            }}
+          >
+            {menu.item.senderId === user?.id &&
+            menu.item.type === "text" &&
+            !menu.item.deletedForAll &&
+            Date.now() - Date.parse(menu.item.createdAt) < 15 * 60 * 1000 ? (
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left text-sm hover:bg-white/5"
+                onClick={() => {
+                  setEditTarget(menu.item);
+                  setEditDraft(menu.item.body);
+                  closeMenu();
+                }}
+              >
+                Edit
+              </button>
+            ) : null}
+            {menu.item.senderId === user?.id && !menu.item.deletedForAll ? (
+              <>
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5"
+                  onClick={() => {
+                    void deleteMutation.mutateAsync({
+                      conversationId,
+                      messageId: menu.item.id,
+                      scope: "me",
+                    });
+                    closeMenu();
+                  }}
+                >
+                  Delete for me
+                </button>
+                {menu.item.type === "text" ? (
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5"
+                    onClick={() => {
+                      void deleteMutation.mutateAsync({
+                        conversationId,
+                        messageId: menu.item.id,
+                        scope: "everyone",
+                      });
+                      closeMenu();
+                    }}
+                  >
+                    Delete for everyone
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            <button
+              type="button"
+              className="block w-full px-4 py-2 text-left text-sm hover:bg-white/5"
+              onClick={() => {
+                void fetchMessageInfo(conversationId, menu.item.id).then(setInfoData);
+                closeMenu();
+              }}
+            >
+              Info
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {editTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl p-4" style={{ background: "var(--surface)" }}>
+            <h3 className="mb-3 text-lg font-semibold">Edit message</h3>
+            <textarea
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              className="ops-chat-composer__input min-h-[80px] w-full"
+            />
+            <div className="mt-3 flex justify-end gap-3">
+              <button type="button" onClick={() => setEditTarget(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="font-semibold text-cyan-400"
+                onClick={() => {
+                  void editMutation
+                    .mutateAsync({
+                      conversationId,
+                      messageId: editTarget.id,
+                      body: editDraft.trim(),
+                    })
+                    .then(() => setEditTarget(null));
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {infoData ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl p-4 text-sm" style={{ background: "var(--surface)" }}>
+            <h3 className="mb-3 text-lg font-semibold">Message info</h3>
+            <p>Sent: {formatMessageTime(infoData.sentAt ?? "")}</p>
+            {infoData.editedAt ? <p>Edited: {formatMessageTime(infoData.editedAt)}</p> : null}
+            <p className="mt-3 font-semibold">Delivered</p>
+            {infoData.delivered.length === 0 ? <p>Pending</p> : infoData.delivered.map((r) => <p key={r.userId}>{r.name}</p>)}
+            <p className="mt-3 font-semibold">Read</p>
+            {infoData.read.length === 0 ? <p>Not read yet</p> : infoData.read.map((r) => <p key={r.userId}>{r.name}</p>)}
+            <button type="button" className="mt-4 text-cyan-400" onClick={() => setInfoData(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
   );
 }

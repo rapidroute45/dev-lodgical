@@ -14,6 +14,7 @@ import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 import { tokenStorage } from "@/shared/utils/storage.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { chatKeys } from "../infrastructure/api/chat.queries.js";
+import { markConversationDelivered } from "../infrastructure/api/chat.api.js";
 
 const ChatSocketContext = createContext(null);
 
@@ -88,6 +89,34 @@ export function ChatProvider({ children }) {
       void qc.invalidateQueries({ queryKey: chatKeys.conversations() });
       if (message.senderId !== user.id) {
         socket.emit("message:delivered", { conversationId: message.conversationId });
+        void markConversationDelivered(message.conversationId).catch(() => {});
+      }
+    });
+
+    socket.on("message:updated", (message) => {
+      qc.setQueryData(chatKeys.messages(message.conversationId), (old) => {
+        if (!old) return old;
+        return old.map((m) => (m.id === message.id ? { ...m, ...message } : m));
+      });
+    });
+
+    socket.on("message:deleted", (payload) => {
+      if (!payload?.conversationId || !payload.messageId) return;
+      if (payload.deletedForAll) {
+        qc.setQueryData(chatKeys.messages(payload.conversationId), (old) => {
+          if (!old) return old;
+          return old.map((m) =>
+            m.id === payload.messageId
+              ? { ...m, deletedForAll: true, body: "This message was deleted" }
+              : m
+          );
+        });
+        return;
+      }
+      if (payload.deletedFor?.includes(user.id)) {
+        qc.setQueryData(chatKeys.messages(payload.conversationId), (old) =>
+          old ? old.filter((m) => m.id !== payload.messageId) : old
+        );
       }
     });
 

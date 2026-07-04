@@ -13,6 +13,7 @@ export function normalizeTrailPoint(point) {
     lng: point.lng,
     recordedAt: point.recordedAt ?? null,
     snapped: point.snapped !== false,
+    estimated: point.estimated === true,
   };
 }
 
@@ -52,4 +53,42 @@ export function applyDriverLocationPayloadToTrail(prevTrail, payload) {
       recordedAt: payload.recordedAt,
     },
   ]);
+}
+
+/** Max distance (m) between live marker and trail tail before trusting trail instead. */
+const MARKER_TRAIL_MAX_DISTANCE_M = 2000;
+
+/**
+ * Prefer driverLocation for the live marker unless it is implausibly far from the trail
+ * (stale bad GPS fix while the snapped trail is on-road).
+ */
+export function resolveLiveDriverMarkerPoint(driverLocation, trail) {
+  const driver = normalizeTrailPoint(driverLocation);
+  const trailPoints = Array.isArray(trail) ? trail : [];
+  const lastTrail = trailPoints.length
+    ? normalizeTrailPoint(trailPoints[trailPoints.length - 1])
+    : null;
+
+  if (!driver) {
+    return lastTrail ? { lat: lastTrail.lat, lng: lastTrail.lng } : null;
+  }
+  if (!lastTrail) {
+    return { lat: driver.lat, lng: driver.lng };
+  }
+
+  const distanceM = haversineMeters(driver.lat, driver.lng, lastTrail.lat, lastTrail.lng);
+  if (distanceM > MARKER_TRAIL_MAX_DISTANCE_M) {
+    return { lat: lastTrail.lat, lng: lastTrail.lng };
+  }
+  return { lat: driver.lat, lng: driver.lng };
+}
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

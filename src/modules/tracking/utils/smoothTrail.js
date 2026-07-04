@@ -1,5 +1,6 @@
 const EARTH_RADIUS_M = 6_371_000;
 const MIN_SEPARATION_M = 8;
+export const MIN_SEPARATION_SNAPPED_M = 3;
 const STATIONARY_RADIUS_M = 20;
 const STATIONARY_MAX_MS = 8_000;
 const STATIONARY_CLUSTER_RADIUS_M = 20;
@@ -68,7 +69,8 @@ function collapseStationaryClusters(points) {
 }
 
 /** Display-only trail smoothing — does not mutate stored GPS. */
-export function smoothTrailForDisplay(points) {
+export function smoothTrailForDisplay(points, options = {}) {
+  const { minSeparationM = MIN_SEPARATION_M } = options;
   const normalized = (points ?? []).map(normalizePoint).filter(Boolean);
   if (normalized.length <= 2) return normalized;
 
@@ -81,7 +83,7 @@ export function smoothTrailForDisplay(points) {
     const isStationaryJitter =
       dist < STATIONARY_RADIUS_M && msBetween(prev.recordedAt, next.recordedAt) <= STATIONARY_MAX_MS;
 
-    if (isLast || (dist >= MIN_SEPARATION_M && !isStationaryJitter)) {
+    if (isLast || (dist >= minSeparationM && !isStationaryJitter)) {
       deduped.push(next);
     }
   }

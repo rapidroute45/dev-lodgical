@@ -22,6 +22,7 @@ import {
   prepareDrawableTrailSegments,
   trailSegmentPolylineOptions,
 } from "@/modules/tracking/utils/trailDisplay.js";
+import { resolveLiveDriverMarkerPoint } from "@/modules/tracking/utils/locationTrail.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import { useGoogleDrivingRoutePath } from "@/modules/tracking/utils/drivingRoutePath.js";
@@ -292,11 +293,13 @@ function LiveRouteMapLayers({
         : [];
 
   const driverMarkerPoint = useMemo(() => {
+    const resolved = resolveLiveDriverMarkerPoint(driverLocation, trail);
+    if (resolved) return resolved;
     return (
       latestRawPoint ??
       (actualTrailPath.length >= 1 ? actualTrailPath[actualTrailPath.length - 1] : null)
     );
-  }, [latestRawPoint, actualTrailPath]);
+  }, [driverLocation, trail, latestRawPoint, actualTrailPath]);
 
   const fitPoints = useMemo(() => {
     const paths = [
@@ -388,7 +391,7 @@ function LiveRouteMapLayers({
           <Polyline
             key={segment.key}
             path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
-            {...trailSegmentPolylineOptions(segment.snapped)}
+            {...trailSegmentPolylineOptions(segment.kind ?? segment.snapped)}
           />
         ) : null
       )}
