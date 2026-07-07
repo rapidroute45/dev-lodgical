@@ -20,6 +20,8 @@ export function formatRouteStatus(status) {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+export { formatSpreadsheetStatus } from "./routeSpreadsheetStatus.js";
+
 export function routeStatusClass(status) {
   switch (status) {
     case "completed":
@@ -34,6 +36,8 @@ export function routeStatusClass(status) {
       return "ops-badge ops-badge--muted";
     case "not_verified":
       return "ops-badge ops-badge--rose";
+    case "verified":
+      return "ops-badge ops-badge--done";
     default:
       return "ops-badge ops-badge--muted";
   }

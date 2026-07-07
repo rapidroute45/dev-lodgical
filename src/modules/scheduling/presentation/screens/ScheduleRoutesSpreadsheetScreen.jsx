@@ -30,6 +30,7 @@ import {
   RoutesSpreadsheetTable,
   routesToSpreadsheetRows,
 } from "../components/RoutesSpreadsheetTable.jsx";
+import { SPREADSHEET_STATUS } from "@/modules/scheduling/utils/routeSpreadsheetStatus.js";
 import { useDriverStopsCsvUpload } from "../hooks/useDriverStopsCsvUpload.js";
 
 function Banner({ type, children }) {
@@ -204,11 +205,16 @@ export function ScheduleRoutesSpreadsheetScreen() {
     setError(null);
   }
 
-  function handleRouteCompleted(routeId, patch) {
+  function handleRouteStatusUpdated(routeId, patch, statusKey) {
     setRows((prev) =>
       prev.map((row) => (row.id === routeId ? { ...row, ...patch } : row))
     );
-    setMessage("Route marked as completed.");
+    const labels = {
+      [SPREADSHEET_STATUS.COMPLETED]: "Route marked as completed.",
+      [SPREADSHEET_STATUS.VERIFIED]: "Route marked as verified.",
+      [SPREADSHEET_STATUS.NOT_VERIFIED]: "Route marked as not verified.",
+    };
+    setMessage(labels[statusKey] ?? "Route status updated.");
     setError(null);
   }
 
@@ -584,7 +590,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
               uploadingStopsCsv={uploadingStopsCsv}
               onDeleteRoute={handleDeleteRoute}
               deletingRouteId={deletingRouteId}
-              onRouteCompleted={handleRouteCompleted}
+              onRouteStatusUpdated={handleRouteStatusUpdated}
             />
             <BulkAddRoutesModal
               open={bulkModalOpen}

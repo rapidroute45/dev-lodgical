@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   addDaysToIsoDate,
+  compareIsoDates,
   formatDisplayDate,
   todayIsoDate,
 } from "@/shared/utils/time.js";
@@ -12,11 +13,14 @@ export function DateNavigator({
   className = "",
   minDate,
   maxDate,
+  label = "Operations date",
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const wrapRef = useRef(null);
   const isToday = date === todayIsoDate();
   const maxIso = maxDate ?? todayIsoDate();
+  const atMaxDate = compareIsoDates(date, maxIso) >= 0;
+  const atMinDate = minDate ? compareIsoDates(date, minDate) <= 0 : false;
 
   return (
     <div
@@ -26,7 +30,8 @@ export function DateNavigator({
       <button
         type="button"
         onClick={() => onDateChange(addDaysToIsoDate(date, -1))}
-        className="ops-btn flex h-10 w-10 items-center justify-center"
+        disabled={atMinDate}
+        className="ops-btn flex h-10 w-10 items-center justify-center disabled:opacity-35"
         aria-label="Previous day"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -42,7 +47,7 @@ export function DateNavigator({
         title="Open calendar"
       >
         <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
-          Operations date
+          {label}
         </p>
         <p className="text-sm font-bold" style={{ color: "var(--text)" }}>{formatDisplayDate(date)}</p>
       </button>
@@ -50,7 +55,7 @@ export function DateNavigator({
       <button
         type="button"
         onClick={() => onDateChange(addDaysToIsoDate(date, 1))}
-        disabled={isToday || (maxIso && date >= maxIso)}
+        disabled={atMaxDate}
         className="ops-btn flex h-10 w-10 items-center justify-center disabled:opacity-35"
         aria-label="Next day"
       >

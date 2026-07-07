@@ -25,8 +25,10 @@
     "schedules": "Horarios",
     "createSchedule": "Crear horario",
     "routes": "Rutas",
+    "allRoutes": "Todas las rutas",
     "stores": "Tiendas",
     "dispatchTeam": "Equipo de despacho",
+    "driverTeams": "Equipos de conductores",
     "availableDrivers": "Conductores disponibles",
     "users": "Usuarios",
     "assignRole": "Asignar rol",
@@ -61,6 +63,7 @@
     "payrollTitle": "Desbloquear nómina",
     "enterPin": "Ingresa tu PIN de operaciones para continuar.",
     "pinLabel": "PIN de operaciones",
+    "tapToEnterPin": "Toca para ingresar PIN",
     "unlock": "Desbloquear",
     "incorrectPin": "PIN incorrecto. Inténtalo de nuevo."
   },

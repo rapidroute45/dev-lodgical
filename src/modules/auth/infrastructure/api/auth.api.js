@@ -38,6 +38,9 @@ export async function registerRequest({ email, password, fullName, phone }) {
     const payload = { email, password, phone };
     if (fullName) payload.fullName = fullName;
     const { data } = await api.post("/auth/register", payload);
+    if (data?.success === false) {
+      throw new ValidationError(data.error || data.message || "Unable to create account.");
+    }
     return {
       user: User.fromApi(data.data),
       message: data.message,

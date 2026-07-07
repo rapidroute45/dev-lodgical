@@ -77,9 +77,14 @@ export function OpsCityClockWidget() {
   }, [allowedLocations, effectiveCity, effectiveState]);
 
   const timeZone = useMemo(() => {
-    if (!resolvedLocation) return null;
-    return resolveCityTimeZone(resolvedLocation.city, resolvedLocation.state);
-  }, [resolvedLocation]);
+    if (resolvedLocation) {
+      return resolveCityTimeZone(resolvedLocation.city, resolvedLocation.state);
+    }
+    if (effectiveCity && effectiveState) {
+      return resolveCityTimeZone(effectiveCity, effectiveState);
+    }
+    return null;
+  }, [resolvedLocation, effectiveCity, effectiveState]);
 
   const visible =
     canPickScope &&

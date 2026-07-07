@@ -43,6 +43,8 @@ export function groupSchedulesByStore(schedules) {
       pendingRouteCount,
       primaryScheduleId: primary?.id,
       status: primary?.status,
+      dispatchTeam: primary?.dispatchTeam ?? null,
+      createdByName: primary?.createdByName ?? null,
       id: group.key,
     };
   });

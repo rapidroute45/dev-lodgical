@@ -18,6 +18,7 @@ import {
   fetchLocations,
   fetchRoute,
   fetchRoutes,
+  fetchRoutesSearch,
   fetchSchedule,
   fetchSchedules,
   fetchStore,
@@ -146,6 +147,30 @@ export function useRoutesQuery(params, enabled = true) {
     ],
     queryFn: () => fetchRoutes({ ...params, ...scopeParams }),
     enabled: enabled && Boolean(params?.date),
+  });
+}
+
+export function useRoutesSearchQuery(params, enabled = true) {
+  const scopeParams = useLocationQueryParams(params);
+  const search = params?.q?.trim() ?? "";
+  return useQuery({
+    queryKey: [
+      "routes",
+      "search",
+      search,
+      params?.fromDate ?? "",
+      params?.toDate ?? "",
+      scopeParams.city ?? "",
+      scopeParams.state ?? "",
+      params?.page ?? 1,
+    ],
+    queryFn: () =>
+      fetchRoutesSearch({
+        ...params,
+        ...scopeParams,
+        q: search,
+      }),
+    enabled: enabled && Boolean(params?.fromDate) && Boolean(params?.toDate),
   });
 }
 
@@ -288,6 +313,46 @@ export function useCompleteRouteOpsMutation() {
       qc.invalidateQueries({ queryKey: ["routes"] });
       if (vars?.routeId) {
         qc.invalidateQueries({ queryKey: ["routes", vars.routeId] });
+      }
+    },
+  });
+}
+
+export function useVerifyRouteDeliveryMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId, scheduleId }) =>
+      updateRoute(routeId, {
+        status: "completed",
+        deliveryVerification: "verified",
+      }).then((data) => ({ data, scheduleId })),
+    onSuccess: (result, vars) => {
+      const updatedRoute = result?.data;
+      const scheduleId = vars?.scheduleId ?? result?.scheduleId ?? updatedRoute?.scheduleId;
+      patchScheduleAfterRouteUpdate(qc, scheduleId, updatedRoute ?? { id: vars.routeId });
+      markSchedulingListsStale(qc);
+      if (vars?.routeId) {
+        qc.setQueryData(["routes", vars.routeId], updatedRoute);
+      }
+    },
+  });
+}
+
+export function useMarkRouteNotVerifiedMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId, scheduleId }) =>
+      updateRoute(routeId, {
+        status: "not_verified",
+        deliveryVerification: "rejected",
+      }).then((data) => ({ data, scheduleId })),
+    onSuccess: (result, vars) => {
+      const updatedRoute = result?.data;
+      const scheduleId = vars?.scheduleId ?? result?.scheduleId ?? updatedRoute?.scheduleId;
+      patchScheduleAfterRouteUpdate(qc, scheduleId, updatedRoute ?? { id: vars.routeId });
+      markSchedulingListsStale(qc);
+      if (vars?.routeId) {
+        qc.setQueryData(["routes", vars.routeId], updatedRoute);
       }
     },
   });

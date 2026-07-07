@@ -8,6 +8,7 @@ import {
 } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { StatusBadge } from "./StatusBadge.jsx";
 import { RouteSummaryRow } from "./RouteSummaryRow.jsx";
+import { ScheduleAttribution } from "./ScheduleAttribution.jsx";
 
 const StoreIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -15,7 +16,7 @@ const StoreIcon = () => (
   </svg>
 );
 
-export function ScheduleCard({ group, expanded, onToggle }) {
+export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = false }) {
   const schedules = group.schedules ?? [];
   const storeName = group.store?.storeName ?? "Unknown store";
   const total = group.routeCount ?? 0;
@@ -76,6 +77,11 @@ export function ScheduleCard({ group, expanded, onToggle }) {
             </span>
             <span>{formatDisplayDate(group.date)}</span>
           </div>
+          <ScheduleAttribution
+            dispatchTeam={group.dispatchTeam}
+            createdByName={group.createdByName}
+            showDispatchTeam={showDispatchTeam}
+          />
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -172,6 +178,10 @@ function ScheduleMetaGrid({ group, detailQueries, loading }) {
     },
     { label: "Total routes", value: String(group.routeCount ?? 0) },
     { label: "Pending routes", value: String(group.pendingRouteCount ?? 0) },
+    {
+      label: "Created by",
+      value: group.createdByName ?? group.schedules?.[0]?.createdByName ?? "—",
+    },
     { label: "Notes", value: notes || "—" },
   ];
 

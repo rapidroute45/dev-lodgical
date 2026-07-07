@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { OpsPinModal } from "@/modules/auth/presentation/components/OpsPinModal.jsx";
+import { OpsThemeProvider } from "@/modules/manager-home/presentation/context/OpsThemeContext.jsx";
 import {
   adminNeedsDispatchElevation,
   roleNeedsPayrollElevation,
@@ -34,7 +35,7 @@ export function OpsElevationRoute({ scope, children, fallback = "/dashboard" }) 
   }
 
   return (
-    <>
+    <OpsThemeProvider>
       <OpsPinModal
         open
         scope={scope}
@@ -45,6 +46,6 @@ export function OpsElevationRoute({ scope, children, fallback = "/dashboard" }) 
         onVerified={verifyPin}
       />
       <div className="pointer-events-none opacity-40">{children}</div>
-    </>
+    </OpsThemeProvider>
   );
 }

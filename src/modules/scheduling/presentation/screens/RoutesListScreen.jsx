@@ -12,7 +12,11 @@ import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScope
 import { StoreFilterSection } from "../components/StoreFilterSection.jsx";
 import { RouteStatusFilter } from "../components/RouteStatusFilter.jsx";
 import { RouteSummaryRow } from "../components/RouteSummaryRow.jsx";
+import { ScheduleAttribution } from "../components/ScheduleAttribution.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { isFullManager } from "@/shared/utils/constants.js";
 
 function groupRoutesByStore(routes) {
   const groups = new Map();
@@ -31,6 +35,8 @@ function groupRoutesByStore(routes) {
         ]
           .filter(Boolean)
           .join(" · "),
+        dispatchTeam: route.schedule?.dispatchTeam ?? null,
+        createdByName: route.schedule?.createdByName ?? null,
         routes: [],
       });
     }
@@ -54,6 +60,9 @@ function summarizeRoutes(routes) {
 
 export function RoutesListScreen() {
   const { date } = useOpsDateScope();
+  const { user } = useAuth();
+  const showDispatchTeam = isFullManager(user?.role);
+  const { maxDate } = useScheduleDateBounds();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);
   const [search, setSearch] = useState("");
@@ -106,7 +115,7 @@ export function RoutesListScreen() {
   const groupedRoutes = useMemo(() => groupRoutesByStore(filteredRoutes), [filteredRoutes]);
 
   const topBar = (
-    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar onRefresh={refetch} refreshing={isFetching} maxDate={maxDate} />
   );
 
   return (
@@ -265,6 +274,11 @@ export function RoutesListScreen() {
                               {group.storeMeta}
                             </p>
                           ) : null}
+                          <ScheduleAttribution
+                            dispatchTeam={group.dispatchTeam}
+                            createdByName={group.createdByName}
+                            showDispatchTeam={showDispatchTeam}
+                          />
                         </div>
                         <span className="ops-teamtag">{group.routes.length} route{group.routes.length === 1 ? "" : "s"}</span>
                       </div>

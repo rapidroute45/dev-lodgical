@@ -10,6 +10,7 @@ import { useDashboardStatsQuery } from "@/modules/manager-home/infrastructure/ap
 import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
+import { maxScheduleBrowseDate } from "@/modules/scheduling/utils/scheduleDateBounds.js";
 import {
   OpsStatCard,
   OpsLifecycleStrip,
@@ -22,6 +23,7 @@ import {
   formatStatusLabel,
 } from "@/modules/manager-home/utils/routeStatus.js";
 import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 
 function displayNameFromUser(user) {
   if (user?.fullName?.trim()) return user.fullName.trim();
@@ -106,12 +108,13 @@ export function DispatchTeamDashboardScreen() {
     <OpsTopBar
       onRefresh={refreshAll}
       refreshing={statsQuery.isFetching || routesQuery.isFetching || schedulesQuery.isFetching}
+      maxDate={maxScheduleBrowseDate()}
     />
   );
 
   return (
     <DashboardLayout topBar={topBar}>
-      <div className="mx-auto w-full max-w-7xl space-y-7 pb-16">
+      <div className={`${PAGE_CONTENT} space-y-7`}>
         <section className="ops-fade flex flex-col gap-4 pt-2 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-semibold" style={{ color: "var(--accent)" }}>

@@ -1,16 +1,31 @@
 /** Session-scoped ops elevation tokens (dispatch / payroll PIN unlock). */
 
+import { isJwtExpired } from "@/shared/utils/jwtToken.js";
+
 const STORAGE_KEY = "ops_elevation";
+
+function sanitizeToken(token) {
+  if (!token?.trim()) return null;
+  return isJwtExpired(token) ? null : token;
+}
 
 function readRaw() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { dispatch: null, payroll: null };
     const parsed = JSON.parse(raw);
-    return {
+    const next = {
+      dispatch: sanitizeToken(typeof parsed?.dispatch === "string" ? parsed.dispatch : null),
+      payroll: sanitizeToken(typeof parsed?.payroll === "string" ? parsed.payroll : null),
+    };
+    const stored = {
       dispatch: typeof parsed?.dispatch === "string" ? parsed.dispatch : null,
       payroll: typeof parsed?.payroll === "string" ? parsed.payroll : null,
     };
+    if (stored.dispatch !== next.dispatch || stored.payroll !== next.payroll) {
+      writeRaw(next);
+    }
+    return next;
   } catch {
     return { dispatch: null, payroll: null };
   }
@@ -79,4 +94,31 @@ export function pickElevationTokenForRequest(method, url) {
     return opsElevationStorage.get("dispatch");
   }
   return null;
+}
+
+export function elevationScopeForRequestUrl(url) {
+  if (!url) return null;
+  const path = url.split("?")[0] ?? url;
+  if (path.includes("/payroll")) return "payroll";
+  if (
+    path.includes("/stores") ||
+    path.includes("/teams") ||
+    path.includes("/schedules") ||
+    path.includes("/routes") ||
+    path.includes("/users")
+  ) {
+    return "dispatch";
+  }
+  return null;
+}
+
+export function isOpsElevationErrorMessage(message) {
+  return /ops elevation required|invalid elevation token|expired elevation token/i.test(
+    String(message)
+  );
+}
+
+export function clearOpsElevationForRequestUrl(url) {
+  const scope = elevationScopeForRequestUrl(url);
+  if (scope) opsElevationStorage.clear(scope);
 }

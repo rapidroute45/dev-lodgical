@@ -145,7 +145,7 @@ export function LandingScreen() {
         {/* Nav */}
         <nav className={`landing__nav ${scrolled ? "landing__nav--scrolled" : ""}`}>
           <div className="landing__section flex items-center justify-between py-4">
-            <span className="landing__brand">Dispatch.co</span>
+            <span className="landing__brand">GBeyes</span>
             <div className="hidden items-center gap-8 md:flex">
               <a className="landing__navlink text-sm" href="#platform">Platform</a>
               <a className="landing__navlink text-sm" href="#solutions">Solutions</a>
@@ -169,7 +169,7 @@ export function LandingScreen() {
               Last-Mile Field Dispatch
             </h1>
             <p className="mt-6 max-w-xl text-lg" style={{ color: "var(--text-muted)" }}>
-              Dispatch.co is an integrated operations platform to Plan, Assign, Execute,
+              GBeyes is an integrated operations platform to Plan, Assign, Execute,
               and Track daily delivery schedules — from store to front door.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
@@ -259,7 +259,7 @@ export function LandingScreen() {
             <div className="landing__card mx-auto max-w-3xl p-10 text-center">
               <div className="landing__quote-mark">&ldquo;</div>
               <p className="mt-4 text-xl leading-relaxed">
-                Dispatch.co gave us one place to plan routes, watch drivers live, and close
+                GBeyes gave us one place to plan routes, watch drivers live, and close
                 out payroll — without juggling spreadsheets and phone calls.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3">
@@ -281,7 +281,7 @@ export function LandingScreen() {
             <div className="landing__cta px-8 py-12 text-center">
               <h2 className="text-3xl font-extrabold tracking-tight">Ready to Transform Your Operations?</h2>
               <p className="mt-2" style={{ color: "var(--text-muted)" }}>
-                Sign in to your workspace and see Dispatch.co in action.
+                Sign in to your workspace and see GBeyes in action.
               </p>
               <Link to="/login" className="landing__btn-glow mt-6 inline-block rounded-full px-8 py-3 text-base">
                 Get Started
@@ -291,7 +291,7 @@ export function LandingScreen() {
         </section>
 
         <footer className="landing__section border-t py-6 text-center text-sm" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
-          © {new Date().getFullYear()} Dispatch.co — Last-mile dispatch platform
+          © {new Date().getFullYear()} GBeyes — Last-mile dispatch platform
         </footer>
       </div>
     </div>

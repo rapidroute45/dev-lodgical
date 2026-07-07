@@ -12,6 +12,7 @@ import { LocationStoreSection } from "@/modules/scheduling/presentation/componen
 import { ScheduleStatusFilter } from "@/modules/scheduling/presentation/components/ScheduleStatusFilter.jsx";
 import { ScheduleCard } from "@/modules/scheduling/presentation/components/ScheduleCard.jsx";
 import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
+import { maxScheduleBrowseDate } from "@/modules/scheduling/utils/scheduleDateBounds.js";
 
 export function DispatchTeamSchedulesPanel({ city }) {
   const memberCity = city?.trim() ?? "";
@@ -83,6 +84,7 @@ export function DispatchTeamSchedulesPanel({ city }) {
           setDate(d);
           setExpandedId(null);
         }}
+        maxDate={maxScheduleBrowseDate()}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

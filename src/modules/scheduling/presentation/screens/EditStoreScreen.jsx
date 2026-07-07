@@ -6,7 +6,6 @@ import {
   useStoreQuery,
   useUpdateStoreMutation,
 } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
 import { SectionCard } from "../components/SectionCard.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 
@@ -94,7 +93,7 @@ export function EditStoreScreen() {
     </div>
   );
 
-  if (isLoading || !hydrated) {
+  if (isLoading || (!hydrated && store)) {
     return (
       <DashboardLayout topBar={topBar}>
         <div className={PAGE_CONTENT}>

@@ -14,6 +14,8 @@ import {
 import { ROLE_DEFINITIONS } from "@/modules/role-assignment/constants/roleDefinitions.js";
 import { TeamPickerModal } from "@/modules/role-assignment/presentation/components/TeamPickerModal.jsx";
 import { CityPickerModal } from "@/modules/role-assignment/presentation/components/CityPickerModal.jsx";
+import { apiErrorMessage } from "@/shared/utils/api.js";
+import { showErrorToast } from "@/shared/utils/appToast.js";
 import { useCreateUserMutation } from "@/modules/users/infrastructure/api/users.queries.js";
 import {
   formatRoleLabel,
@@ -126,12 +128,9 @@ export function CreateUserScreen() {
         state: { message: result?.message ?? "Account created." },
       });
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err.message ||
-          "Failed to create account"
-      );
+      const message = apiErrorMessage(err, "Failed to create account");
+      setError(message);
+      showErrorToast(message, "Could not create account");
     }
   }
 

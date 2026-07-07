@@ -67,6 +67,11 @@ export function RouteSummaryRow({
                 ? ` · ${formatDisplayDate(route.schedule.date)}`
                 : ""}
           </p>
+          {route.assignedByName ? (
+            <p className="mt-1 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+              Created by: {route.assignedByName}
+            </p>
+          ) : null}
         </div>
         {!showStoreHeader ? (
           <svg className="mt-1 h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -56,7 +56,7 @@ export function LoginScreen() {
     <AuthLayout
       theme="dark"
       side="left"
-      badge="Dispatch.co"
+      badge="GBeyes"
       title={t("auth.welcomeBack")}
       description={t("auth.loginDescription")}
       footerNote={t("auth.secureLogin")}

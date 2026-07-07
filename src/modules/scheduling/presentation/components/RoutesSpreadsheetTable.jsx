@@ -10,10 +10,17 @@ import {
   sortRoutesByCategory,
 } from "@/modules/scheduling/utils/routeSort.js";
 import { fetchAvailableDrivers } from "@/modules/scheduling/infrastructure/api/scheduling.api.js";
-import { useCompleteRouteOpsMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { useCompleteRouteOpsMutation, useMarkRouteNotVerifiedMutation, useVerifyRouteDeliveryMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { routeNameWithCategory } from "@/modules/scheduling/utils/routeDraft.js";
 import { defaultDepartureFromArrival, formatRouteDurationHours } from "@/shared/utils/time.js";
-import { formatRouteStatus } from "@/modules/scheduling/utils/scheduleStatus.js";
+import {
+  canEditSpreadsheetStatus,
+  formatSpreadsheetStatus,
+  getSpreadsheetStatusKey,
+  getSpreadsheetStatusOptions,
+  isLiveSpreadsheetRoute,
+  SPREADSHEET_STATUS,
+} from "@/modules/scheduling/utils/routeSpreadsheetStatus.js";
 import {
   canTrackRoute,
   isLiveRouteTracking,
@@ -89,6 +96,7 @@ function routeToRow(route) {
     location: route.location ?? "",
     notes: route.notes ?? "",
     status: route.status ?? "pending",
+    deliveryVerification: route.deliveryVerification ?? null,
     pickup,
     dropoffs,
     stopCount: dropoffs.length || route.stops || 0,
@@ -117,12 +125,48 @@ function canTrackDriver(row) {
   return isPersistedRoute(row) && canTrackRoute(row);
 }
 
-function canCompleteRouteFromSpreadsheet(row) {
-  return (
-    isPersistedRoute(row) &&
-    Boolean(row.driverId) &&
-    (row.status === "active" || row.status === "in_progress")
-  );
+function buildCompletedStopsPatch(row) {
+  const stopCount = row.stopCount ?? row.dropoffs?.length ?? 0;
+  const now = new Date().toISOString();
+  return {
+    status: "completed",
+    deliveryVerification: "pending",
+    completedAt: now,
+    completedStopCount: stopCount,
+    dropoffs: (row.dropoffs ?? []).map((stop) =>
+      stop.status === "pending" || !stop.status
+        ? { ...stop, status: "completed", completedAt: now }
+        : stop
+    ),
+  };
+}
+
+function statusConfirmMessage(row, nextKey) {
+  const stopCount = row.stopCount ?? row.dropoffs?.length ?? 0;
+  const pendingCount =
+    row.dropoffs?.filter((stop) => stop.status === "pending" || !stop.status).length ?? stopCount;
+  const name = row.routeName || "this route";
+
+  if (nextKey === SPREADSHEET_STATUS.COMPLETED) {
+    return pendingCount > 0
+      ? `Mark "${name}" as completed? ${pendingCount} pending stop${pendingCount === 1 ? "" : "s"} will be marked as delivered.`
+      : `Mark "${name}" as completed?`;
+  }
+  if (nextKey === SPREADSHEET_STATUS.VERIFIED) {
+    return isLiveSpreadsheetRoute(row)
+      ? pendingCount > 0
+        ? `Mark "${name}" as verified? Pending stops will be completed first, then the route will be verified.`
+        : `Mark "${name}" as verified? The route will be completed and verified.`
+      : `Mark "${name}" as verified?`;
+  }
+  if (nextKey === SPREADSHEET_STATUS.NOT_VERIFIED) {
+    return isLiveSpreadsheetRoute(row)
+      ? pendingCount > 0
+        ? `Mark "${name}" as not verified? Pending stops will be completed first, then the route will be marked not verified.`
+        : `Mark "${name}" as not verified? The route will be completed and marked not verified.`
+      : `Mark "${name}" as not verified?`;
+  }
+  return null;
 }
 
 export function RoutesSpreadsheetTable({
@@ -139,17 +183,19 @@ export function RoutesSpreadsheetTable({
   uploadingStopsCsv = false,
   onDeleteRoute,
   deletingRouteId = null,
-  onRouteCompleted,
+  onRouteStatusUpdated,
   showTrack = true,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const stopsCsvInputRef = useRef(null);
   const completeRouteOps = useCompleteRouteOpsMutation();
+  const verifyRouteDelivery = useVerifyRouteDeliveryMutation();
+  const markRouteNotVerified = useMarkRouteNotVerifiedMutation();
   const [quickFilter, setQuickFilter] = useState("");
   const [driversCache, setDriversCache] = useState({});
   const [loadingDriverRow, setLoadingDriverRow] = useState(null);
-  const [completingRouteId, setCompletingRouteId] = useState(null);
+  const [statusUpdatingRouteId, setStatusUpdatingRouteId] = useState(null);
 
   const sortedRows = useMemo(() => sortRoutesByCategory(rows), [rows]);
 
@@ -196,7 +242,7 @@ export function RoutesSpreadsheetTable({
         row.vehicleType,
         row.location,
         row.notes,
-        formatRouteStatus(row.status),
+        formatSpreadsheetStatus(row),
       ]
         .join(" ")
         .toLowerCase();
@@ -284,40 +330,58 @@ export function RoutesSpreadsheetTable({
     }
   }
 
-  async function handleRouteStatusChange(row, nextStatus) {
-    if (nextStatus === row.status || nextStatus !== "completed") return;
-    if (!canCompleteRouteFromSpreadsheet(row)) return;
+  async function handleRouteStatusChange(row, nextKey) {
+    const currentKey = getSpreadsheetStatusKey(row);
+    if (nextKey === currentKey || !canEditSpreadsheetStatus(row)) return;
 
-    const stopCount = row.stopCount ?? row.dropoffs?.length ?? 0;
-    const pendingCount = row.dropoffs?.filter(
-      (stop) => stop.status === "pending" || !stop.status
-    ).length ?? stopCount;
+    const confirmMessage = statusConfirmMessage(row, nextKey);
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
 
-    const confirmed = window.confirm(
-      pendingCount > 0
-        ? `Mark "${row.routeName}" as completed? ${pendingCount} pending stop${pendingCount === 1 ? "" : "s"} will be marked as delivered.`
-        : `Mark "${row.routeName}" as completed?`
-    );
-    if (!confirmed) return;
-
-    setCompletingRouteId(row.id);
+    setStatusUpdatingRouteId(row.id);
     try {
-      await completeRouteOps.mutateAsync({ routeId: row.id });
-      onRouteCompleted?.(row.id, {
-        status: "completed",
-        completedStopCount: stopCount,
-        dropoffs: (row.dropoffs ?? []).map((stop) =>
-          stop.status === "pending" || !stop.status
-            ? { ...stop, status: "completed", completedAt: new Date().toISOString() }
-            : stop
-        ),
-      });
+      let patch = null;
+
+      if (nextKey === SPREADSHEET_STATUS.COMPLETED) {
+        if (isLiveSpreadsheetRoute(row)) {
+          await completeRouteOps.mutateAsync({ routeId: row.id });
+        }
+        patch = buildCompletedStopsPatch(row);
+      } else if (nextKey === SPREADSHEET_STATUS.VERIFIED) {
+        if (isLiveSpreadsheetRoute(row)) {
+          await completeRouteOps.mutateAsync({ routeId: row.id });
+        }
+        await verifyRouteDelivery.mutateAsync({
+          routeId: row.id,
+          scheduleId: row.scheduleId || scheduleId,
+        });
+        patch = {
+          ...buildCompletedStopsPatch(row),
+          deliveryVerification: "verified",
+        };
+      } else if (nextKey === SPREADSHEET_STATUS.NOT_VERIFIED) {
+        if (isLiveSpreadsheetRoute(row)) {
+          await completeRouteOps.mutateAsync({ routeId: row.id });
+        }
+        await markRouteNotVerified.mutateAsync({
+          routeId: row.id,
+          scheduleId: row.scheduleId || scheduleId,
+        });
+        patch = {
+          ...buildCompletedStopsPatch(row),
+          status: "not_verified",
+          deliveryVerification: "rejected",
+        };
+      }
+
+      if (patch) {
+        onRouteStatusUpdated?.(row.id, patch, nextKey);
+      }
     } catch (err) {
       window.alert(
-        err?.response?.data?.message ?? err?.message ?? "Could not complete route."
+        err?.response?.data?.message ?? err?.message ?? "Could not update route status."
       );
     } finally {
-      setCompletingRouteId(null);
+      setStatusUpdatingRouteId(null);
     }
   }
 
@@ -340,7 +404,7 @@ export function RoutesSpreadsheetTable({
         row.mileage,
         row.location,
         row.notes,
-        formatRouteStatus(row.status),
+        formatSpreadsheetStatus(row),
       ]
         .map(escapeCsv)
         .join(",");
@@ -636,24 +700,25 @@ export function RoutesSpreadsheetTable({
                       <td>
                         {row.isNew ? (
                           <span className="route-grid-static">New</span>
-                        ) : canCompleteRouteFromSpreadsheet(row) ? (
+                        ) : canEditSpreadsheetStatus(row) ? (
                           <select
                             className="route-grid-input route-grid-input--select"
-                            value={row.status}
-                            disabled={completingRouteId === row.id}
+                            value={getSpreadsheetStatusKey(row)}
+                            disabled={statusUpdatingRouteId === row.id}
                             title="Change route status"
                             onChange={(e) => void handleRouteStatusChange(row, e.target.value)}
                           >
-                            <option value={row.status}>
-                              {completingRouteId === row.id
-                                ? "Completing…"
-                                : formatRouteStatus(row.status)}
-                            </option>
-                            <option value="completed">Completed</option>
+                            {getSpreadsheetStatusOptions(row).map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {statusUpdatingRouteId === row.id && option.value === getSpreadsheetStatusKey(row)
+                                  ? "Updating…"
+                                  : option.label}
+                              </option>
+                            ))}
                           </select>
                         ) : (
                           <span className="route-grid-static">
-                            {formatRouteStatus(row.status)}
+                            {formatSpreadsheetStatus(row)}
                           </span>
                         )}
                       </td>

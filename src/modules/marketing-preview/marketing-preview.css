@@ -1,0 +1,14 @@
+[data-marketing-preview="true"] {
+  height: 100svh;
+  overflow: hidden;
+}
+
+[data-marketing-preview="true"] .marketing-preview-main {
+  height: calc(100svh - 57px);
+  overflow: hidden;
+}
+
+[data-marketing-preview="true"] .live-tracking-map {
+  height: 420px;
+  min-height: 420px;
+}

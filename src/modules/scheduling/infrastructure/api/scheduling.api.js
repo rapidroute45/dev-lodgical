@@ -92,6 +92,22 @@ export async function fetchRoutes(params) {
   };
 }
 
+/** GET /routes/search — search routes by team, driver, dispatch, route name, city, state */
+export async function fetchRoutesSearch(params) {
+  const res = await api.get("/routes/search", { params });
+  const body = res.data;
+  return {
+    items: body.data ?? [],
+    total: body.total ?? body.data?.length ?? 0,
+    count: body.count ?? body.data?.length ?? 0,
+    page: body.page ?? 1,
+    limit: body.limit ?? 50,
+    fromDate: body.fromDate,
+    toDate: body.toDate,
+    search: body.search,
+  };
+}
+
 export async function fetchTeams() {
   const res = await api.get("/teams");
   return res.data.data ?? [];

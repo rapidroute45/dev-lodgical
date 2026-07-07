@@ -208,6 +208,11 @@ export function DispatchTeamRoutesPanel({ city }) {
                                 ? ` · ${formatDisplayDate(route.schedule.date)}`
                                 : ""}
                             </p>
+                            {route.assignedByName ? (
+                              <p className="mt-1 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+                                Created by: {route.assignedByName}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       </button>

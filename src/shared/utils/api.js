@@ -11,6 +11,8 @@ import { tokenStorage } from "./storage.js";
 import {
   opsElevationStorage,
   pickElevationTokenForRequest,
+  clearOpsElevationForRequestUrl,
+  isOpsElevationErrorMessage,
 } from "@/modules/auth/application/opsElevationStorage.js";
 import { queryClient } from "@/app/queryClient.js";
 
@@ -63,6 +65,10 @@ api.interceptors.response.use(
       (typeof data?.error === "string" && data.error.trim()) ||
       (typeof data?.message === "string" && data.message.trim()) ||
       null;
+
+    if (error?.response?.status === 403 && apiMessage && isOpsElevationErrorMessage(apiMessage)) {
+      clearOpsElevationForRequestUrl(error?.config?.url);
+    }
 
     if (apiMessage) {
       error.message = apiMessage;

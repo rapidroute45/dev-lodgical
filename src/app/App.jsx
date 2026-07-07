@@ -28,6 +28,7 @@ import { ViewScheduleScreen } from "@/modules/scheduling/presentation/screens/Vi
 import { ScheduleRoutesSpreadsheetScreen } from "@/modules/scheduling/presentation/screens/ScheduleRoutesSpreadsheetScreen.jsx";
 import { RouteStopsScreen } from "@/modules/scheduling/presentation/screens/RouteStopsScreen.jsx";
 import { RoutesListScreen } from "@/modules/scheduling/presentation/screens/RoutesListScreen.jsx";
+import { AllRoutesSearchScreen } from "@/modules/scheduling/presentation/screens/AllRoutesSearchScreen.jsx";
 import { ViewRouteScreen } from "@/modules/scheduling/presentation/screens/ViewRouteScreen.jsx";
 import { StoreScreen } from "@/modules/scheduling/presentation/screens/StoreScreen.jsx";
 import { AvailableDriversScreen } from "@/modules/scheduling/presentation/screens/AvailableDriversScreen.jsx";
@@ -51,11 +52,15 @@ import { ChatThreadScreen } from "@/modules/chat/presentation/screens/ChatThread
 import { ProfileScreen } from "@/modules/auth/presentation/screens/ProfileScreen.jsx";
 import { PayrollRouteDetailScreen } from "@/modules/payroll/presentation/screens/PayrollRouteDetailScreen.jsx";
 import { DispatchTeamListScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamListScreen.jsx";
+import { DriverTeamsListScreen } from "@/modules/manager-home/presentation/screens/DriverTeamsListScreen.jsx";
 import { DispatchTeamMemberScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamMemberScreen.jsx";
 import { LiveTrackingScreen } from "@/modules/tracking/presentation/screens/LiveTrackingScreen.jsx";
 import { RouteTrackingScreen } from "@/modules/tracking/presentation/screens/RouteTrackingScreen.jsx";
 import { TrackingRoute } from "@/modules/tracking/presentation/routes/TrackingRoute.jsx";
 import { LandingScreen } from "@/modules/landing/presentation/screens/LandingScreen.jsx";
+import { MarketingDashboardPreview } from "@/modules/marketing-preview/MarketingDashboardPreview.jsx";
+import { MarketingRoutesPreview } from "@/modules/marketing-preview/MarketingRoutesPreview.jsx";
+import { MarketingTrackingPreview } from "@/modules/marketing-preview/MarketingTrackingPreview.jsx";
 /**
  * Root router (mirrors mobile app/(auth) + app/(app) layout wiring).
  */
@@ -180,6 +185,16 @@ export default function App() {
               }
             />
             <Route
+              path="/all-routes"
+              element={
+                <ProtectedRoute>
+                  <OpsRoute>
+                    <AllRoutesSearchScreen />
+                  </OpsRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/routes"
               element={
                 <ProtectedRoute>
@@ -214,9 +229,7 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <OpsRoute>
-                    <OpsElevationRoute scope="dispatch">
-                      <StoreScreen />
-                    </OpsElevationRoute>
+                    <StoreScreen />
                   </OpsRoute>
                 </ProtectedRoute>
               }
@@ -328,6 +341,16 @@ export default function App() {
               }
             />
             <Route
+              path="/driver-teams"
+              element={
+                <ProtectedRoute>
+                  <ManagerOnlyRoute>
+                    <DriverTeamsListScreen />
+                  </ManagerOnlyRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dispatch-team"
               element={
                 <ProtectedRoute>
@@ -429,7 +452,11 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<LandingScreen />} />
+            <Route path="/landing" element={<LandingScreen />} />
+            <Route path="/marketing-preview/dashboard" element={<MarketingDashboardPreview />} />
+            <Route path="/marketing-preview/routes" element={<MarketingRoutesPreview />} />
+            <Route path="/marketing-preview/tracking" element={<MarketingTrackingPreview />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
           </OpsDateScopeProvider>

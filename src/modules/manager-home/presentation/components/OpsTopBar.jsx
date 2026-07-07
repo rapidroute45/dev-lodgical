@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { formatDisplayDate, todayIsoDate, addDaysToIsoDate } from "@/shared/utils/time.js";
+import { formatDisplayDate, todayIsoDate, addDaysToIsoDate, compareIsoDates } from "@/shared/utils/time.js";
 import { OpsHeaderNav } from "@/modules/manager-home/presentation/components/OpsHeaderNav.jsx";
 import { LocationScopeControls } from "@/modules/manager-home/presentation/components/LocationScopeControls.jsx";
 import { useOpsTheme } from "@/modules/manager-home/presentation/context/OpsThemeContext.jsx";
@@ -79,12 +79,15 @@ export function OpsTopBar({
   onRefresh,
   refreshing,
   showDate = true,
+  maxDate: maxDateProp,
 }) {
   const dateScope = useOpsDateScopeOptional();
   const date = dateProp ?? dateScope?.date ?? todayIsoDate();
   const setDate = setDateProp ?? dateScope?.setDate;
   const navDate = date ?? todayIsoDate();
-  const isToday = navDate >= todayIsoDate();
+  const maxDate = maxDateProp ?? todayIsoDate();
+  const isToday = navDate === todayIsoDate();
+  const atMaxDate = compareIsoDates(navDate, maxDate) >= 0;
   const canChangeDate = showDate && typeof setDate === "function";
 
   function applyDate(nextOrFn) {
@@ -124,7 +127,7 @@ export function OpsTopBar({
             <DatePickerPopover
               value={navDate}
               onChange={applyDate}
-              maxDate={todayIsoDate()}
+              maxDate={maxDate}
               buttonLabel={formatDisplayDate(navDate)}
               buttonClassName="ops-dateseg__label flex items-center gap-2 px-3 text-sm font-semibold"
             />
@@ -132,7 +135,7 @@ export function OpsTopBar({
             <button
               type="button"
               onClick={() => applyDate((d) => addDaysToIsoDate(d, 1))}
-              disabled={isToday}
+              disabled={atMaxDate}
               className="ops-dateseg__nav"
               aria-label="Next day"
             >

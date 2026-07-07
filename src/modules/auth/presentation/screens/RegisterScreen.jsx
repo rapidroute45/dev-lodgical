@@ -4,6 +4,8 @@ import { AuthLayout } from "@/modules/auth/presentation/components/AuthLayout.js
 import { TextField, PasswordField } from "@/modules/auth/presentation/components/TextField.jsx";
 import { Button } from "@/modules/auth/presentation/components/Button.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { apiErrorMessage } from "@/shared/utils/api.js";
+import { showErrorToast, showSuccessToast } from "@/shared/utils/appToast.js";
 
 export function RegisterScreen() {
   const { register } = useAuth();
@@ -61,9 +63,16 @@ export function RegisterScreen() {
         result?.message ||
           "Registration successful. Your account is pending role assignment by an administrator."
       );
+      showSuccessToast(
+        result?.message ||
+          "Your account is pending role assignment by an administrator.",
+        "Account created"
+      );
       setTimeout(() => navigate("/login", { replace: true }), 1800);
     } catch (err) {
-      setSubmitError(err.message || "Unable to create account.");
+      const message = apiErrorMessage(err, "Unable to create account.");
+      setSubmitError(message);
+      showErrorToast(message, "Registration failed");
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +82,7 @@ export function RegisterScreen() {
     <AuthLayout
       theme="dark"
       side="right"
-      badge="Dispatch.co"
+      badge="GBeyes"
       title="Start your journey"
       description="Join our platform to streamline your workflow and boost productivity."
       footerNote="Enterprise account registration."

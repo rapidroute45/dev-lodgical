@@ -57,7 +57,7 @@ function buildNav(user, t, elevation) {
         matchActive: matchSchedulesNav,
       },
       { to: "/schedules/create", label: t("nav.createSchedule"), icon: "map", end: true },
-      { to: "/routes", label: t("nav.routes"), icon: "routes" },
+      { to: "/all-routes", label: t("nav.allRoutes"), icon: "routes" },
       { to: "/stores", label: t("nav.stores"), icon: "store" },
       { to: "/chat", label: t("nav.chat"), icon: "chat" },
       { to: "/profile", label: t("nav.profile"), icon: "profile" },
@@ -88,7 +88,7 @@ function buildNav(user, t, elevation) {
   }
 
   baseOps.push(
-    { to: "/routes", label: t("nav.routes"), icon: "routes" },
+    { to: "/all-routes", label: t("nav.allRoutes"), icon: "routes" },
     { to: "/stores", label: t("nav.stores"), icon: "store" }
   );
 
@@ -97,6 +97,7 @@ function buildNav(user, t, elevation) {
   if (MANAGER_ROLES.includes(role)) {
     items.push(
       { to: "/dispatch-team", label: t("nav.dispatchTeam"), icon: "dispatchTeam" },
+      { to: "/driver-teams", label: t("nav.driverTeams"), icon: "driverTeams" },
       { to: "/available-drivers", label: t("nav.availableDrivers"), icon: "drivers" },
       { to: "/users", label: t("nav.users"), icon: "users" },
       { to: "/assign-role", label: t("nav.assignRole"), icon: "shield" },
@@ -153,6 +154,7 @@ function NavIcon({ name }) {
     profile: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
     drivers: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
     dispatchTeam: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+    driverTeams: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
     users: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
   };
   const d = paths[name] ?? paths.users;
@@ -288,7 +290,7 @@ function DashboardLayoutShell({ children, topBar }) {
               D
             </span>
             <div>
-              <p className="ops-sidebar__brand text-sm">Dispatch.co</p>
+              <p className="ops-sidebar__brand text-sm">GBeyes</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 {t("nav.operationsHub")}
               </p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getUserAssignedCities } from "@/shared/utils/assignedCities.js";
 import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
@@ -6,8 +6,10 @@ import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTop
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import { useUserQuery } from "@/modules/users/infrastructure/api/users.queries.js";
+import { useDispatchPerformanceQuery } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { DispatchTeamSchedulesPanel } from "@/modules/dispatch-team/presentation/components/DispatchTeamSchedulesPanel.jsx";
 import { DispatchTeamRoutesPanel } from "@/modules/dispatch-team/presentation/components/DispatchTeamRoutesPanel.jsx";
+import { DispatchMemberPerformanceCard } from "@/modules/dispatch-team/presentation/components/DispatchMemberPerformanceCard.jsx";
 
 const TABS = [
   { key: "schedules", label: "Schedules" },
@@ -19,6 +21,12 @@ export function DispatchTeamMemberScreen() {
   const [tab, setTab] = useState("schedules");
   const [viewCity, setViewCity] = useState("");
   const { data: member, isLoading, isError } = useUserQuery(userId, true);
+  const { data: performanceData, isLoading: performanceLoading } = useDispatchPerformanceQuery(7, !!userId);
+
+  const memberPerformance = useMemo(() => {
+    if (!userId) return null;
+    return (performanceData?.members ?? []).find((entry) => entry.userId === userId) ?? null;
+  }, [performanceData?.members, userId]);
 
   const displayName = member
     ? member.displayName ?? resolveDisplayName(member.fullName, member.email)
@@ -129,6 +137,12 @@ export function DispatchTeamMemberScreen() {
             </Link>
           </div>
         </div>
+
+        <DispatchMemberPerformanceCard
+          performance={memberPerformance}
+          loading={performanceLoading}
+          days={performanceData?.window?.days ?? 7}
+        />
 
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           Same city-scoped view this member sees in the app. Open any schedule or route to review or

@@ -9,6 +9,7 @@ import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScope
 import {
   useDashboardStatsQuery,
   useAvailableDriversQuery,
+  useDriverPerformanceQuery,
 } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { useTodayRoutesQuery } from "@/modules/manager-home/infrastructure/api/routes.queries.js";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
@@ -24,6 +25,8 @@ import {
   summarizeRoutes,
   formatStatusLabel,
 } from "@/modules/manager-home/utils/routeStatus.js";
+import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { AvailableDriverRow } from "@/modules/manager-home/presentation/components/AvailableDriverRow.jsx";
 
 function displayNameFromUser(user) {
   if (user?.fullName?.trim()) return user.fullName.trim();
@@ -77,6 +80,7 @@ export function ManagerDashboardScreen() {
   const payrollQuery = usePayrollPendingSummaryQuery(canViewPayroll);
   const availableQuery = useAvailableDriversQuery(date, isManager);
   const routesQuery = useTodayRoutesQuery(date, isManager);
+  const performanceQuery = useDriverPerformanceQuery(7, isManager);
 
   const {
     data: statsRaw,
@@ -145,13 +149,22 @@ export function ManagerDashboardScreen() {
     return routes.filter((r) => set.has(r.status ?? ""));
   }, [routes, stageFilter]);
 
+  const performanceByDriverId = useMemo(() => {
+    const map = new Map();
+    for (const entry of performanceQuery.data?.drivers ?? []) {
+      map.set(entry.userId, entry);
+    }
+    return map;
+  }, [performanceQuery.data?.drivers]);
+
   const metricsLoading =
     statsLoading ||
     routesLoading ||
     (statsFetching && !stats) ||
     (routesFetching && !routesFetched);
 
-  const driversBusy = statsFetching || driversFetching || routesFetching;
+  const driversBusy =
+    statsFetching || driversFetching || routesFetching || performanceQuery.isFetching;
 
   const lifecycleStages = [
     { key: "pending", label: "Pending", value: pending, color: "var(--amber)" },
@@ -164,6 +177,7 @@ export function ManagerDashboardScreen() {
     void refetchStats();
     void refetchDrivers();
     void refetchRoutes();
+    void performanceQuery.refetch();
   }
 
   const topBar = (
@@ -209,7 +223,7 @@ export function ManagerDashboardScreen() {
 
   return (
     <DashboardLayout topBar={topBar}>
-      <div className="mx-auto w-full max-w-7xl space-y-7 pb-16">
+      <div className={`${PAGE_CONTENT} space-y-7`}>
         {/* Welcome + identity */}
         <section className="ops-fade flex flex-col gap-4 pt-2 md:flex-row md:items-end md:justify-between">
           <div>
@@ -320,7 +334,7 @@ export function ManagerDashboardScreen() {
             { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
             { to: "/tracking", label: "Live tracking", icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
             { to: "/available-drivers", label: "Available drivers", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" },
-            { to: "/routes", label: "All routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
+            { to: "/all-routes", label: "All routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
           ].map((a) => (
             <Link key={a.to} to={a.to} className="ops-quick">
               <span className="ops-quick__icon">
@@ -338,6 +352,11 @@ export function ManagerDashboardScreen() {
           <OpsPanel
             title="Available drivers"
             subtitle={driversLoading ? "Loading…" : `${available?.count ?? 0} drivers with no route ${isToday ? "today" : "on date"}`}
+            action={
+              <Link to="/available-drivers" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
+                View performance
+              </Link>
+            }
           >
             {driversLoading ? (
               <OpsEmpty>Loading drivers…</OpsEmpty>
@@ -346,20 +365,14 @@ export function ManagerDashboardScreen() {
             ) : (
               <ul>
                 {available.drivers.map((d) => (
-                  <li key={d.id} className="ops-row flex items-center gap-3 px-6 py-3">
-                    <span className="ops-avatar h-10 w-10 text-sm">
-                      {(d.displayName || d.email || "?").charAt(0).toUpperCase()}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold" style={{ color: "var(--text)" }}>
-                        {d.displayName}
-                      </p>
-                      <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
-                        {d.email}
-                      </p>
-                    </div>
-                    <span className="ops-teamtag shrink-0">{d.teamName || "No team"}</span>
-                  </li>
+                  <AvailableDriverRow
+                    key={d.id}
+                    driver={d}
+                    performance={performanceByDriverId.get(d.id) ?? null}
+                    performanceLoading={performanceQuery.isLoading}
+                    showTeam
+                    variant="panel"
+                  />
                 ))}
               </ul>
             )}
@@ -375,7 +388,7 @@ export function ManagerDashboardScreen() {
                   : `${routesData?.total ?? routes.length} route(s) ${routesSublabel}`
             }
             action={
-              <Link to="/routes" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
+              <Link to="/all-routes" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
                 View all
               </Link>
             }

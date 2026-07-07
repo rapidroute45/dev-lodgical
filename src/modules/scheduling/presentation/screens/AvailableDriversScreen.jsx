@@ -4,17 +4,24 @@ import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTop
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { MANAGER_ROLES } from "@/shared/utils/constants.js";
 import { useTeamsQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
-import { useAvailableDriversQuery } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
+import {
+  useAvailableDriversQuery,
+  useDriverPerformanceQuery,
+} from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { formatDisplayDate } from "@/shared/utils/time.js";
 import { DateNavigator } from "../components/DateNavigator.jsx";
+import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 import { SectionCard } from "../components/SectionCard.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { PerformanceSummaryStrip } from "@/modules/manager-home/presentation/components/PerformanceSummaryStrip.jsx";
+import { AvailableDriverRow } from "@/modules/manager-home/presentation/components/AvailableDriverRow.jsx";
 
 export function AvailableDriversScreen() {
   const { user } = useAuth();
   const isManager = user?.role && MANAGER_ROLES.includes(user.role);
   const { date, setDate } = useOpsDateScope();
+  const { maxDate } = useScheduleDateBounds();
 
   const { data: teams = [], isLoading: teamsLoading } = useTeamsQuery(isManager);
   const {
@@ -24,6 +31,20 @@ export function AvailableDriversScreen() {
     refetch,
     isFetching,
   } = useAvailableDriversQuery(date, isManager);
+
+  const {
+    data: performanceData,
+    isLoading: performanceLoading,
+    isFetching: performanceFetching,
+  } = useDriverPerformanceQuery(7, isManager);
+
+  const performanceByDriverId = useMemo(() => {
+    const map = new Map();
+    for (const entry of performanceData?.drivers ?? []) {
+      map.set(entry.userId, entry);
+    }
+    return map;
+  }, [performanceData?.drivers]);
 
   const driversByTeam = useMemo(() => {
     const map = new Map();
@@ -38,7 +59,13 @@ export function AvailableDriversScreen() {
   const totalAvailable = availableData?.count ?? 0;
 
   const topBar = (
-    <OpsTopBar onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar
+      onRefresh={() => {
+        void refetch();
+      }}
+      refreshing={isFetching || performanceFetching}
+      maxDate={maxDate}
+    />
   );
 
   const titleRow = (
@@ -80,12 +107,19 @@ export function AvailableDriversScreen() {
       <div className={PAGE_CONTENT}>
         {titleRow}
 
-        <DateNavigator date={date} onDateChange={setDate} />
+        <DateNavigator date={date} onDateChange={setDate} maxDate={maxDate} />
 
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           Active drivers with no route assignment on{" "}
           <span className="font-semibold" style={{ color: "var(--text)" }}>{formatDisplayDate(date)}</span>.
         </p>
+
+        <PerformanceSummaryStrip
+          window={performanceData?.window}
+          topPerformers={performanceData?.topPerformers}
+          needsImprovement={performanceData?.needsImprovement}
+          loading={performanceLoading}
+        />
 
         {loading ? (
           <div className="space-y-4">
@@ -123,26 +157,26 @@ export function AvailableDriversScreen() {
                       No available drivers on this date.
                     </p>
                   ) : (
-                    <ul className="space-y-2">
-                      {drivers.map((driver) => (
-                        <li
-                          key={driver.id}
-                          className="ops-listcard flex items-center gap-3 p-3"
-                        >
-                          <span className="ops-avatar flex h-10 w-10 shrink-0 items-center justify-center">
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
-                              {driver.displayName ?? driver.fullName ?? driver.email}
-                            </p>
-                            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{driver.email}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <div
+                        className="mb-2 hidden px-3 text-xs font-semibold uppercase tracking-wide sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)_auto] sm:gap-3"
+                        style={{ color: "var(--text-dim)" }}
+                      >
+                        <span>Driver</span>
+                        <span>Performance (7 days)</span>
+                        <span className="text-right">Badge</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {drivers.map((driver) => (
+                          <AvailableDriverRow
+                            key={driver.id}
+                            driver={driver}
+                            performance={performanceByDriverId.get(driver.id) ?? null}
+                            performanceLoading={performanceLoading}
+                          />
+                        ))}
+                      </ul>
+                    </>
                   )}
                 </SectionCard>
               );
@@ -152,17 +186,12 @@ export function AvailableDriversScreen() {
               <SectionCard title="No team" subtitle="Drivers without a team assignment">
                 <ul className="space-y-2">
                   {driversByTeam.get("unassigned").map((driver) => (
-                    <li
+                    <AvailableDriverRow
                       key={driver.id}
-                      className="ops-listcard flex items-center gap-3 p-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
-                          {driver.displayName ?? driver.fullName ?? driver.email}
-                        </p>
-                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>{driver.email}</p>
-                      </div>
-                    </li>
+                      driver={driver}
+                      performance={performanceByDriverId.get(driver.id) ?? null}
+                      performanceLoading={performanceLoading}
+                    />
                   ))}
                 </ul>
               </SectionCard>

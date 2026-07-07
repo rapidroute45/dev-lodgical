@@ -33,6 +33,8 @@ import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { canManageStores } from "@/shared/utils/constants.js";
 import { useDriverStopsCsvUpload } from "../hooks/useDriverStopsCsvUpload.js";
+import { DateNavigator } from "../components/DateNavigator.jsx";
+import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 
 function Banner({ type, children }) {
   return (
@@ -48,6 +50,7 @@ export function CreateScheduleScreen() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { dispatchUnlocked } = useOpsElevation();
+  const { minDate, maxDate } = useScheduleDateBounds();
   const { assignedCity, assignedCities, isCityLocked, isCityScoped } = useAssignedCityScope();
   const { effectiveCity, effectiveState } = useOpsLocationScope();
   const { date, setDate } = useOpsDateScope();
@@ -306,7 +309,7 @@ export function CreateScheduleScreen() {
   }
 
   const topBar = (
-    <OpsTopBar onRefresh={() => {}} refreshing={false} />
+    <OpsTopBar onRefresh={() => {}} refreshing={false} maxDate={maxDate} />
   );
 
   return (
@@ -358,6 +361,14 @@ export function CreateScheduleScreen() {
           <StepConnector done={rows.length > 0} />
           <Step n={3} label="Publish" active={rows.length > 0} />
         </div>
+
+        <DateNavigator
+          date={date}
+          onDateChange={setDate}
+          minDate={minDate}
+          maxDate={maxDate}
+          label="Schedule date"
+        />
 
         <LocationStoreSection
           stores={allStores}

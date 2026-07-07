@@ -118,7 +118,7 @@ function AuthLayoutDark({ side, badge, title, description, footerNote, children 
     <div className="auth-dark">
       <div className="auth-dark__mesh" aria-hidden="true" />
       <Link to="/" className="auth-dark__brand auth-dark__brand--corner">
-        Dispatch.co
+        GBeyes
       </Link>
       <div className="auth-dark__wrap landing__section">
         <div className="auth-dark__card grid md:grid-cols-2">

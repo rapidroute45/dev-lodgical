@@ -3,15 +3,22 @@ import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { ScopedEmptyHint } from "@/modules/manager-home/presentation/components/ScopedEmptyHint.jsx";
+import { PerformanceSummaryStrip } from "@/modules/manager-home/presentation/components/PerformanceSummaryStrip.jsx";
+import { PerformanceMetricsRow } from "@/modules/manager-home/presentation/components/PerformanceMetricsRow.jsx";
+import { PerformanceBadge } from "@/modules/manager-home/presentation/components/PerformanceBadge.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import {
   useAllUsersQuery,
   useDeleteUserMutation,
 } from "@/modules/users/infrastructure/api/users.queries.js";
+import {
+  isPerformanceEligibleUser,
+  performanceForUser,
+  useMergedStaffPerformanceQuery,
+} from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { formatRoleLabel, formatStatusLabel } from "@/modules/users/utils/editableRoles.js";
 
 const STATUS_FILTERS = [
@@ -46,6 +53,15 @@ export function UsersListScreen() {
 
   const { data: users = [], isLoading, isError, refetch, isFetching } =
     useAllUsersQuery(queryParams, true);
+  const {
+    window: performanceWindow,
+    performanceByUserId,
+    topPerformers,
+    needsImprovement,
+    isLoading: performanceLoading,
+    isFetching: performanceFetching,
+    refetch: refetchPerformance,
+  } = useMergedStaffPerformanceQuery(7, true);
   const deleteMutation = useDeleteUserMutation();
 
   async function handleDelete(userId, displayName) {
@@ -61,8 +77,39 @@ export function UsersListScreen() {
   }
 
   const topBar = (
-    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar
+      showDate={false}
+      onRefresh={() => {
+        void refetch();
+        refetchPerformance();
+      }}
+      refreshing={isFetching || performanceFetching}
+    />
   );
+
+  function renderPerformanceCell(user, { mobile = false } = {}) {
+    const eligible = isPerformanceEligibleUser(user);
+    const performance = performanceForUser(user, performanceByUserId);
+
+    if (!eligible) {
+      return (
+        <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+          —
+        </span>
+      );
+    }
+
+    return (
+      <div className={`flex flex-wrap items-center gap-2${mobile ? " mt-2 md:hidden" : " hidden md:flex"}`}>
+        <PerformanceMetricsRow
+          performance={performance}
+          compact
+          loading={performanceLoading}
+        />
+        <PerformanceBadge badge={performance?.badge ?? null} compact />
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout topBar={topBar}>
@@ -111,6 +158,13 @@ export function UsersListScreen() {
           ))}
         </div>
 
+        <PerformanceSummaryStrip
+          window={performanceWindow}
+          topPerformers={topPerformers}
+          needsImprovement={needsImprovement}
+          loading={performanceLoading}
+        />
+
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -136,6 +190,7 @@ export function UsersListScreen() {
                   <th className="px-4 py-3">User</th>
                   <th className="hidden px-4 py-3 sm:table-cell">Role</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="hidden px-4 py-3 md:table-cell ops-users-perf-cell">Performance (7d)</th>
                   <th className="hidden px-4 py-3 md:table-cell">Team / City</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -151,6 +206,7 @@ export function UsersListScreen() {
                           {displayName}
                         </Link>
                         <p className="text-xs" style={{ color: "var(--text-muted)" }}>{u.email}</p>
+                        {renderPerformanceCell(u, { mobile: true })}
                       </td>
                       <td className="hidden px-4 py-3 capitalize sm:table-cell" style={{ color: "var(--text-muted)" }}>
                         {u.role ? formatRoleLabel(u.role) : "—"}
@@ -159,6 +215,9 @@ export function UsersListScreen() {
                         <span className={`ops-badge ops-badge--${statusBadgeVariant(u.status)}`}>
                           {formatStatusLabel(u.status)}
                         </span>
+                      </td>
+                      <td className="hidden px-4 py-3 md:table-cell ops-users-perf-cell">
+                        {renderPerformanceCell(u)}
                       </td>
                       <td className="hidden px-4 py-3 md:table-cell" style={{ color: "var(--text-muted)" }}>
                         {u.team?.name ?? u.assignedCity ?? "—"}

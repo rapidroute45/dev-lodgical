@@ -1413,6 +1413,115 @@ button.ops-dateseg__label:hover {
   border-color: var(--border);
 }
 
+/* ---------- Performance metrics ---------- */
+.ops-perf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.ops-perf-badge--top {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 35%, transparent);
+}
+.ops-perf-badge--warn {
+  background: color-mix(in srgb, var(--rose) 14%, transparent);
+  color: var(--rose);
+  border-color: color-mix(in srgb, var(--rose) 35%, transparent);
+}
+.ops-perf-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+.ops-perf-metrics--compact {
+  gap: 0.35rem 0.5rem;
+}
+.ops-perf-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+}
+.ops-perf-metric__label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+.ops-perf-metric__value {
+  font-weight: 800;
+}
+.ops-perf-metric--accent .ops-perf-metric__value { color: var(--accent); }
+.ops-perf-metric--green .ops-perf-metric__value { color: var(--green); }
+.ops-perf-metric--amber .ops-perf-metric__value { color: var(--amber); }
+.ops-perf-metric--rose .ops-perf-metric__value { color: var(--rose); }
+.ops-perf-strip {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.85rem 1rem;
+}
+.ops-perf-strip__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 0.65rem;
+}
+.ops-perf-strip__groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+}
+.ops-perf-strip__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.ops-perf-strip__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.ops-perf-strip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.ops-perf-strip__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.2rem 0.55rem 0.2rem 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ops-perf-driver-row {
+  align-items: center;
+}
+.ops-users-perf-cell {
+  min-width: 10rem;
+}
+@media (max-width: 640px) {
+  .ops-perf-driver-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Quick actions ---------- */
 .ops-quick {
   display: flex;
@@ -1846,4 +1955,206 @@ button.ops-dateseg__label:hover {
   background: rgba(255, 255, 255, 0.02);
   max-height: 12rem;
   overflow-y: auto;
+}
+
+/* ---------- Ops PIN elevation modal ---------- */
+.ops-pin-modal {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 1.25rem;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card-solid);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), var(--glow);
+  overflow: hidden;
+  animation: ops-picker-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ops-pin-modal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.5rem 0.25rem;
+  text-align: center;
+}
+
+.ops-pin-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent);
+}
+
+.ops-pin-modal__title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.ops-pin-modal__sub {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 18rem;
+}
+
+.ops-pin-modal__body {
+  position: relative;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.ops-pin-modal__label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.ops-pin-modal__input {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.45em;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  caret-color: var(--accent);
+}
+
+.ops-pin-modal__input::placeholder {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 1;
+}
+
+.ops-pin-modal__input:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ops-pin-modal__input:focus {
+  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14);
+}
+
+.ops-pin-modal__input--error {
+  border-color: rgba(248, 113, 113, 0.55);
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.12);
+}
+
+.ops-pin-modal__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.ops-pin-modal__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.ops-pin-modal__dot--filled {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: var(--accent);
+  transform: scale(1.05);
+}
+
+.ops-pin-modal__error {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #f87171;
+  text-align: center;
+}
+
+.ops-pin-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.ops-pin-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.ops-pin-modal__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.ops-pin-modal__btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ops-pin-modal__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ops-pin-modal__btn--primary {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.22), rgba(34, 211, 238, 0.12));
+  color: #a5f3fc;
+}
+
+.ops-pin-modal__btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.32), rgba(34, 211, 238, 0.18));
+  color: #ecfeff;
+  border-color: rgba(34, 211, 238, 0.65);
+}
+
+.ops-shell--light .ops-pin-modal__input {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.ops-shell--light .ops-pin-modal__input:hover,
+.ops-shell--light .ops-pin-modal__input:focus {
+  background: #fff;
+}
+
+.ops-shell--light .ops-pin-modal__btn--primary {
+  color: #0e7490;
+}
+
+.ops-shell--light .ops-pin-modal__btn--primary:hover:not(:disabled) {
+  color: #155e75;
 }

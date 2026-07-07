@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
@@ -5,8 +6,11 @@ import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import { UserRole, UserStatus } from "@/shared/utils/constants.js";
 import { getUserAssignedCities } from "@/shared/utils/assignedCities.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
 import { useAllUsersQuery } from "@/modules/users/infrastructure/api/users.queries.js";
+import { useDispatchPerformanceQuery } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
+import { PerformanceSummaryStrip } from "@/modules/manager-home/presentation/components/PerformanceSummaryStrip.jsx";
+import { PerformanceMetricsRow } from "@/modules/manager-home/presentation/components/PerformanceMetricsRow.jsx";
+import { PerformanceBadge } from "@/modules/manager-home/presentation/components/PerformanceBadge.jsx";
 
 export function DispatchTeamListScreen() {
   const { data: users = [], isLoading, isError, refetch, isFetching } =
@@ -15,8 +19,28 @@ export function DispatchTeamListScreen() {
       true
     );
 
+  const {
+    data: performanceData,
+    isLoading: performanceLoading,
+    isFetching: performanceFetching,
+  } = useDispatchPerformanceQuery(7, true);
+
+  const performanceByUserId = useMemo(() => {
+    const map = new Map();
+    for (const entry of performanceData?.members ?? []) {
+      map.set(entry.userId, entry);
+    }
+    return map;
+  }, [performanceData?.members]);
+
   const topBar = (
-    <OpsTopBar showDate={false} onRefresh={refetch} refreshing={isFetching} />
+    <OpsTopBar
+      showDate={false}
+      onRefresh={() => {
+        void refetch();
+      }}
+      refreshing={isFetching || performanceFetching}
+    />
   );
 
   return (
@@ -32,6 +56,13 @@ export function DispatchTeamListScreen() {
             </p>
           </div>
         </div>
+
+        <PerformanceSummaryStrip
+          window={performanceData?.window}
+          topPerformers={performanceData?.topPerformers}
+          needsImprovement={performanceData?.needsImprovement}
+          loading={performanceLoading}
+        />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -65,17 +96,18 @@ export function DispatchTeamListScreen() {
               const displayName =
                 member.displayName ?? resolveDisplayName(member.fullName, member.email);
               const cities = getUserAssignedCities(member);
+              const performance = performanceByUserId.get(member.id) ?? null;
 
               return (
                 <Link
                   key={member.id}
                   to={`/dispatch-team/${member.id}`}
-                  className="ops-card ops-card--hover ops-fade flex items-center gap-4 p-4"
+                  className="ops-card ops-card--hover ops-fade flex flex-wrap items-center gap-4 p-4"
                 >
                   <span className="ops-avatar flex h-12 w-12 shrink-0 items-center justify-center text-lg">
                     {displayName.charAt(0)}
                   </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 basis-[180px]">
                     <p className="truncate font-bold" style={{ color: "var(--text)" }}>{displayName}</p>
                     <p className="truncate text-sm" style={{ color: "var(--text-muted)" }}>{member.email}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -92,6 +124,14 @@ export function DispatchTeamListScreen() {
                         {member.status}
                       </span>
                     </div>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
+                    <PerformanceMetricsRow
+                      performance={performance}
+                      loading={performanceLoading}
+                      compact
+                    />
+                    <PerformanceBadge badge={performance?.badge ?? null} compact />
                   </div>
                   <svg className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

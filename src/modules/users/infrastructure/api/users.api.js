@@ -2,6 +2,12 @@ import { api } from "@/shared/utils/api.js";
 
 export async function createUser(body) {
   const res = await api.post("/users", body);
+  if (res.data?.success === false) {
+    const message = res.data?.error || res.data?.message || "Failed to create account";
+    const err = new Error(message);
+    err.response = { data: res.data, status: 400 };
+    throw err;
+  }
   return res.data;
 }
 

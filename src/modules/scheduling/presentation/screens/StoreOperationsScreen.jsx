@@ -17,14 +17,21 @@ import {
   scheduleStatusClass,
 } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { DateNavigator } from "../components/DateNavigator.jsx";
+import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 import { RouteSummaryRow } from "../components/RouteSummaryRow.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
+import { ScheduleAttribution } from "../components/ScheduleAttribution.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { isFullManager } from "@/shared/utils/constants.js";
 
 export function StoreOperationsScreen() {
   const { id: storeId } = useParams();
   const location = useLocation();
+  const { user } = useAuth();
+  const showDispatchTeam = isFullManager(user?.role);
   const { date, setDate } = useOpsDateScope();
+  const { maxDate } = useScheduleDateBounds();
 
   useEffect(() => {
     if (location.state?.date) {
@@ -71,6 +78,7 @@ export function StoreOperationsScreen() {
         void refetchRoutes();
       }}
       refreshing={isFetching}
+      maxDate={maxDate}
     />
   );
 
@@ -125,7 +133,7 @@ export function StoreOperationsScreen() {
               </p>
             </section>
 
-            <DateNavigator date={date} onDateChange={setDate} />
+            <DateNavigator date={date} onDateChange={setDate} maxDate={maxDate} />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <OpsStatCard
@@ -173,12 +181,21 @@ export function StoreOperationsScreen() {
                                 />
                               </div>
                               <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                                {store.city}, {store.state}
+                                {store.storeId ? ` · ${store.storeId}` : ""}
+                              </p>
+                              <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                                 {group.routeCount ?? 0} route
                                 {(group.routeCount ?? 0) === 1 ? "" : "s"}
                                 {(group.pendingRouteCount ?? 0) > 0
                                   ? ` · ${group.pendingRouteCount} pending`
                                   : ""}
                               </p>
+                              <ScheduleAttribution
+                                dispatchTeam={group.dispatchTeam}
+                                createdByName={group.createdByName}
+                                showDispatchTeam={showDispatchTeam}
+                              />
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {group.primaryScheduleId ? (

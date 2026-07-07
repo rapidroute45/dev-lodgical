@@ -25,8 +25,10 @@
     "schedules": "Schedules",
     "createSchedule": "Create schedule",
     "routes": "Routes",
+    "allRoutes": "All routes",
     "stores": "Stores",
     "dispatchTeam": "Dispatch team",
+    "driverTeams": "Driver teams",
     "availableDrivers": "Available drivers",
     "users": "Users",
     "assignRole": "Assign role",
@@ -61,6 +63,7 @@
     "payrollTitle": "Unlock payroll",
     "enterPin": "Enter your ops PIN to continue.",
     "pinLabel": "Ops PIN",
+    "tapToEnterPin": "Tap to enter PIN",
     "unlock": "Unlock",
     "incorrectPin": "Incorrect PIN. Try again."
   },

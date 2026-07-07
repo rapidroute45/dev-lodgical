@@ -14,3 +14,21 @@ export async function fetchAvailableDrivers(date) {
   });
   return res.data.data;
 }
+
+/** GET /dashboard/driver-performance */
+export async function fetchDriverPerformance({ days = 7 } = {}) {
+  const res = await api.get("/dashboard/driver-performance", { params: { days } });
+  return res.data.data;
+}
+
+/** GET /dashboard/dispatch-performance */
+export async function fetchDispatchPerformance({ days = 7 } = {}) {
+  const res = await api.get("/dashboard/dispatch-performance", { params: { days } });
+  return res.data.data;
+}
+
+/** GET /dashboard/team-performance */
+export async function fetchTeamPerformance({ days = 7 } = {}) {
+  const res = await api.get("/dashboard/team-performance", { params: { days } });
+  return res.data.data;
+}
