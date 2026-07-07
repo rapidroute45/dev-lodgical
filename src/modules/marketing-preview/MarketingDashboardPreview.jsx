@@ -64,7 +64,7 @@ export function MarketingDashboardPreview() {
             <table className="w-full min-w-[460px] text-left text-sm">
               <thead
                 className="sticky top-0 text-xs font-semibold uppercase tracking-wide"
-                style={{ background: "rgba(7,11,18,0.9)", color: "var(--text-dim)" }}
+                style={{ background: "var(--bg-surface)", color: "var(--text-dim)" }}
               >
                 <tr>
                   <th className="px-5 py-3">Route</th>

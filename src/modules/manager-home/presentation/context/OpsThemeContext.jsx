@@ -10,8 +10,11 @@ function readStoredTheme() {
   return stored === "light" ? "light" : "dark";
 }
 
-export function OpsThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(readStoredTheme);
+export function OpsThemeProvider({ children, defaultTheme }) {
+  const [theme, setThemeState] = useState(() => {
+    if (defaultTheme === "light" || defaultTheme === "dark") return defaultTheme;
+    return readStoredTheme();
+  });
 
   const setTheme = useCallback((next) => {
     const value = next === "light" ? "light" : "dark";

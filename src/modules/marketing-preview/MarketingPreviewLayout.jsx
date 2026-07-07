@@ -30,8 +30,8 @@ function NavIcon({ name }) {
 
 export function MarketingPreviewLayout({ children, activeNav = "Dashboard" }) {
   return (
-    <OpsThemeProvider>
-      <div className="ops-shell flex min-h-svh" data-marketing-preview="true">
+    <OpsThemeProvider defaultTheme="light">
+      <div className="ops-shell ops-shell--light flex min-h-svh" data-marketing-preview="true">
         <div className="ops-shell__mesh" aria-hidden="true" />
 
         <aside className="ops-sidebar flex h-svh w-64 shrink-0 flex-col">
@@ -70,10 +70,7 @@ export function MarketingPreviewLayout({ children, activeNav = "Dashboard" }) {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header
-            className="flex shrink-0 items-center justify-between gap-4 border-b px-6 py-3"
-            style={{ borderColor: "var(--border)", background: "rgba(10,15,24,0.85)" }}
-          >
+          <header className="ops-topbar flex shrink-0 items-center justify-between gap-4 border-b px-6 py-3">
             <div className="flex items-center gap-3">
               <span className="ops-btn px-3 py-1.5 text-xs font-bold">{formatDisplayDate(PREVIEW_DATE)}</span>
               <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
@@ -81,7 +78,8 @@ export function MarketingPreviewLayout({ children, activeNav = "Dashboard" }) {
               </span>
             </div>
             <div className="ops-themeseg flex items-center">
-              <span className="ops-themeseg__btn ops-themeseg__btn--active text-xs">Dark</span>
+              <span className="ops-themeseg__btn text-xs">Dark</span>
+              <span className="ops-themeseg__btn ops-themeseg__btn--active text-xs">Light</span>
             </div>
           </header>
 

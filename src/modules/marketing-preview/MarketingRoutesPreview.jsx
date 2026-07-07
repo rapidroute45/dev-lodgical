@@ -130,7 +130,7 @@ export function MarketingRoutesPreview() {
                   <section key={group.key} className="ops-card ops-fade overflow-hidden">
                     <div
                       className="flex items-center gap-3 px-4 py-3"
-                      style={{ borderBottom: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}
+                      style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-deep)" }}
                     >
                       <span className="ops-avatar flex h-9 w-9 shrink-0 items-center justify-center">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
