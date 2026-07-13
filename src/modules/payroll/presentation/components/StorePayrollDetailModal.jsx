@@ -6,7 +6,6 @@ import { OPS_ROLES } from "@/shared/utils/constants.js";
 import {
   formatDisplayDate,
   isoDateDaysAgo,
-  maxPayrollPeriodEndIso,
 } from "@/shared/utils/time.js";
 import { formatMoney, ROUTE_CATEGORY_LABELS } from "@/modules/payroll/utils/format.js";
 import { useStorePayrollDetailQuery } from "@/modules/payroll/infrastructure/api/payroll.queries.js";
@@ -111,10 +110,9 @@ export function StorePayrollDetailModal({
                   type="date"
                   value={localEnd}
                   min={localStart}
-                  max={maxPayrollPeriodEndIso()}
                   onChange={(e) => {
                     const iso = e.target.value;
-                    if (iso > maxPayrollPeriodEndIso() || iso < localStart) return;
+                    if (iso < localStart) return;
                     applyPeriodChange(localStart, iso);
                   }}
                   className="w-full rounded-xl px-2 py-2 text-sm"

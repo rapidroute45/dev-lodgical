@@ -9,7 +9,6 @@ import { OPS_ROLES, UserRole } from "@/shared/utils/constants.js";
 import {
   formatDisplayDate,
   isoDateDaysAgo,
-  maxPayrollPeriodEndIso,
   todayIsoDate,
 } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -128,11 +127,7 @@ export function StorePayrollListScreen() {
               type="date"
               value={periodEnd}
               min={periodStart}
-              max={maxPayrollPeriodEndIso()}
-              onChange={(e) => {
-                const iso = e.target.value;
-                if (iso <= maxPayrollPeriodEndIso() && iso >= periodStart) setPeriodEnd(iso);
-              }}
+              onChange={(e) => setPeriodEnd(e.target.value)}
               className="w-full rounded-xl px-3 py-2 text-sm"
               style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)", colorScheme: "dark" }}
             />

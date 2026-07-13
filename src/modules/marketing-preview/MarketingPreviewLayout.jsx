@@ -36,9 +36,11 @@ export function MarketingPreviewLayout({ children, activeNav = "Dashboard" }) {
 
         <aside className="ops-sidebar flex h-svh w-64 shrink-0 flex-col">
           <div className="flex items-center gap-3 border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
-            <span className="ops-sidebar__logo flex h-10 w-10 items-center justify-center rounded-xl text-sm font-extrabold">
-              D
-            </span>
+            <img
+              src="/logo-light.png"
+              alt="GBeyes"
+              className="ops-sidebar__logo h-10 w-10 rounded-xl object-cover"
+            />
             <div>
               <p className="ops-sidebar__brand text-sm">GBeyes</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useTeamsQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import {
   isoDateDaysAgo,
-  maxPayrollPeriodEndIso,
   todayIsoDate,
 } from "@/shared/utils/time.js";
 import {
@@ -39,10 +38,6 @@ export function PayrollGeneratePanel() {
       setError("End date must be on or after start date");
       return;
     }
-    if (periodEnd > maxPayrollPeriodEndIso()) {
-      setError("End date cannot be in the future");
-      return;
-    }
     setPreviewRequested(true);
     setPreviewModalOpen(true);
     void refetch();
@@ -51,7 +46,7 @@ export function PayrollGeneratePanel() {
   async function handleGenerate() {
     setError(null);
     if (!teamId) return;
-    if (periodEnd < periodStart || periodEnd > maxPayrollPeriodEndIso()) {
+    if (periodEnd < periodStart) {
       setError("Check the date range");
       return;
     }
@@ -109,7 +104,6 @@ export function PayrollGeneratePanel() {
             type="date"
             value={periodEnd}
             min={periodStart}
-            max={maxPayrollPeriodEndIso()}
             onChange={(e) => {
               setPeriodEnd(e.target.value);
               setPreviewRequested(false);

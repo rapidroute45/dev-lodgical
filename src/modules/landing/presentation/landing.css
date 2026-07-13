@@ -400,9 +400,20 @@
 .auth-dark__brand--corner {
   position: fixed;
   top: clamp(1rem, 2.5vw, 1.75rem);
-  right: clamp(1.25rem, 4vw, 2.5rem);
+  left: clamp(1.25rem, 4vw, 2.5rem);
+  right: auto;
   z-index: 40;
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.auth-dark__brand-logo {
+  height: 3.5rem;
+  width: 3.5rem;
+  border-radius: 0.85rem;
+  object-fit: cover;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.25);
 }
 
 .auth-dark__link {

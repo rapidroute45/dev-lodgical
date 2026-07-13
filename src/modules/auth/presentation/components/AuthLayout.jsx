@@ -79,7 +79,7 @@ export function AuthLayout({
 function AuthLayoutDark({ side, badge, title, description, footerNote, children }) {
   const hero = (
     <div key="hero" className="auth-dark__hero min-h-[280px] md:min-h-full">
-      <span className="auth-dark__badge">{badge}</span>
+      {badge ? <span className="auth-dark__badge">{badge}</span> : null}
 
       <div className="mt-10 space-y-3 md:my-auto">
         <h1 className="auth-dark__title">{title}</h1>
@@ -117,18 +117,13 @@ function AuthLayoutDark({ side, badge, title, description, footerNote, children 
   return (
     <div className="auth-dark">
       <div className="auth-dark__mesh" aria-hidden="true" />
-      <Link to="/" className="auth-dark__brand auth-dark__brand--corner">
-        GBeyes
+      <Link to="/" className="auth-dark__brand auth-dark__brand--corner" aria-label="GBeyes home">
+        <img src="/logo-dark.png" alt="GBeyes" className="auth-dark__brand-logo" />
       </Link>
       <div className="auth-dark__wrap landing__section">
         <div className="auth-dark__card grid md:grid-cols-2">
           {side === "left" ? [hero, form] : [form, hero]}
         </div>
-        <p className="mt-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-          <Link to="/" className="auth-dark__link">
-            ← Back to home
-          </Link>
-        </p>
       </div>
     </div>
   );

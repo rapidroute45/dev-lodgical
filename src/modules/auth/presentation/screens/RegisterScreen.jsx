@@ -82,7 +82,7 @@ export function RegisterScreen() {
     <AuthLayout
       theme="dark"
       side="right"
-      badge="GBeyes"
+      badge={null}
       title="Start your journey"
       description="Join our platform to streamline your workflow and boost productivity."
       footerNote="Enterprise account registration."

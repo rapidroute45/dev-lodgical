@@ -32,7 +32,7 @@ messaging.onBackgroundMessage((payload) => {
 
   return self.registration.showNotification(title, {
     body,
-    icon: "/favicon.svg",
+    icon: "/logo.png",
     silent: false,
     data,
   });

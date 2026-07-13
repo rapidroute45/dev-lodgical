@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDisplayDate } from "@/shared/utils/time.js";
-import { formatMoney, statusMeta, ROUTE_CATEGORY_LABELS } from "@/modules/payroll/utils/format.js";
+import { formatMoney, formatPeriodRange, statusMeta, ROUTE_CATEGORY_LABELS } from "@/modules/payroll/utils/format.js";
 
 const STATUS_BADGE = {
   draft: "muted",
@@ -18,7 +18,14 @@ function statusBadgeClass(status) {
 export function TeamPendingCard({ team, isOps, onOpenBill }) {
   const [teamExpanded, setTeamExpanded] = useState(false);
   const [expandedDrivers, setExpandedDrivers] = useState(new Set());
-  const activeMeta = team.activeBillStatus ? statusMeta(team.activeBillStatus) : null;
+  const openBills = useMemo(() => {
+    if (team.openBills?.length) return team.openBills;
+    if (team.activeBillId && team.activeBillStatus) {
+      return [{ id: team.activeBillId, status: team.activeBillStatus, periodStart: null, periodEnd: null }];
+    }
+    return [];
+  }, [team.activeBillId, team.activeBillStatus, team.openBills]);
+  const hasOpenBills = openBills.length > 0;
 
   function toggleDriver(driverId) {
     setExpandedDrivers((prev) => {
@@ -49,31 +56,43 @@ export function TeamPendingCard({ team, isOps, onOpenBill }) {
         </div>
       </button>
 
-      {team.activeBillId && activeMeta ? (
-        onOpenBill ? (
-          <button
-            type="button"
-            onClick={() => onOpenBill(team.activeBillId)}
-            className="mt-3 flex w-full items-center justify-between pt-3 text-left"
-            style={{ borderTop: "1px solid var(--border)" }}
-          >
-            <span className={statusBadgeClass(team.activeBillStatus)}>
-              Open bill · {activeMeta.label}
-            </span>
-            <span style={{ color: "var(--accent)" }}>→</span>
-          </button>
-        ) : (
-          <Link
-            to={`/payroll/${team.activeBillId}`}
-            className="mt-3 flex items-center justify-between pt-3"
-            style={{ borderTop: "1px solid var(--border)" }}
-          >
-            <span className={statusBadgeClass(team.activeBillStatus)}>
-              Open bill · {activeMeta.label}
-            </span>
-            <span style={{ color: "var(--accent)" }}>→</span>
-          </Link>
-        )
+      {hasOpenBills ? (
+        <div className="mt-3 space-y-2 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+          {openBills.map((bill) => {
+            const billMeta = statusMeta(bill.status);
+            const periodLabel = bill.periodStart && bill.periodEnd
+              ? formatPeriodRange(bill.periodStart, bill.periodEnd)
+              : null;
+            const label = periodLabel
+              ? `Open bill · ${billMeta.label} · ${periodLabel}`
+              : `Open bill · ${billMeta.label}`;
+
+            if (onOpenBill) {
+              return (
+                <button
+                  key={bill.id}
+                  type="button"
+                  onClick={() => onOpenBill(bill.id)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className={statusBadgeClass(bill.status)}>{label}</span>
+                  <span style={{ color: "var(--accent)" }}>→</span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={bill.id}
+                to={`/payroll/${bill.id}`}
+                className="flex items-center justify-between"
+              >
+                <span className={statusBadgeClass(bill.status)}>{label}</span>
+                <span style={{ color: "var(--accent)" }}>→</span>
+              </Link>
+            );
+          })}
+        </div>
       ) : null}
 
       {teamExpanded ? (
@@ -128,7 +147,7 @@ export function TeamPendingCard({ team, isOps, onOpenBill }) {
         </div>
       ) : null}
 
-      {isOps && team.pendingAmount === 0 && !team.activeBillId ? (
+      {isOps && team.pendingAmount === 0 && !hasOpenBills ? (
         <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>No unbilled completed routes</p>
       ) : null}
     </div>
