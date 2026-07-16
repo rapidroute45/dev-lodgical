@@ -16,7 +16,10 @@ export function LoginScreen() {
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname;
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    email: location.state?.email ?? "",
+    password: "",
+  });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -89,6 +92,12 @@ export function LoginScreen() {
           onChange={(e) => update("password", e.target.value)}
           error={errors.password}
         />
+
+        <p className="text-right text-sm">
+          <Link to="/forgot-password" className="auth-dark__link">
+            {t("auth.forgotPassword")}
+          </Link>
+        </p>
 
         {submitError && (
           <div className="auth-dark__error">{submitError}</div>

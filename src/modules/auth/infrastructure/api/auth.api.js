@@ -85,3 +85,54 @@ export async function verifyOpsElevationRequest({ scope, pin }) {
     throw toDomainError(err);
   }
 }
+
+export async function requestRegisterOtpRequest({ email, password, fullName, phone }) {
+  try {
+    const payload = { email, password, phone };
+    if (fullName) payload.fullName = fullName;
+    const { data } = await api.post("/auth/register/request-otp", payload);
+    return {
+      message: data.message,
+      email: data.data?.email ?? email,
+    };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function verifyRegisterOtpRequest({ email, code }) {
+  try {
+    const { data } = await api.post("/auth/register/verify-otp", { email, code });
+    return {
+      user: data.data ? User.fromApi(data.data) : null,
+      message: data.message,
+    };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function requestForgotPasswordOtpRequest({ email }) {
+  try {
+    const { data } = await api.post("/auth/forgot-password/request-otp", { email });
+    return {
+      message: data.message,
+      email: data.data?.email ?? email,
+    };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}
+
+export async function verifyForgotPasswordOtpRequest({ email, code, newPassword }) {
+  try {
+    const { data } = await api.post("/auth/forgot-password/verify-otp", {
+      email,
+      code,
+      newPassword,
+    });
+    return { message: data.message ?? "Password updated." };
+  } catch (err) {
+    throw toDomainError(err);
+  }
+}

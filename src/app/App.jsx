@@ -13,6 +13,7 @@ import { OpsCityClockWidget } from "@/modules/manager-home/presentation/componen
 import { OpsDateScopeProvider } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import { LoginScreen } from "@/modules/auth/presentation/screens/LoginScreen.jsx";
 import { RegisterScreen } from "@/modules/auth/presentation/screens/RegisterScreen.jsx";
+import { ForgotPasswordScreen } from "@/modules/auth/presentation/screens/ForgotPasswordScreen.jsx";
 import { DashboardScreen } from "@/modules/dashboard/presentation/screens/DashboardScreen.jsx";
 import {
   ProtectedRoute,
@@ -91,6 +92,14 @@ export default function App() {
               element={
                 <GuestOnlyRoute>
                   <RegisterScreen />
+                </GuestOnlyRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <GuestOnlyRoute>
+                  <ForgotPasswordScreen />
                 </GuestOnlyRoute>
               }
             />
