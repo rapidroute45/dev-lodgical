@@ -63,6 +63,19 @@ export function AuthProvider({ children }) {
     return authService.register({ email, password, fullName, phone });
   }, []);
 
+  const requestRegisterOtp = useCallback(
+    async ({ email, password, fullName, phone }) => {
+      setError(null);
+      return authService.requestRegisterOtp({ email, password, fullName, phone });
+    },
+    []
+  );
+
+  const verifyRegisterOtp = useCallback(async ({ email, code }) => {
+    setError(null);
+    return authService.verifyRegisterOtp({ email, code });
+  }, []);
+
   const logout = useCallback(() => {
     if (user?.id) clearInboxStorage(user.id);
     void clearWebPushTokenFromBackend();
@@ -72,8 +85,17 @@ export function AuthProvider({ children }) {
   }, [user?.id]);
 
   const value = useMemo(
-    () => ({ user, status, error, login, register, logout }),
-    [user, status, error, login, register, logout]
+    () => ({
+      user,
+      status,
+      error,
+      login,
+      register,
+      requestRegisterOtp,
+      verifyRegisterOtp,
+      logout,
+    }),
+    [user, status, error, login, register, requestRegisterOtp, verifyRegisterOtp, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

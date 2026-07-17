@@ -70,6 +70,13 @@ export function EditUserScreen() {
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [resetPasswordEnabled, setResetPasswordEnabled] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const canResetPassword =
+    currentUser?.role === UserRole.ADMIN ||
+    currentUser?.role === UserRole.DISPATCH_MANAGER;
 
   useEffect(() => {
     if (!user) return;
@@ -142,17 +149,37 @@ export function EditUserScreen() {
       return;
     }
 
+    if (resetPasswordEnabled) {
+      if (!newPassword) {
+        setError("Enter a new password.");
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError("Passwords do not match.");
+        return;
+      }
+    }
+
     try {
+      const payload = {
+        fullName: fullName.trim() || null,
+        role: selectedRole,
+        status: selectedStatus,
+        teamId: needsTeam ? (selectedTeam?.id ?? null) : null,
+        assignedCity: needsCity && !roleUsesMultipleCities(selectedRole) ? selectedCity?.trim() ?? null : null,
+        assignedCities: needsCity && roleUsesMultipleCities(selectedRole) ? selectedCities : null,
+      };
+      if (resetPasswordEnabled) {
+        payload.password = newPassword;
+      }
+
       const result = await updateMutation.mutateAsync({
         userId,
-        payload: {
-          fullName: fullName.trim() || null,
-          role: selectedRole,
-          status: selectedStatus,
-          teamId: needsTeam ? (selectedTeam?.id ?? null) : null,
-          assignedCity: needsCity && !roleUsesMultipleCities(selectedRole) ? selectedCity?.trim() ?? null : null,
-          assignedCities: needsCity && roleUsesMultipleCities(selectedRole) ? selectedCities : null,
-        },
+        payload,
       });
       setMessage(result?.message ?? "User updated.");
       navigate("/users");
@@ -263,6 +290,63 @@ export function EditUserScreen() {
                 placeholder="Full name"
               />
             </div>
+
+            {canResetPassword ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className="block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                    Reset password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetPasswordEnabled((enabled) => !enabled);
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className={`ops-chip${resetPasswordEnabled ? " ops-chip--active" : ""}`}
+                  >
+                    {resetPasswordEnabled ? "Enabled" : "Set new password"}
+                  </button>
+                </div>
+                {resetPasswordEnabled ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                        New password
+                      </label>
+                      <input
+                        type="password"
+                        className="ops-field w-full text-sm outline-none"
+                        style={{ color: "var(--text)" }}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                        Confirm password
+                      </label>
+                      <input
+                        type="password"
+                        className="ops-field w-full text-sm outline-none"
+                        style={{ color: "var(--text)" }}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    Admins can set a new password directly — no OTP required.
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Status</label>

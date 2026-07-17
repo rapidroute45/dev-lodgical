@@ -1,6 +1,8 @@
 import {
   loginRequest,
   registerRequest,
+  requestRegisterOtpRequest,
+  verifyRegisterOtpRequest,
   fetchMeRequest,
 } from "@/modules/auth/infrastructure/api/auth.api.js";
 import { tokenStorage } from "@/shared/utils/storage.js";
@@ -25,6 +27,14 @@ export const authService = {
 
   async register({ email, password, fullName, phone }) {
     return registerRequest({ email, password, fullName, phone });
+  },
+
+  async requestRegisterOtp({ email, password, fullName, phone }) {
+    return requestRegisterOtpRequest({ email, password, fullName, phone });
+  },
+
+  async verifyRegisterOtp({ email, code }) {
+    return verifyRegisterOtpRequest({ email, code });
   },
 
   async fetchCurrentUser() {
