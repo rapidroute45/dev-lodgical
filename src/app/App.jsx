@@ -27,12 +27,16 @@ import { CreateScheduleScreen } from "@/modules/scheduling/presentation/screens/
 import { StoresListScreen } from "@/modules/scheduling/presentation/screens/StoresListScreen.jsx";
 import { ViewScheduleScreen } from "@/modules/scheduling/presentation/screens/ViewScheduleScreen.jsx";
 import { ScheduleRoutesSpreadsheetScreen } from "@/modules/scheduling/presentation/screens/ScheduleRoutesSpreadsheetScreen.jsx";
+import { ScheduleReturnsScreen } from "@/modules/scheduling/presentation/screens/ScheduleReturnsScreen.jsx";
 import { RouteStopsScreen } from "@/modules/scheduling/presentation/screens/RouteStopsScreen.jsx";
 import { RoutesListScreen } from "@/modules/scheduling/presentation/screens/RoutesListScreen.jsx";
 import { AllRoutesSearchScreen } from "@/modules/scheduling/presentation/screens/AllRoutesSearchScreen.jsx";
 import { ViewRouteScreen } from "@/modules/scheduling/presentation/screens/ViewRouteScreen.jsx";
 import { StoreScreen } from "@/modules/scheduling/presentation/screens/StoreScreen.jsx";
 import { AvailableDriversScreen } from "@/modules/scheduling/presentation/screens/AvailableDriversScreen.jsx";
+import { DayReturnsScreen } from "@/modules/manager-home/presentation/screens/DayReturnsScreen.jsx";
+import { StoreReturnsListScreen } from "@/modules/store-returns/presentation/screens/StoreReturnsListScreen.jsx";
+import { StoreReturnDetailScreen } from "@/modules/store-returns/presentation/screens/StoreReturnDetailScreen.jsx";
 import { ManagerOnlyRoute } from "@/modules/scheduling/presentation/routes/ManagerOnlyRoute.jsx";
 import { PayrollViewerRoute } from "@/modules/payroll/presentation/routes/PayrollViewerRoute.jsx";
 import { PayrollBillsListScreen } from "@/modules/payroll/presentation/screens/PayrollBillsListScreen.jsx";
@@ -54,6 +58,7 @@ import { ProfileScreen } from "@/modules/auth/presentation/screens/ProfileScreen
 import { PayrollRouteDetailScreen } from "@/modules/payroll/presentation/screens/PayrollRouteDetailScreen.jsx";
 import { DispatchTeamListScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamListScreen.jsx";
 import { DriverTeamsListScreen } from "@/modules/manager-home/presentation/screens/DriverTeamsListScreen.jsx";
+import { DriverProfileScreen } from "@/modules/manager-home/presentation/screens/DriverProfileScreen.jsx";
 import { DispatchTeamMemberScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamMemberScreen.jsx";
 import { LiveTrackingScreen } from "@/modules/tracking/presentation/screens/LiveTrackingScreen.jsx";
 import { RouteTrackingScreen } from "@/modules/tracking/presentation/screens/RouteTrackingScreen.jsx";
@@ -174,6 +179,16 @@ export default function App() {
               }
             />
             <Route
+              path="/schedules/:id/returns"
+              element={
+                <ProtectedRoute>
+                  <OpsRoute>
+                    <ScheduleReturnsScreen />
+                  </OpsRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tracking"
               element={
                 <ProtectedRoute>
@@ -244,11 +259,51 @@ export default function App() {
               }
             />
             <Route
+              path="/returns"
+              element={
+                <ProtectedRoute>
+                  <OpsRoute>
+                    <DayReturnsScreen />
+                  </OpsRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/store-returns"
+              element={
+                <ProtectedRoute>
+                  <OpsRoute>
+                    <StoreReturnsListScreen />
+                  </OpsRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/store-returns/:id"
+              element={
+                <ProtectedRoute>
+                  <OpsRoute>
+                    <StoreReturnDetailScreen />
+                  </OpsRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/available-drivers"
               element={
                 <ProtectedRoute>
                   <ManagerOnlyRoute>
                     <AvailableDriversScreen />
+                  </ManagerOnlyRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/drivers/:driverId"
+              element={
+                <ProtectedRoute>
+                  <ManagerOnlyRoute>
+                    <DriverProfileScreen />
                   </ManagerOnlyRoute>
                 </ProtectedRoute>
               }

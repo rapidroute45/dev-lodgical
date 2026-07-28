@@ -107,7 +107,13 @@ export function ChatProvider({ children }) {
           if (!old) return old;
           return old.map((m) =>
             m.id === payload.messageId
-              ? { ...m, deletedForAll: true, body: "This message was deleted" }
+              ? {
+                  ...m,
+                  deletedForAll: true,
+                  body: "This message was deleted",
+                  type: "text",
+                  meta: {},
+                }
               : m
           );
         });

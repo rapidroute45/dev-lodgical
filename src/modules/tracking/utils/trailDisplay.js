@@ -1,4 +1,5 @@
 import {
+  exceedsTrailSegmentGap,
   filterTrailSpeedOutliers,
   filterTrailOutAndBackSpikes,
   splitTrailIntoSegments,
@@ -8,9 +9,16 @@ import {
 } from "./mapPathFilters.js";
 import { logGpsPipeline, summarizeTrailPoint } from "./gpsPipelineLog.js";
 import { smoothTrailForDisplay, MIN_SEPARATION_SNAPPED_M } from "./smoothTrail.js";
-import { splitTrailBySnappedFlag, trailSegmentPolylineOptions } from "./trailSnappedSegments.js";
+import {
+  splitTrailBySnappedFlag,
+  trailSegmentPolylineOptions,
+  TRAIL_SEGMENT_KIND_GAP,
+} from "./trailSnappedSegments.js";
 
-export { trailSegmentPolylineOptions } from "./trailSnappedSegments.js";
+export {
+  trailSegmentPolylineOptions,
+  TRAIL_SEGMENT_KIND_GAP,
+} from "./trailSnappedSegments.js";
 
 function normalizeDrawablePoint(point) {
   if (point?.lat == null || point?.lng == null) return null;
@@ -147,10 +155,13 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
       drawable.push({
         points,
         snapped: group.snapped !== false,
+        kind: "trail",
         key: `${group.snapped === false ? "unsnapped" : "snapped"}-${groupIndex}-${index}`,
       });
     });
   });
+
+  const withGapBridges = insertGapBridgeSegments(drawable);
 
   logGpsPipeline(
     "display_drawable",
@@ -159,24 +170,71 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
       drawableSegments: drawable.length,
       snappedSegments: drawable.filter((segment) => segment.snapped).length,
       unsnappedSegments: drawable.filter((segment) => !segment.snapped).length,
+      gapBridges: withGapBridges.length - drawable.length,
     },
     { source, isLive }
   );
 
-  return drawable;
+  return withGapBridges;
 }
 
-/** Flat list of all trail points across segments (bounds fitting, last point lookup). */
+/**
+ * Bridge holes left by gap splitting with an explicit 2-point segment so ops can see
+ * the driver moved between the fixes without implying we know the path taken.
+ */
+function insertGapBridgeSegments(segments) {
+  if (segments.length < 2) return segments;
+
+  const bridged = [segments[0]];
+  for (let index = 1; index < segments.length; index += 1) {
+    const previous = segments[index - 1];
+    const current = segments[index];
+    const from = previous.points[previous.points.length - 1];
+    const to = current.points[0];
+
+    if (exceedsTrailSegmentGap(from, to, TRAIL_DISPLAY_MAX_JUMP_M, TRAIL_SEGMENT_GAP_SEC)) {
+      bridged.push({
+        points: [from, to],
+        snapped: null,
+        kind: TRAIL_SEGMENT_KIND_GAP,
+        key: `gap-${index}`,
+      });
+    }
+
+    bridged.push(current);
+  }
+
+  return bridged;
+}
+
+/**
+ * Flat list of all real trail points across segments (bounds fitting, last point lookup).
+ * Gap bridges are excluded — their endpoints already belong to the neighbouring segments.
+ */
 export function flattenTrailSegments(segments) {
   if (Array.isArray(segments) && segments[0]?.points) {
-    return segments.flatMap((segment) => segment.points ?? []);
+    return segments
+      .filter((segment) => segment?.kind !== TRAIL_SEGMENT_KIND_GAP)
+      .flatMap((segment) => segment.points ?? []);
   }
   return segments.flat();
 }
 
-/** Leaflet polyline options from a drawable segment. */
-export function trailSegmentLeafletOptions(snapped) {
-  const google = trailSegmentPolylineOptions(snapped);
+/** Leaflet polyline options from a drawable segment (or a bare `snapped` flag). */
+export function trailSegmentLeafletOptions(segmentOrSnapped) {
+  const google = trailSegmentPolylineOptions(segmentOrSnapped);
+  const isSegment = segmentOrSnapped !== null && typeof segmentOrSnapped === "object";
+  const kind = isSegment ? segmentOrSnapped.kind : null;
+  const snapped = isSegment ? segmentOrSnapped.snapped : segmentOrSnapped;
+
+  if (kind === TRAIL_SEGMENT_KIND_GAP) {
+    return {
+      color: google.strokeColor,
+      weight: google.strokeWeight,
+      opacity: 0.45,
+      dashArray: "2 14",
+    };
+  }
   if (snapped === false) {
     return {
       color: google.strokeColor,

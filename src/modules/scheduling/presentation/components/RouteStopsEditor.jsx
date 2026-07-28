@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   RouteStopsGrid,
   gridRowsToDropoffs,
@@ -40,6 +40,7 @@ export function RouteStopsEditor({
   onSave,
   onBack,
 }) {
+  const location = useLocation();
   const updateStopStatusOps = useUpdateRouteStopStatusOpsMutation();
   const completeRouteOps = useCompleteRouteOpsMutation();
   const [localDropoffs, setLocalDropoffs] = useState([]);
@@ -158,7 +159,7 @@ export function RouteStopsEditor({
     }
   }
 
-  async function handleConfirmFailure({ reason, customReason }) {
+  async function handleConfirmFailure({ reason, customReason, createStoreReturn }) {
     if (!failureTarget || !routeId) return;
 
     const { stopId } = failureTarget;
@@ -171,6 +172,7 @@ export function RouteStopsEditor({
         status: "returned",
         reason,
         customReason,
+        createStoreReturn: Boolean(createStoreReturn),
       });
       const updated = result?.data?.stop;
       applyStopUpdate(stopId, {
@@ -415,6 +417,7 @@ export function RouteStopsEditor({
           {routeCompleted && driverTrail.length >= 2 && routeId ? (
             <Link
               to={`/routes/tracking/${routeId}`}
+              state={{ from: `${location.pathname}${location.search}` }}
               className="ops-btn px-3 py-1.5 text-xs font-semibold"
             >
               Open full track

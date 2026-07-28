@@ -13,7 +13,7 @@ export function DashboardScreen() {
     return <Navigate to="/payroll" replace />;
   }
 
-  if (role === UserRole.DISPATCH_TEAM) {
+  if (role === UserRole.DISPATCH_TEAM || role === UserRole.ONSITE_MANAGER) {
     return <DispatchTeamDashboardScreen />;
   }
 

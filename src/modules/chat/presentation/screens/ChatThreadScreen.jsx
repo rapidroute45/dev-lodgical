@@ -70,6 +70,7 @@ export function ChatThreadScreen() {
 
   const [recording, setRecording] = useState(false);
   const [menu, setMenu] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft] = useState("");
   const [infoData, setInfoData] = useState(null);
@@ -90,10 +91,18 @@ export function ChatThreadScreen() {
 
   const openMessageMenu = (item, event) => {
     event.preventDefault();
-    setMenu({ item, x: event.clientX, y: event.clientY });
+    event.stopPropagation();
+    const rect = event.currentTarget?.getBoundingClientRect?.();
+    const x = rect ? Math.min(rect.left, window.innerWidth - 200) : event.clientX;
+    const y = rect ? Math.min(rect.bottom + 4, window.innerHeight - 220) : event.clientY;
+    setDeleteOpen(false);
+    setMenu({ item, x, y });
   };
 
-  const closeMenu = () => setMenu(null);
+  const closeMenu = () => {
+    setMenu(null);
+    setDeleteOpen(false);
+  };
 
   useEffect(() => () => {
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
@@ -339,17 +348,37 @@ export function ChatThreadScreen() {
                   return (
                     <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`ops-chat-bubble ${mine ? "ops-chat-bubble--mine" : "ops-chat-bubble--other"}`}
+                        className={`ops-chat-bubble group relative ${mine ? "ops-chat-bubble--mine" : "ops-chat-bubble--other"}`}
                         style={{ color: "var(--text)" }}
                         onContextMenu={(e) => openMessageMenu(item, e)}
                       >
+                        {!item.deletedForAll ? (
+                          <button
+                            type="button"
+                            className="ops-chat-bubble__menu-btn"
+                            aria-label="Message actions"
+                            onClick={(e) => openMessageMenu(item, e)}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        ) : null}
+
                         {isGroup && !mine ? (
-                          <p className="mb-0.5 text-[11px] font-bold" style={{ color: "var(--accent)" }}>
+                          <p className="mb-0.5 pr-5 text-[11px] font-bold" style={{ color: "var(--accent)" }}>
                             {item.senderName}
                           </p>
                         ) : null}
 
-                        {item.type === "voice" ? (
+                        {item.deletedForAll ? (
+                          <p className="flex items-center gap-1.5 whitespace-pre-wrap text-sm italic leading-relaxed opacity-80">
+                            <svg className="h-3.5 w-3.5 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            {item.body || "This message was deleted"}
+                          </p>
+                        ) : item.type === "voice" ? (
                           <VoiceMessageBubble
                             audioUrl={item.meta?.audioUrl}
                             durationMs={item.meta?.durationMs}
@@ -393,12 +422,8 @@ export function ChatThreadScreen() {
                               </span>
                             ) : null}
                           </a>
-                        ) : item.deletedForAll ? (
-                          <p className="whitespace-pre-wrap text-sm italic leading-relaxed opacity-80">
-                            {item.body}
-                          </p>
                         ) : (
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>
+                          <p className="whitespace-pre-wrap pr-5 text-sm leading-relaxed">{item.body}</p>
                         )}
                         {item.editedAt && !item.deletedForAll ? (
                           <span className="text-[10px] italic opacity-70">edited</span>
@@ -526,7 +551,7 @@ export function ChatThreadScreen() {
         <>
           <button type="button" className="fixed inset-0 z-40 cursor-default" aria-label="Close menu" onClick={closeMenu} />
           <div
-            className="fixed z-50 min-w-[160px] rounded-lg border py-1 shadow-lg"
+            className="fixed z-50 min-w-[190px] overflow-hidden rounded-xl border py-1 shadow-xl"
             style={{
               left: menu.x,
               top: menu.y,
@@ -534,66 +559,110 @@ export function ChatThreadScreen() {
               borderColor: "var(--border)",
             }}
           >
+            <button
+              type="button"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm hover:bg-white/5"
+              onClick={() => {
+                void fetchMessageInfo(conversationId, menu.item.id).then(setInfoData);
+                closeMenu();
+              }}
+            >
+              <svg className="h-4 w-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Info
+            </button>
+
             {menu.item.senderId === user?.id &&
             menu.item.type === "text" &&
-            !menu.item.deletedForAll &&
-            Date.now() - Date.parse(menu.item.createdAt) < 15 * 60 * 1000 ? (
+            !menu.item.deletedForAll ? (
               <button
                 type="button"
-                className="block w-full px-4 py-2 text-left text-sm hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm hover:bg-white/5"
                 onClick={() => {
                   setEditTarget(menu.item);
                   setEditDraft(menu.item.body);
                   closeMenu();
                 }}
               >
+                <svg className="h-4 w-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
                 Edit
               </button>
             ) : null}
+
             {menu.item.senderId === user?.id && !menu.item.deletedForAll ? (
-              <>
+              <div>
                 <button
                   type="button"
-                  className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5"
-                  onClick={() => {
-                    void deleteMutation.mutateAsync({
-                      conversationId,
-                      messageId: menu.item.id,
-                      scope: "me",
-                    });
-                    closeMenu();
-                  }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/5"
+                  onClick={() => setDeleteOpen((open) => !open)}
                 >
-                  Delete for me
-                </button>
-                {menu.item.type === "text" ? (
-                  <button
-                    type="button"
-                    className="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5"
-                    onClick={() => {
-                      void deleteMutation.mutateAsync({
-                        conversationId,
-                        messageId: menu.item.id,
-                        scope: "everyone",
-                      });
-                      closeMenu();
-                    }}
+                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="flex-1">Delete</span>
+                  <svg
+                    className={`h-3.5 w-3.5 transition ${deleteOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
                   >
-                    Delete for everyone
-                  </button>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {deleteOpen ? (
+                  <div className="border-t py-1" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.12)" }}>
+                    <button
+                      type="button"
+                      className="block w-full px-4 py-2 pl-10 text-left text-sm text-red-400 hover:bg-white/5"
+                      onClick={() => {
+                        void deleteMutation
+                          .mutateAsync({
+                            conversationId,
+                            messageId: menu.item.id,
+                            scope: "everyone",
+                          })
+                          .catch((err) => {
+                            window.alert(
+                              err?.response?.data?.message ||
+                                err?.message ||
+                                "Could not delete message for everyone"
+                            );
+                          });
+                        closeMenu();
+                      }}
+                    >
+                      Delete for everyone
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full px-4 py-2 pl-10 text-left text-sm text-red-400 hover:bg-white/5"
+                      onClick={() => {
+                        void deleteMutation
+                          .mutateAsync({
+                            conversationId,
+                            messageId: menu.item.id,
+                            scope: "me",
+                          })
+                          .catch((err) => {
+                            window.alert(
+                              err?.response?.data?.message ||
+                                err?.message ||
+                                "Could not delete message"
+                            );
+                          });
+                        closeMenu();
+                      }}
+                    >
+                      Delete for me
+                    </button>
+                  </div>
                 ) : null}
-              </>
+              </div>
             ) : null}
-            <button
-              type="button"
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-white/5"
-              onClick={() => {
-                void fetchMessageInfo(conversationId, menu.item.id).then(setInfoData);
-                closeMenu();
-              }}
-            >
-              Info
-            </button>
           </div>
         </>
       ) : null}
@@ -635,12 +704,35 @@ export function ChatThreadScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl p-4 text-sm" style={{ background: "var(--surface)" }}>
             <h3 className="mb-3 text-lg font-semibold">Message info</h3>
-            <p>Sent: {formatMessageTime(infoData.sentAt ?? "")}</p>
-            {infoData.editedAt ? <p>Edited: {formatMessageTime(infoData.editedAt)}</p> : null}
-            <p className="mt-3 font-semibold">Delivered</p>
-            {infoData.delivered.length === 0 ? <p>Pending</p> : infoData.delivered.map((r) => <p key={r.userId}>{r.name}</p>)}
-            <p className="mt-3 font-semibold">Read</p>
-            {infoData.read.length === 0 ? <p>Not read yet</p> : infoData.read.map((r) => <p key={r.userId}>{r.name}</p>)}
+            <p>
+              <span style={{ color: "var(--text-muted)" }}>Sent time: </span>
+              {formatMessageTime(infoData.sentAt ?? "")}
+            </p>
+            <p className="mt-2">
+              <span style={{ color: "var(--text-muted)" }}>Seen time: </span>
+              {infoData.read?.length
+                ? formatMessageTime(infoData.read[0]?.at ?? infoData.sentAt ?? "")
+                : "Not seen yet"}
+            </p>
+            {infoData.editedAt ? (
+              <p className="mt-2">
+                <span style={{ color: "var(--text-muted)" }}>Edited: </span>
+                {formatMessageTime(infoData.editedAt)}
+              </p>
+            ) : null}
+            {infoData.read?.length > 0 ? (
+              <div className="mt-3">
+                <p className="font-semibold" style={{ color: "var(--text-muted)" }}>
+                  Seen by
+                </p>
+                {infoData.read.map((r) => (
+                  <p key={r.userId}>
+                    {r.name}
+                    {r.at ? ` · ${formatMessageTime(r.at)}` : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             <button type="button" className="mt-4 text-cyan-400" onClick={() => setInfoData(null)}>
               Close
             </button>

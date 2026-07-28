@@ -54,7 +54,7 @@ export function StoreNavMenu({ date, open, onToggle, onClose }) {
   }, [storesQuery.data, assignedCities, globalState, search]);
 
   function gotoSchedule(id) {
-    navigate(`/schedules/${id}`);
+    navigate(`/schedules/${id}/routes`);
     close();
   }
 

@@ -20,6 +20,7 @@ import {
   fetchRoutes,
   fetchRoutesSearch,
   fetchSchedule,
+  fetchScheduleReturns,
   fetchSchedules,
   fetchStore,
   fetchStores,
@@ -28,6 +29,7 @@ import {
   returnRouteStopOps,
   updateRouteStopStatusOps,
   updateRoute,
+  confirmRoute,
   updateSchedule,
   updateStore,
 } from "./scheduling.api.js";
@@ -114,6 +116,14 @@ export function useScheduleQuery(id, enabled = true) {
   return useQuery({
     queryKey: ["schedules", id],
     queryFn: () => fetchSchedule(id),
+    enabled: enabled && Boolean(id),
+  });
+}
+
+export function useScheduleReturnsQuery(id, enabled = true) {
+  return useQuery({
+    queryKey: ["schedules", id, "returns"],
+    queryFn: () => fetchScheduleReturns(id),
     enabled: enabled && Boolean(id),
   });
 }
@@ -279,6 +289,21 @@ export function useUpdateRouteMutation() {
   });
 }
 
+export function useConfirmRouteMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ routeId }) => confirmRoute(routeId),
+    onSuccess: (updatedRoute, vars) => {
+      const scheduleId = vars?.scheduleId ?? updatedRoute?.scheduleId;
+      patchScheduleAfterRouteUpdate(qc, scheduleId, updatedRoute ?? { id: vars.routeId });
+      markSchedulingListsStale(qc);
+      if (vars?.routeId) {
+        qc.setQueryData(["routes", vars.routeId], updatedRoute);
+      }
+    },
+  });
+}
+
 export function useDeleteRouteMutation() {
   const qc = useQueryClient();
   return useMutation({
@@ -341,10 +366,11 @@ export function useVerifyRouteDeliveryMutation() {
 export function useMarkRouteNotVerifiedMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ routeId, scheduleId }) =>
+    mutationFn: ({ routeId, scheduleId, remarks }) =>
       updateRoute(routeId, {
         status: "not_verified",
         deliveryVerification: "rejected",
+        deliveryVerificationRemarks: remarks,
       }).then((data) => ({ data, scheduleId })),
     onSuccess: (result, vars) => {
       const updatedRoute = result?.data;
@@ -361,8 +387,12 @@ export function useMarkRouteNotVerifiedMutation() {
 export function useReturnRouteStopOpsMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ routeId, stopId, reason, customReason }) =>
-      returnRouteStopOps(routeId, stopId, { reason, customReason }),
+    mutationFn: ({ routeId, stopId, reason, customReason, createStoreReturn }) =>
+      returnRouteStopOps(routeId, stopId, {
+        reason,
+        customReason,
+        createStoreReturn: Boolean(createStoreReturn),
+      }),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["schedules"] });
       qc.invalidateQueries({ queryKey: ["routes"] });
@@ -376,8 +406,13 @@ export function useReturnRouteStopOpsMutation() {
 export function useUpdateRouteStopStatusOpsMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ routeId, stopId, status, reason, customReason }) =>
-      updateRouteStopStatusOps(routeId, stopId, { status, reason, customReason }),
+    mutationFn: ({ routeId, stopId, status, reason, customReason, createStoreReturn }) =>
+      updateRouteStopStatusOps(routeId, stopId, {
+        status,
+        reason,
+        customReason,
+        createStoreReturn: Boolean(createStoreReturn),
+      }),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["schedules"] });
       qc.invalidateQueries({ queryKey: ["routes"] });

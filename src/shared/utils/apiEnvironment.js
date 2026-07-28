@@ -17,6 +17,7 @@ const SHARED_SOCKET_URL =
 
 const SHARED_UPLOADS_BASE_URL =
   import.meta.env.VITE_UPLOADS_BASE_URL?.trim() ||
+  import.meta.env.VITE_S3_PUBLIC_BASE_URL?.trim() ||
   (import.meta.env.DEV ? "" : API_ORIGIN);
 
 /** Same API host for both — backend picks test vs prod DB from X-Dispatch-Environment. */

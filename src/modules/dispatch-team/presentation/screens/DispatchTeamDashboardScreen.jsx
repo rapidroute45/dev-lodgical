@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useAssignedCityScope } from "@/modules/scheduling/presentation/hooks/useAssignedCityScope.js";
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/modules/manager-home/utils/routeStatus.js";
 import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { canCreateRoutes } from "@/shared/utils/constants.js";
 
 function displayNameFromUser(user) {
   if (user?.fullName?.trim()) return user.fullName.trim();
@@ -45,7 +46,7 @@ function dataForSelectedDate(data, selectedDate) {
 }
 
 const QUICK_ACTIONS = [
-  { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
+  { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4", createOnly: true },
   { to: "/schedules", label: "Schedules", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
   { to: "/routes", label: "Routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
   { to: "/stores", label: "Stores", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m4-14h6" },
@@ -53,6 +54,7 @@ const QUICK_ACTIONS = [
 
 export function DispatchTeamDashboardScreen() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { assignedCities, hasMultipleCities } = useAssignedCityScope();
   const { date } = useOpsDateScope();
   const [stageFilter, setStageFilter] = useState(null);
@@ -218,7 +220,9 @@ export function DispatchTeamDashboardScreen() {
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {QUICK_ACTIONS.map((a) => (
+          {QUICK_ACTIONS.filter(
+            (a) => !a.createOnly || canCreateRoutes(user?.role)
+          ).map((a) => (
             <Link key={a.to} to={a.to} className="ops-quick">
               <span className="ops-quick__icon">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -252,7 +256,7 @@ export function DispatchTeamDashboardScreen() {
               <ul>
                 {schedules.map((schedule) => (
                   <li key={schedule.id}>
-                    <Link to={`/schedules/${schedule.id}`} className="ops-row flex items-center gap-3 px-6 py-3">
+                    <Link to={`/schedules/${schedule.id}/routes`} className="ops-row flex items-center gap-3 px-6 py-3">
                       <span className="ops-avatar h-10 w-10 text-sm">
                         {(schedule.store?.storeName ?? "S").charAt(0).toUpperCase()}
                       </span>
@@ -301,25 +305,35 @@ export function DispatchTeamDashboardScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRoutes.map((route) => (
-                    <tr key={route.id} className="ops-row border-t" style={{ borderColor: "var(--border)" }}>
-                      <td className="px-5 py-3">
-                        <Link to={`/routes/${route.id}`} className="font-medium" style={{ color: "var(--text)" }}>
-                          {route.routeName || "Route"}
-                        </Link>
-                        <p className="text-xs" style={{ color: "var(--text-dim)" }}>
-                          {route.schedule?.city ?? route.location ?? "—"} · {route.arrivalTime}–
-                          {route.departureTime}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
-                        {route.driverName || route.driverEmail || "Unassigned"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <OpsStatusBadge status={route.status} label={formatStatusLabel(route.status)} />
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredRoutes.map((route) => {
+                    const scheduleId = route.scheduleId ?? route.schedule?.id;
+                    return (
+                      <tr
+                        key={route.id}
+                        className={`ops-row border-t${scheduleId ? " cursor-pointer" : ""}`}
+                        style={{ borderColor: "var(--border)" }}
+                        onClick={() => {
+                          if (scheduleId) navigate(`/schedules/${scheduleId}/routes`);
+                        }}
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-medium" style={{ color: "var(--text)" }}>
+                            {route.routeName || "Route"}
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+                            {route.schedule?.city ?? route.location ?? "—"} · {route.arrivalTime}–
+                            {route.departureTime}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
+                          {route.driverName || route.driverEmail || "Unassigned"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <OpsStatusBadge status={route.status} label={formatStatusLabel(route.status)} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -219,7 +219,8 @@ function toStopPayload(stop) {
   return payload;
 }
 
-export function draftRoutePayload(route) {
+export function draftRoutePayload(route, options = {}) {
+  const includeStatus = options.includeStatus !== false;
   const departure =
     route.departureTime.trim() || defaultDepartureFromArrival(route.arrivalTime);
 
@@ -229,7 +230,7 @@ export function draftRoutePayload(route) {
 
   const pickupDetail = toStopPayload(route.pickup ?? { name: "", address: "" });
 
-  return {
+  const payload = {
     routeName: route.routeName.trim(),
     location: route.location.trim(),
     routeCategory: route.routeCategory ?? DEFAULT_ROUTE_CATEGORY,
@@ -244,8 +245,13 @@ export function draftRoutePayload(route) {
     teamId: route.teamId,
     notes: route.notes.trim() || undefined,
     driverId: route.driverId ?? null,
-    status: "pending",
   };
+
+  if (includeStatus) {
+    payload.status = "pending";
+  }
+
+  return payload;
 }
 
 export function draftToSpreadsheetRow(draft, scheduleId) {

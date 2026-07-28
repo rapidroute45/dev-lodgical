@@ -276,7 +276,7 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
   }
 
   function gotoSchedule(id) {
-    navigate(`/schedules/${id}`);
+    navigate(`/schedules/${id}/routes`);
     close();
   }
 

@@ -4,8 +4,8 @@ import { opsElevationStorage } from "@/modules/auth/application/opsElevationStor
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import {
   adminNeedsDispatchElevation,
-  isDispatchManager,
-  isDispatchTeam,
+  canCreateRoutes,
+  isOnsiteManager,
   roleNeedsPayrollElevation,
   UserRole,
 } from "@/shared/utils/constants.js";
@@ -49,11 +49,21 @@ export function OpsElevationProvider({ children }) {
 
   const canMutateOps = useCallback(
     (role) => {
-      if (isDispatchManager(role) || isDispatchTeam(role)) return true;
+      if (!canCreateRoutes(role)) return false;
+      if (isOnsiteManager(role)) return false;
+      if (role === UserRole.DISPATCH_MANAGER || role === UserRole.DISPATCH_TEAM) return true;
       if (adminNeedsDispatchElevation(role)) return dispatchUnlocked;
       return false;
     },
     [dispatchUnlocked]
+  );
+
+  const canManageRoutes = useCallback(
+    (role) => {
+      if (isOnsiteManager(role)) return true;
+      return canMutateOps(role);
+    },
+    [canMutateOps]
   );
 
   const canAccessPayroll = useCallback(
@@ -73,9 +83,19 @@ export function OpsElevationProvider({ children }) {
       clearElevation,
       clearScope,
       canMutateOps,
+      canManageRoutes,
       canAccessPayroll,
     }),
-    [dispatchUnlocked, payrollUnlocked, verifyPin, clearElevation, clearScope, canMutateOps, canAccessPayroll]
+    [
+      dispatchUnlocked,
+      payrollUnlocked,
+      verifyPin,
+      clearElevation,
+      clearScope,
+      canMutateOps,
+      canManageRoutes,
+      canAccessPayroll,
+    ]
   );
 
   return (

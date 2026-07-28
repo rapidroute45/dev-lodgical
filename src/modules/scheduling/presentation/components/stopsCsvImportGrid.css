@@ -13,7 +13,7 @@
 
 .route-stops-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 820px;
   border-collapse: collapse;
   font-size: 14px;
   color: var(--text);
@@ -62,6 +62,26 @@
 
 .route-stops-table__col-code {
   width: 140px;
+}
+
+.route-stops-table__col-photo {
+  width: 110px;
+}
+
+.route-stops-table__photo-cell {
+  vertical-align: middle;
+}
+
+.route-stops-table__photo-empty {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.route-stops-table__photo {
+  display: inline-flex;
 }
 
 .route-stops-table__col-status {

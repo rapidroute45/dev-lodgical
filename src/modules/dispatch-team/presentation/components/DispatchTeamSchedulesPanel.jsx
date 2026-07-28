@@ -13,8 +13,12 @@ import { ScheduleStatusFilter } from "@/modules/scheduling/presentation/componen
 import { ScheduleCard } from "@/modules/scheduling/presentation/components/ScheduleCard.jsx";
 import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
 import { maxScheduleBrowseDate } from "@/modules/scheduling/utils/scheduleDateBounds.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { canCreateRoutes } from "@/shared/utils/constants.js";
 
 export function DispatchTeamSchedulesPanel({ city }) {
+  const { user } = useAuth();
+  const allowCreate = canCreateRoutes(user?.role);
   const memberCity = city?.trim() ?? "";
   const { date, setDate } = useOpsDateScope();
   const [state, setState] = useState("");
@@ -182,12 +186,14 @@ export function DispatchTeamSchedulesPanel({ city }) {
               <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
                 Nothing scheduled in {memberCity} on this date.
               </p>
-              <Link
-                to="/schedules/create"
-                className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold"
-              >
-                Create schedule
-              </Link>
+              {allowCreate ? (
+                <Link
+                  to="/schedules/create"
+                  className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold"
+                >
+                  Create schedule
+                </Link>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-4">

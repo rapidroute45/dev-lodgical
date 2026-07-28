@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { PerformanceBadge } from "./PerformanceBadge.jsx";
 import { PerformanceMetricsRow } from "./PerformanceMetricsRow.jsx";
 
@@ -8,6 +9,8 @@ import { PerformanceMetricsRow } from "./PerformanceMetricsRow.jsx";
  *   performanceLoading?: boolean;
  *   showTeam?: boolean;
  *   variant?: 'panel' | 'list';
+ *   to?: string;
+ *   backTo?: string;
  * }} props
  */
 export function AvailableDriverRow({
@@ -16,13 +19,39 @@ export function AvailableDriverRow({
   performanceLoading = false,
   showTeam = false,
   variant = "list",
+  to,
+  backTo,
 }) {
+  const navigate = useNavigate();
   const name = driver.displayName ?? driver.fullName ?? driver.email;
   const initial = (name || "?").charAt(0).toUpperCase();
+  const clickable = Boolean(to);
+
+  function handleActivate() {
+    if (!to) return;
+    navigate(to, backTo ? { state: { from: backTo } } : undefined);
+  }
+
+  const rowProps = clickable
+    ? {
+        onClick: handleActivate,
+        role: "button",
+        tabIndex: 0,
+        onKeyDown: (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleActivate();
+          }
+        },
+      }
+    : {};
 
   if (variant === "panel") {
     return (
-      <li className="ops-row flex flex-wrap items-center gap-3 px-6 py-3">
+      <li
+        className={`ops-row flex flex-wrap items-center gap-3 px-6 py-3${clickable ? " cursor-pointer" : ""}`}
+        {...rowProps}
+      >
         <span className="ops-avatar h-10 w-10 shrink-0 text-sm">{initial}</span>
         <div className="min-w-0 flex-1 basis-[140px]">
           <p className="truncate text-sm font-semibold" style={{ color: "var(--text)" }}>
@@ -44,7 +73,10 @@ export function AvailableDriverRow({
   }
 
   return (
-    <li className="ops-listcard ops-perf-driver-row grid gap-3 p-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)_auto] sm:items-center">
+    <li
+      className={`ops-listcard ops-perf-driver-row grid gap-3 p-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)_auto] sm:items-center${clickable ? " cursor-pointer" : ""}`}
+      {...rowProps}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span className="ops-avatar flex h-10 w-10 shrink-0 items-center justify-center">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

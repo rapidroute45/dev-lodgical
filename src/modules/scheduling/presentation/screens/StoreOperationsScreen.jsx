@@ -201,18 +201,21 @@ export function StoreOperationsScreen() {
                               {group.primaryScheduleId ? (
                                 <>
                                   <Link
-                                    to={`/schedules/${group.primaryScheduleId}`}
-                                    className="ops-btn px-3 py-1.5 text-xs font-semibold"
-                                  >
-                                    Card view
-                                  </Link>
-                                  <Link
                                     to={`/schedules/${group.primaryScheduleId}/routes`}
                                     className="ops-btn px-3 py-1.5 text-xs font-semibold"
                                     style={{ color: "var(--accent)" }}
                                   >
                                     Spreadsheet
                                   </Link>
+                                  {(group.returnedStopCount ?? 0) > 0 ? (
+                                    <Link
+                                      to={`/schedules/${group.primaryScheduleId}/returns`}
+                                      className="ops-btn px-3 py-1.5 text-xs font-semibold"
+                                      style={{ color: "var(--rose)" }}
+                                    >
+                                      Returns ({group.returnedStopCount})
+                                    </Link>
+                                  ) : null}
                                 </>
                               ) : null}
                             </div>
@@ -249,7 +252,7 @@ export function StoreOperationsScreen() {
                         <RouteSummaryRow
                           route={route}
                           index={index + 1}
-                          to={`/routes/${route.id}`}
+                          to={`/schedules/${route.scheduleId}/routes`}
                         />
                       </li>
                     ))}

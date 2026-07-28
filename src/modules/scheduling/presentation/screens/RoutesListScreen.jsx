@@ -289,7 +289,11 @@ export function RoutesListScreen() {
                               route={route}
                               index={index + 1}
                               nested
-                              to={`/routes/${route.id}`}
+                              to={
+                                route.scheduleId
+                                  ? `/schedules/${route.scheduleId}/routes`
+                                  : undefined
+                              }
                             />
                           </li>
                         ))}

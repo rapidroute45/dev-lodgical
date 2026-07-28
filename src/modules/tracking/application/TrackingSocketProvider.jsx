@@ -54,6 +54,7 @@ export function TrackingSocketProvider({ children }) {
         lat: payload?.lat ?? null,
         lng: payload?.lng ?? null,
         recordedAt: payload?.recordedAt ?? null,
+        estimated: Boolean(payload?.estimated),
         trailPointCount: payload?.trailPoints?.length ?? 0,
         tracking: payload?.tracking ?? null,
       });

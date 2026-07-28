@@ -1,6 +1,10 @@
 import { ASSIGNABLE_ROLES, UserRole } from "@/shared/utils/constants.js";
 
-const ADMIN_ONLY_ROLES = [UserRole.ADMIN, UserRole.DISPATCH_MANAGER];
+const ADMIN_ONLY_ROLES = [
+  UserRole.ADMIN,
+  UserRole.DISPATCH_MANAGER,
+  UserRole.ONSITE_MANAGER,
+];
 
 export function getEditableRoles(actorRole) {
   if (actorRole === UserRole.ADMIN) {

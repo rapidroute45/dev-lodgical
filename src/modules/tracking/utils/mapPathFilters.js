@@ -88,6 +88,33 @@ export function filterTrailOutAndBackSpikes(points, minSpikeM = 120, returnWindo
   return kept;
 }
 
+/** Minimum movement (m) before a long pause counts as a gap rather than idling. */
+const TRAIL_TEMPORAL_GAP_MIN_MOVE_M = 200;
+
+/**
+ * Single source of truth for "these two points are not a continuous drive".
+ * Used both to split drawable segments and to bridge the resulting hole.
+ */
+export function exceedsTrailSegmentGap(
+  prev,
+  next,
+  maxGapM = TRAIL_SEGMENT_GAP_M,
+  maxGapSec = TRAIL_SEGMENT_GAP_SEC
+) {
+  if (!prev || !next) return false;
+  const distanceM = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
+  const prevMs = Date.parse(prev.recordedAt ?? "");
+  const nextMs = Date.parse(next.recordedAt ?? "");
+  const dtSec =
+    Number.isFinite(prevMs) && Number.isFinite(nextMs) && nextMs > prevMs
+      ? (nextMs - prevMs) / 1000
+      : 0;
+
+  const spatialGap = distanceM > maxGapM;
+  const temporalGap = dtSec > maxGapSec && distanceM > TRAIL_TEMPORAL_GAP_MIN_MOVE_M;
+  return spatialGap || temporalGap;
+}
+
 /**
  * Split a trail into drawable polylines at large spatial or temporal gaps.
  * Avoids drawing straight lines across a city after offline periods or sparse uploads.
@@ -105,18 +132,8 @@ export function splitTrailIntoSegments(
   for (let i = 1; i < normalized.length; i += 1) {
     const prev = normalized[i - 1];
     const next = normalized[i];
-    const distanceM = haversineMeters(prev.lat, prev.lng, next.lat, next.lng);
-    const prevMs = Date.parse(prev.recordedAt ?? "");
-    const nextMs = Date.parse(next.recordedAt ?? "");
-    const dtSec =
-      Number.isFinite(prevMs) && Number.isFinite(nextMs) && nextMs > prevMs
-        ? (nextMs - prevMs) / 1000
-        : 0;
 
-    const spatialGap = distanceM > maxGapM;
-    const temporalGap = dtSec > maxGapSec && distanceM > 200;
-
-    if (spatialGap || temporalGap) {
+    if (exceedsTrailSegmentGap(prev, next, maxGapM, maxGapSec)) {
       segments.push([next]);
     } else {
       segments[segments.length - 1].push(next);

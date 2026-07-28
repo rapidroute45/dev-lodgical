@@ -22,7 +22,11 @@ import {
   prepareDrawableTrailSegments,
   trailSegmentPolylineOptions,
 } from "@/modules/tracking/utils/trailDisplay.js";
-import { resolveLiveDriverMarkerPoint } from "@/modules/tracking/utils/locationTrail.js";
+import {
+  resolveLiveDriverMarkerPoint,
+  resolveLiveDriverMarkerTimestamp,
+} from "@/modules/tracking/utils/locationTrail.js";
+import { useAnimatedTrailSegments } from "@/modules/tracking/presentation/hooks/useAnimatedTrailSegments.js";
 import { readDropoffMapCoords, readMapCoords, readPickupMapCoords } from "@/modules/tracking/utils/routeMapUtils.js";
 import { geocodeAddressWithVariants } from "@/modules/tracking/utils/geocodeAddressVariants.js";
 import { useGoogleDrivingRoutePath } from "@/modules/tracking/utils/drivingRoutePath.js";
@@ -239,10 +243,17 @@ function LiveRouteMapLayers({
     return readMapCoords(trail[trail.length - 1]);
   }, [driverPoint, trail]);
 
+  /** Prefer trail tail for off-route checks — snapped driverLocation can hide a real detour. */
+  const latestTrailPoint = useMemo(() => {
+    if (!trail?.length) return null;
+    return readMapCoords(trail[trail.length - 1]);
+  }, [trail]);
+
   const offRoute = useMemo(() => {
     const segmentForCheck = trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
-    return isOffPlannedSegment(latestRawPoint, segmentForCheck);
-  }, [latestRawPoint, trustedSegmentPolyline]);
+    const pointForCheck = latestTrailPoint ?? latestRawPoint;
+    return isOffPlannedSegment(pointForCheck, segmentForCheck);
+  }, [latestTrailPoint, latestRawPoint, trustedSegmentPolyline]);
 
   useEffect(() => {
     onOffRouteChange?.(offRoute);
@@ -274,9 +285,12 @@ function LiveRouteMapLayers({
     [trail, isLive]
   );
 
+  const drawnTrailSegments = useAnimatedTrailSegments(trailSegments, { isLive });
+
+  /** Bounds always follow the full trail — the reveal animation must not move the camera. */
   const actualTrailPath = useMemo(
     () =>
-      flattenTrailSegments(trailSegments.map((segment) => segment.points))
+      flattenTrailSegments(trailSegments)
         .map((point) => readMapCoords(point))
         .filter(Boolean),
     [trailSegments]
@@ -293,13 +307,19 @@ function LiveRouteMapLayers({
         : [];
 
   const driverMarkerPoint = useMemo(() => {
-    const resolved = resolveLiveDriverMarkerPoint(driverLocation, trail);
+    const resolved = resolveLiveDriverMarkerPoint(driverLocation, trail, { offRoute });
     if (resolved) return resolved;
     return (
+      latestTrailPoint ??
       latestRawPoint ??
       (actualTrailPath.length >= 1 ? actualTrailPath[actualTrailPath.length - 1] : null)
     );
-  }, [driverLocation, trail, latestRawPoint, actualTrailPath]);
+  }, [driverLocation, trail, offRoute, latestTrailPoint, latestRawPoint, actualTrailPath]);
+
+  const driverMarkerRecordedAt = useMemo(
+    () => resolveLiveDriverMarkerTimestamp(driverLocation, trail, driverMarkerPoint),
+    [driverLocation, trail, driverMarkerPoint]
+  );
 
   const fitPoints = useMemo(() => {
     const paths = [
@@ -365,6 +385,7 @@ function LiveRouteMapLayers({
       {driverMarkerPoint ? (
         <RouteDriverMarker
           position={driverMarkerPoint}
+          recordedAt={driverMarkerRecordedAt}
           title={driverName ? `${driverName} (live)` : "Driver (live)"}
           animate={isLive}
         />
@@ -386,12 +407,12 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {trailSegments.map((segment) =>
+      {drawnTrailSegments.map((segment) =>
         segment.points.length >= 2 ? (
           <Polyline
             key={segment.key}
             path={segment.points.map((point) => readMapCoords(point)).filter(Boolean)}
-            {...trailSegmentPolylineOptions(segment.snapped)}
+            {...trailSegmentPolylineOptions(segment)}
           />
         ) : null
       )}
@@ -537,6 +558,13 @@ export function RouteLiveGoogleMap({
             style={{ background: "#2563eb" }}
           />
           Driver track — where they went (blue)
+        </span>
+        <span className="route-planning-map-legend-item">
+          <span
+            className="route-planning-map-legend-dot"
+            style={{ background: "#60a5fa", opacity: 0.55 }}
+          />
+          GPS gap — moved, but path unknown (pale dotted)
         </span>
         <span className="route-planning-map-legend-item">
           <span className="route-planning-map-legend-dot route-planning-map-legend-dot--planned-dashed" />

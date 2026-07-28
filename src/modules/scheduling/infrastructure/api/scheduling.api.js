@@ -51,6 +51,11 @@ export async function updateRoute(routeId, body) {
   return res.data.data;
 }
 
+export async function confirmRoute(routeId) {
+  const res = await api.post(`/routes/${routeId}/confirm`);
+  return res.data.data;
+}
+
 export async function deleteRoute(routeId) {
   await api.delete(`/routes/${routeId}`);
 }
@@ -130,6 +135,11 @@ export async function fetchSchedules(params) {
 
 export async function fetchSchedule(id) {
   const res = await api.get(`/schedules/${id}`);
+  return res.data.data;
+}
+
+export async function fetchScheduleReturns(id) {
+  const res = await api.get(`/schedules/${id}/returns`);
   return res.data.data;
 }
 

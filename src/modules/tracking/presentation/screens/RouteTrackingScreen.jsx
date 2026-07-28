@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useRouteTrackingQuery, useRoutePlannedSegmentQuery } from "@/modules/tracking/infrastructure/api/tracking.queries.js";
@@ -14,11 +14,11 @@ import {
   isDriverOnBreak,
 } from "@/modules/tracking/utils/breakStatus.js";
 import { getLocationSharingStatus, getStaleLocationHint, getDriverLocationLastPingAt } from "@/modules/tracking/utils/locationSharingStatus.js";
+import { getArrivalStatus, formatEtaTime } from "@/modules/tracking/utils/arrivalStatus.js";
 import { isCompletedRouteTracking } from "@/modules/tracking/utils/routeTrackingAccess.js";
 import { applyDriverLocationPayloadToTrail, mergeDriverLocationFromPoll, mergeTrailFromPoll } from "@/modules/tracking/utils/locationTrail.js";
 import { logGps } from "@/modules/tracking/utils/gpsTrackingDebug.js";
 import { formatRouteStatus, routeStatusClass } from "@/modules/scheduling/utils/scheduleStatus.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import "../components/liveTracking.css";
 
@@ -37,16 +37,32 @@ function formatLastSeen(updatedAt) {
 function locationBadgeVariant(mode) {
   if (mode === "shared" || mode === "background") return "done";
   if (mode === "foreground") return "active";
+  if (mode === "estimated") return "active";
   return "pending";
 }
 
 export function RouteTrackingScreen() {
   const { id: routeId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { subscribe, connected } = useTrackingSocket();
   const { data, isLoading, refetch } = useRouteTrackingQuery(routeId, Boolean(routeId), {
     socketConnected: connected,
   });
   const { data: plannedSegment, refetch: refetchPlannedSegment } = useRoutePlannedSegmentQuery(routeId, Boolean(routeId));
+
+  function handleBack() {
+    const from = location.state?.from;
+    if (typeof from === "string" && from && from !== location.pathname) {
+      navigate(from);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/tracking");
+  }
 
   const [driverLocation, setDriverLocation] = useState(null);
   const [trail, setTrail] = useState([]);
@@ -58,6 +74,7 @@ export function RouteTrackingScreen() {
   const [segmentProgressIndex, setSegmentProgressIndex] = useState(null);
   const [rerouteNotice, setRerouteNotice] = useState(null);
   const [trackingStats, setTrackingStats] = useState(null);
+  const [eta, setEta] = useState(null);
 
   useEffect(() => {
     if (!data) return;
@@ -75,6 +92,7 @@ export function RouteTrackingScreen() {
       data.driverRouteProgressIndex ?? data.route?.driverRouteProgressIndex ?? null
     );
     setDriverBreak(data.route?.driverBreak ?? null);
+    setEta(data.route?.eta ?? null);
   }, [data]);
 
   useEffect(() => {
@@ -124,13 +142,20 @@ export function RouteTrackingScreen() {
       }
       if (payload?.routeId !== routeId) return;
       if (payload.lat != null && payload.lng != null) {
-        setDriverLocation({
+        const isEstimated = Boolean(payload.estimated);
+        setDriverLocation((prev) => ({
           lat: payload.lat,
           lng: payload.lng,
-          updatedAt: payload.recordedAt,
-          ingestedAt: payload.ingestedAt ?? payload.recordedAt,
+          // Keep real ingest time for freshness when projecting estimated movement.
+          updatedAt: isEstimated
+            ? (prev?.updatedAt ?? payload.recordedAt)
+            : payload.recordedAt,
+          ingestedAt: isEstimated
+            ? (prev?.ingestedAt ?? payload.ingestedAt ?? payload.recordedAt)
+            : (payload.ingestedAt ?? payload.recordedAt),
           sharingInBackground: Boolean(payload.backgroundSharing),
-        });
+          estimated: isEstimated,
+        }));
         setTrail((prev) => applyDriverLocationPayloadToTrail(prev, payload));
       }
       if (typeof payload.progressIndex === "number") {
@@ -139,6 +164,7 @@ export function RouteTrackingScreen() {
       if (payload.progress) setProgress(payload.progress);
       if (payload.dwell) setDwell(payload.dwell);
       if (payload.break !== undefined) setDriverBreak(payload.break);
+      if (payload.eta !== undefined) setEta(payload.eta);
       if (payload.tracking) {
         setTrackingStats(payload.tracking);
         logGps("web.tracking.socketUpdate", {
@@ -179,6 +205,8 @@ export function RouteTrackingScreen() {
   const onBreak = isDriverOnBreak(driverBreak);
   const locationSharing = getLocationSharingStatus(driverLocation);
   const staleLocationHint = getStaleLocationHint(driverLocation);
+  const arrival = getArrivalStatus(eta);
+  const etaLabel = formatEtaTime(eta?.etaAt);
 
   const topBar = (
     <OpsTopBar showDate={false} onRefresh={refetch} />
@@ -189,11 +217,11 @@ export function RouteTrackingScreen() {
       <div className={`${PAGE_CONTENT} space-y-4`}>
         <div className="ops-fade flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <Link to="/tracking" className="ops-btn p-2.5" aria-label="Back to live tracking">
+            <button type="button" onClick={handleBack} className="ops-btn p-2.5" aria-label="Go back">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-            </Link>
+            </button>
             <div className="min-w-0">
               <h1 className="truncate text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
                 {route?.routeName ?? "Route tracking"}
@@ -217,6 +245,15 @@ export function RouteTrackingScreen() {
             {route?.status ? (
               <span className={`ops-badge ${routeStatusClass(route.status)}`}>
                 {formatRouteStatus(route.status)}
+              </span>
+            ) : null}
+            {!isCompleted && arrival?.label ? (
+              <span
+                className={`ops-badge ops-badge--${arrival.badgeVariant}`}
+                title={etaLabel ? `ETA ${etaLabel}` : undefined}
+              >
+                Pace · {arrival.label}
+                {etaLabel ? ` · ETA ${etaLabel}` : ""}
               </span>
             ) : null}
             {!isCompleted ? (

@@ -48,6 +48,13 @@ export function PayrollPreviewDetailModal({ open, preview, teamLabel, loading, o
             ) : null}
           </div>
 
+          {preview.hasMissingReturnPhotos ? (
+            <div className="ops-banner ops-banner--error">
+              Warning: {preview.missingReturnPhotoRouteCount} route
+              {preview.missingReturnPhotoRouteCount === 1 ? "" : "s"} have returns, but the driver did not upload the store return picture.
+            </div>
+          ) : null}
+
           {(preview.drivers ?? []).length === 0 ? (
             <p className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>No routes in this period.</p>
           ) : (
@@ -74,15 +81,24 @@ export function PayrollPreviewDetailModal({ open, preview, teamLabel, loading, o
                       <ul style={{ borderTop: "1px solid var(--border)", background: "rgba(255, 255, 255, 0.02)" }}>
                         {(driver.routes ?? []).map((route) => {
                           const category = route.routeCategory?.toUpperCase();
+                          const missing = Boolean(route.hasMissingReturnPhotos);
                           return (
                             <li
                               key={route.routeId}
                               className="flex items-start gap-2 px-4 py-3"
-                              style={{ borderBottom: "1px solid var(--border)" }}
+                              style={{
+                                borderBottom: "1px solid var(--border)",
+                                background: missing ? "rgba(225, 29, 72, 0.10)" : undefined,
+                              }}
                             >
-                              <span className="mt-0.5" style={{ color: "var(--green)" }}>✓</span>
+                              <span className="mt-0.5" style={{ color: missing ? "var(--rose)" : "var(--green)" }}>
+                                {missing ? "!" : "✓"}
+                              </span>
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-semibold" style={{ color: "var(--text)" }}>
+                                <p
+                                  className="truncate text-sm font-semibold"
+                                  style={{ color: missing ? "var(--rose)" : "var(--text)" }}
+                                >
                                   {route.routeName || "Route"}
                                   {route.location ? ` · ${route.location}` : ""}
                                 </p>
@@ -93,6 +109,11 @@ export function PayrollPreviewDetailModal({ open, preview, teamLabel, loading, o
                                     : ""}
                                   {route.hasAdjustment ? " · adjusted" : ""}
                                 </p>
+                                {missing ? (
+                                  <p className="mt-1 text-[11px] font-bold" style={{ color: "var(--rose)" }}>
+                                    Driver did not upload return picture
+                                  </p>
+                                ) : null}
                               </div>
                             </li>
                           );

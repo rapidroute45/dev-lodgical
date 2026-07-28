@@ -4,6 +4,7 @@ import {
   MANAGER_ROLES,
   OPS_ROLES,
   UserRole,
+  isOnsiteManager,
 } from "@/shared/utils/constants.js";
 import { useUpdateRouteMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 
@@ -18,11 +19,14 @@ export function RouteOpsVerification({ route, scheduleId }) {
   const { user } = useAuth();
   const updateRoute = useUpdateRouteMutation();
   const [error, setError] = useState(null);
+  const [remarksOpen, setRemarksOpen] = useState(false);
+  const [remarks, setRemarks] = useState("");
 
   if (route.status !== "completed") return null;
 
   const role = user?.role;
-  const isManager = role != null && MANAGER_ROLES.includes(role);
+  const isManager =
+    (role != null && MANAGER_ROLES.includes(role)) || isOnsiteManager(role);
   const isDispatchTeam = role === UserRole.DISPATCH_TEAM;
   const isOps = role != null && OPS_ROLES.includes(role);
   if (!isOps) return null;
@@ -37,14 +41,20 @@ export function RouteOpsVerification({ route, scheduleId }) {
     opsStatus !== "manager_verified" &&
     (opsStatus === "pending" || opsStatus === "team_verified");
 
-  async function setOpsStatus(next) {
+  async function setOpsStatus(next, optionalRemarks) {
     setError(null);
     try {
+      const body = { opsVerificationStatus: next };
+      if (optionalRemarks != null && String(optionalRemarks).trim()) {
+        body.opsVerificationRemarks = String(optionalRemarks).trim();
+      }
       await updateRoute.mutateAsync({
         routeId: route.id,
         scheduleId,
-        body: { opsVerificationStatus: next },
+        body,
       });
+      setRemarksOpen(false);
+      setRemarks("");
     } catch (err) {
       setError(err.message || "Update failed");
     }
@@ -67,6 +77,12 @@ export function RouteOpsVerification({ route, scheduleId }) {
         </p>
       ) : null}
 
+      {route.opsVerificationRemarks ? (
+        <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+          Remarks: {route.opsVerificationRemarks}
+        </p>
+      ) : null}
+
       {error ? (
         <p className="mt-2 text-xs" style={{ color: "var(--rose)" }}>{error}</p>
       ) : null}
@@ -86,7 +102,10 @@ export function RouteOpsVerification({ route, scheduleId }) {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void setOpsStatus("manager_verified")}
+            onClick={() => {
+              setRemarks("");
+              setRemarksOpen(true);
+            }}
             className="ops-btn px-3 py-2 text-xs font-bold disabled:opacity-60"
             style={{ boxShadow: "inset 0 0 0 1px rgba(52, 211, 153, 0.4)", color: "var(--green)" }}
           >
@@ -97,6 +116,62 @@ export function RouteOpsVerification({ route, scheduleId }) {
           <span className="ops-badge ops-badge--done">Approved</span>
         ) : null}
       </div>
+
+      {remarksOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (!busy) setRemarksOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border p-4 shadow-xl"
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-bold" style={{ color: "var(--text)" }}>
+              Manager approval
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+              Optional remarks. Leave blank to approve without notes.
+            </p>
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              rows={4}
+              disabled={busy}
+              placeholder="Optional remarks…"
+              className="mt-3 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-alt, rgba(255,255,255,0.03))",
+                color: "var(--text)",
+              }}
+            />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setRemarksOpen(false)}
+                className="ops-btn flex-1 px-3 py-2 text-xs font-bold disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void setOpsStatus("manager_verified", remarks)}
+                className="ops-btn flex-1 px-3 py-2 text-xs font-bold disabled:opacity-60"
+                style={{ background: "var(--green)", color: "#fff" }}
+              >
+                {busy ? "Approving…" : "Approve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

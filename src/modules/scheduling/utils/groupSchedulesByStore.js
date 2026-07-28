@@ -2,6 +2,14 @@ function scheduleStoreId(schedule) {
   return schedule.storeId ?? schedule.store?.id ?? "";
 }
 
+function resolveGroupStatus(schedules) {
+  if (!schedules.length) return undefined;
+  if (schedules.every((s) => s.status === "completed")) return "completed";
+  if (schedules.some((s) => s.status === "active")) return "active";
+  if (schedules.some((s) => s.status === "pending")) return "pending";
+  return schedules[0]?.status;
+}
+
 /** Merge list rows that share the same store on the same date into one card. */
 export function groupSchedulesByStore(schedules) {
   const map = new Map();
@@ -32,6 +40,10 @@ export function groupSchedulesByStore(schedules) {
       (n, s) => n + (s.pendingRouteCount ?? 0),
       0
     );
+    const returnedStopCount = group.schedules.reduce(
+      (n, s) => n + (s.returnedStopCount ?? 0),
+      0
+    );
     const primary =
       group.schedules.reduce((best, s) =>
         (s.routeCount ?? 0) > (best.routeCount ?? 0) ? s : best
@@ -41,8 +53,9 @@ export function groupSchedulesByStore(schedules) {
       ...group,
       routeCount,
       pendingRouteCount,
+      returnedStopCount,
       primaryScheduleId: primary?.id,
-      status: primary?.status,
+      status: resolveGroupStatus(group.schedules),
       dispatchTeam: primary?.dispatchTeam ?? null,
       createdByName: primary?.createdByName ?? null,
       id: group.key,

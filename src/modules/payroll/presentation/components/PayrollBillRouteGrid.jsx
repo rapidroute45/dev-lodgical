@@ -82,11 +82,13 @@ function buildRow(payrollRoute, fullRoute, loading) {
     adjustment: payrollRoute.hasAdjustment
       ? payrollRoute.adjustmentReason?.trim() || "Adjusted"
       : "—",
+    hasMissingReturnPhotos: Boolean(payrollRoute.hasMissingReturnPhotos),
+    missingReturnPhotoCount: payrollRoute.missingReturnPhotoCount ?? 0,
     loading,
   };
 }
 
-export function PayrollBillRouteGrid({ routes, canRemove, onRemove }) {
+export function PayrollBillRouteGrid({ routes, canRemove, canEditPay, onEditPay, onRemove }) {
   const routeQueries = useQueries({
     queries: routes.map((route) => ({
       queryKey: ["routes", route.routeId],
@@ -126,11 +128,27 @@ export function PayrollBillRouteGrid({ routes, canRemove, onRemove }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.routeId} style={{ borderBottom: "1px solid var(--border)" }}>
-              <td className="px-3 py-2.5 font-semibold" style={{ color: "var(--text)" }}>
-                <Link to={`/routes/${row.routeId}`} className="hover:underline" style={{ color: "var(--accent)" }}>
+            <tr
+              key={row.routeId}
+              style={{
+                borderBottom: "1px solid var(--border)",
+                background: row.hasMissingReturnPhotos ? "rgba(225, 29, 72, 0.10)" : undefined,
+              }}
+            >
+              <td className="px-3 py-2.5 font-semibold" style={{ color: row.hasMissingReturnPhotos ? "var(--rose)" : "var(--text)" }}>
+                <Link
+                  to={`/routes/${row.routeId}`}
+                  className="hover:underline"
+                  style={{ color: row.hasMissingReturnPhotos ? "var(--rose)" : "var(--accent)" }}
+                >
                   {row.routeName}
                 </Link>
+                {row.hasMissingReturnPhotos ? (
+                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--rose)" }}>
+                    Return photo missing
+                    {row.missingReturnPhotoCount > 1 ? ` (${row.missingReturnPhotoCount})` : ""}
+                  </p>
+                ) : null}
               </td>
               <td className="whitespace-nowrap px-3 py-2.5" style={{ color: "var(--text-muted)" }}>
                 {row.category}
@@ -181,7 +199,22 @@ export function PayrollBillRouteGrid({ routes, canRemove, onRemove }) {
                 {row.defaultRate}
               </td>
               <td className="whitespace-nowrap px-3 py-2.5 font-semibold" style={{ color: "var(--green)" }}>
-                {row.rate}
+                {canEditPay ? (
+                  <button
+                    type="button"
+                    onClick={() => onEditPay?.(row.routeId)}
+                    className="rounded-lg px-2 py-1 text-left font-extrabold hover:underline"
+                    style={{ color: "var(--green)", background: "rgba(52, 211, 153, 0.12)" }}
+                    title="Set pay for this route"
+                  >
+                    {row.rate}
+                    <span className="ml-1 text-[10px] font-semibold" style={{ color: "var(--accent)" }}>
+                      Edit
+                    </span>
+                  </button>
+                ) : (
+                  row.rate
+                )}
               </td>
               <td className="max-w-[120px] truncate px-3 py-2.5" style={{ color: "var(--amber)" }} title={row.adjustment}>
                 {row.adjustment}

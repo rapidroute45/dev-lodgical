@@ -2,7 +2,11 @@ import { api } from "@/shared/utils/api.js";
 
 /** GET /dashboard/stats — same as mobile useDashboardStatsQuery */
 export async function fetchDashboardStats(date, scope = {}) {
-  const params = { ...(date ? { date } : {}), ...scope };
+  const params = {
+    ...(date ? { date } : {}),
+    ...(scope.city?.trim?.() ? { city: scope.city.trim() } : {}),
+    ...(scope.state?.trim?.() ? { state: scope.state.trim() } : {}),
+  };
   const res = await api.get("/dashboard/stats", { params });
   return res.data.data;
 }
@@ -13,6 +17,22 @@ export async function fetchAvailableDrivers(date) {
     params: date ? { date } : undefined,
   });
   return res.data.data;
+}
+
+/** GET /dashboard/returns — returned stops for the selected date */
+export async function fetchDayReturns(date, scope = {}) {
+  const params = {
+    ...(date ? { date } : {}),
+    ...(scope.city?.trim?.() ? { city: scope.city.trim() } : {}),
+    ...(scope.state?.trim?.() ? { state: scope.state.trim() } : {}),
+  };
+  const res = await api.get("/dashboard/returns", { params });
+  const data = res.data?.data;
+  return {
+    date: data?.date ?? date ?? "",
+    totalReturns: data?.totalReturns ?? 0,
+    routes: Array.isArray(data?.routes) ? data.routes : [],
+  };
 }
 
 /** GET /dashboard/driver-performance */

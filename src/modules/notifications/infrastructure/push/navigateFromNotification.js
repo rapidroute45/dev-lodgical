@@ -18,7 +18,7 @@ function mapDeepLinkToRoute(deepLink) {
   if (payrollMatch) return `/payroll/${payrollMatch[1]}`;
 
   const scheduleMatch = deepLink.match(/^\/schedules\/([^/]+)$/);
-  if (scheduleMatch) return `/schedules/${scheduleMatch[1]}`;
+  if (scheduleMatch) return `/schedules/${scheduleMatch[1]}/routes`;
 
   if (/^\/routes\/tracking\/.+/.test(deepLink)) return "/routes";
 
@@ -43,6 +43,9 @@ function mapTypeToRoute(type, data) {
   switch (type) {
     case "route_offer":
       return null;
+    case "route_offer_accepted":
+    case "route_offer_declined":
+    case "route_offer_expired":
     case "route_assigned":
     case "route_needs_driver":
     case "route_ops_review":
@@ -50,7 +53,7 @@ function mapTypeToRoute(type, data) {
     case "schedule_updated":
     case "route_created":
     case "route_updated":
-      return data?.scheduleId ? `/schedules/${data.scheduleId}` : "/schedules";
+      return data?.scheduleId ? `/schedules/${data.scheduleId}/routes` : "/schedules";
     case "payroll_generated":
     case "payroll_sent":
     case "payroll_approved":
@@ -63,6 +66,9 @@ function mapTypeToRoute(type, data) {
     case "stop_completed":
     case "driver_off_route":
     case "driver_location_stale":
+    case "driver_location_permission_limited":
+    case "delivery_verified":
+    case "delivery_not_verified":
       return data?.routeId ? `/routes/tracking/${data.routeId}` : "/routes";
     case "chat_message":
       return data?.conversationId ? `/chat/${data.conversationId}` : "/chat";

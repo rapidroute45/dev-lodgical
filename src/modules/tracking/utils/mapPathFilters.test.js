@@ -6,7 +6,13 @@ import {
   splitTrailIntoSegments,
   TRAIL_SEGMENT_GAP_M,
 } from "./mapPathFilters.js";
-import { prepareTrailSegmentsForDisplay, prepareDrawableTrailSegments } from "./trailDisplay.js";
+import {
+  flattenTrailSegments,
+  prepareTrailSegmentsForDisplay,
+  prepareDrawableTrailSegments,
+  TRAIL_SEGMENT_KIND_GAP,
+} from "./trailDisplay.js";
+import { trailSegmentPolylineOptions } from "./trailSnappedSegments.js";
 
 function point(lat, lng, recordedAt) {
   return { lat, lng, recordedAt };
@@ -84,4 +90,72 @@ test("prepareDrawableTrailSegments skips diagonal through sparse GPS jumps", () 
     return latDelta > 0.015 && segment.snapped === true;
   });
   assert.equal(hasLongDiagonal, false);
+});
+
+/** Two clusters either side of a 10 minute offline hole ~3 km apart. */
+function trailWithOfflineGap() {
+  const base = Date.parse("2026-07-03T10:00:00.000Z");
+  const at = (lat, offsetSec) =>
+    point(lat, 74.358, new Date(base + offsetSec * 1_000).toISOString());
+  return [
+    at(31.52, 0),
+    at(31.5205, 5),
+    at(31.521, 10),
+    at(31.55, 610),
+    at(31.5505, 615),
+    at(31.551, 620),
+  ];
+}
+
+test("prepareDrawableTrailSegments bridges a GPS gap with a distinct gap segment", () => {
+  const drawable = prepareDrawableTrailSegments(trailWithOfflineGap(), { source: "test" });
+  const gaps = drawable.filter((segment) => segment.kind === TRAIL_SEGMENT_KIND_GAP);
+
+  assert.equal(gaps.length, 1);
+  assert.equal(gaps[0].points.length, 2);
+
+  const gapIndex = drawable.indexOf(gaps[0]);
+  assert.ok(gapIndex > 0 && gapIndex < drawable.length - 1);
+
+  const before = drawable[gapIndex - 1];
+  const after = drawable[gapIndex + 1];
+  assert.deepEqual(gaps[0].points[0], before.points[before.points.length - 1]);
+  assert.deepEqual(gaps[0].points[1], after.points[0]);
+});
+
+test("prepareDrawableTrailSegments emits no gap bridge for a continuous trail", () => {
+  const base = Date.parse("2026-07-03T10:00:00.000Z");
+  const trail = [];
+  for (let i = 0; i < 20; i += 1) {
+    trail.push(
+      point(31.52 + i * 0.0004, 74.358 + i * 0.0004, new Date(base + i * 1_000).toISOString())
+    );
+  }
+
+  const drawable = prepareDrawableTrailSegments(trail, { source: "test" });
+  assert.equal(
+    drawable.some((segment) => segment.kind === TRAIL_SEGMENT_KIND_GAP),
+    false
+  );
+});
+
+test("gap bridges are styled distinctly and excluded from bounds flattening", () => {
+  const drawable = prepareDrawableTrailSegments(trailWithOfflineGap(), { source: "test" });
+  const gap = drawable.find((segment) => segment.kind === TRAIL_SEGMENT_KIND_GAP);
+  const gapStyle = trailSegmentPolylineOptions(gap);
+  const confirmedStyle = trailSegmentPolylineOptions({ kind: "trail", snapped: true });
+  const unsnappedStyle = trailSegmentPolylineOptions({ kind: "trail", snapped: false });
+
+  assert.notDeepEqual(gapStyle, confirmedStyle);
+  assert.notDeepEqual(gapStyle, unsnappedStyle);
+  assert.ok(Array.isArray(gapStyle.icons));
+
+  assert.deepEqual(trailSegmentPolylineOptions(true), confirmedStyle);
+  assert.deepEqual(trailSegmentPolylineOptions(false), unsnappedStyle);
+
+  const flattened = flattenTrailSegments(drawable);
+  const realPoints = drawable
+    .filter((segment) => segment.kind !== TRAIL_SEGMENT_KIND_GAP)
+    .reduce((sum, segment) => sum + segment.points.length, 0);
+  assert.equal(flattened.length, realPoints);
 });

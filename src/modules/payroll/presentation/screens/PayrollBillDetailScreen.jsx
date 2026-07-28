@@ -25,6 +25,8 @@ import {
   ROUTE_CATEGORY_LABELS,
 } from "@/modules/payroll/utils/format.js";
 import { PayrollBillRouteGrid } from "@/modules/payroll/presentation/components/PayrollBillRouteGrid.jsx";
+import { ModalSheet } from "@/modules/payroll/presentation/components/ModalSheet.jsx";
+import { RateField } from "@/modules/payroll/presentation/components/RateField.jsx";
 
 const ROUTE_CATEGORIES = ["SMALL", "MEDIUM", "FULL"];
 
@@ -50,7 +52,9 @@ function settingsRateForCategory(settings, category) {
 function formatCategoryRatesSummary(rows) {
   const onBill = rows.filter((r) => r.count > 0);
   if (onBill.length === 0) return "";
-  return onBill.map((r) => `${r.label} $${r.rate}`).join(" · ");
+  return onBill
+    .map((r) => (r.varies ? `${r.label} varies` : `${r.label} $${r.rate}`))
+    .join(" · ");
 }
 
 function num(value) {
@@ -79,7 +83,9 @@ export function PayrollBillDetailScreen() {
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [receiptFile, setReceiptFile] = useState(null);
   const [opsNote, setOpsNote] = useState("");
-  const [standardRateDraft, setStandardRateDraft] = useState("");
+  const [routeRateDraft, setRouteRateDraft] = useState({});
+  const [editingRoute, setEditingRoute] = useState(null);
+  const [editAmount, setEditAmount] = useState("");
   const [removedRouteIds, setRemovedRouteIds] = useState(new Set());
   const [opsMenuOpen, setOpsMenuOpen] = useState(false);
   const [error, setError] = useState(null);
@@ -119,15 +125,27 @@ export function PayrollBillDetailScreen() {
     });
     setDraft(next);
     setOpsNote(bill.note ?? "");
-    setStandardRateDraft(String(bill.standardRate ?? 100));
+    const rates = {};
+    bill.lineItems.forEach((line) => {
+      line.routes.forEach((r) => {
+        rates[r.routeId] = String(r.rate ?? r.defaultRate ?? 0);
+      });
+    });
+    setRouteRateDraft(rates);
     setRemovedRouteIds(new Set());
-  }, [bill?.id, bill?.status, bill?.updatedAt]);
+    setEditingRoute(null);
+    if (canEditAdjustments) {
+      setExpanded(new Set(bill.lineItems.map((line) => line.driverId)));
+    }
+  }, [bill?.id, bill?.status, bill?.updatedAt, canEditAdjustments]);
 
-  const effectiveRate = useMemo(() => {
-    if (!canEditAdjustments || !standardRateDraft.trim()) return bill?.standardRate ?? 100;
-    const n = Number(standardRateDraft);
-    return Number.isFinite(n) && n > 0 ? n : bill?.standardRate ?? 100;
-  }, [bill?.standardRate, canEditAdjustments, standardRateDraft]);
+  function routePay(route) {
+    if (canEditAdjustments && routeRateDraft[route.routeId] != null) {
+      const n = Number(routeRateDraft[route.routeId]);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return route.rate ?? route.defaultRate ?? 0;
+  }
 
   const visibleLineItems = useMemo(() => {
     if (!bill) return [];
@@ -144,26 +162,31 @@ export function PayrollBillDetailScreen() {
     for (const line of visibleLineItems) {
       for (const route of line.routes) {
         const category = (route.routeCategory ?? "SMALL").toUpperCase();
-        const rate = route.rate ?? route.defaultRate ?? 0;
+        const rate = routePay(route);
         const existing = byCategory.get(category);
         if (existing) {
           existing.count += 1;
+          existing.rates.push(rate);
         } else {
-          byCategory.set(category, { rate, count: 1 });
+          byCategory.set(category, { rates: [rate], count: 1 });
         }
       }
     }
     return ROUTE_CATEGORIES.map((category) => {
       const onBill = byCategory.get(category);
       const settingsRate = settingsRateForCategory(payrollSettings, category);
+      const unique = onBill
+        ? [...new Set(onBill.rates.map((r) => Math.round(r * 100) / 100))]
+        : [];
       return {
         category,
         label: ROUTE_CATEGORY_LABELS[category] ?? category,
-        rate: onBill?.rate ?? settingsRate ?? 0,
+        rate: unique.length === 1 ? unique[0] : settingsRate ?? 0,
+        varies: unique.length > 1,
         count: onBill?.count ?? 0,
       };
     });
-  }, [visibleLineItems, payrollSettings]);
+  }, [visibleLineItems, payrollSettings, routeRateDraft, canEditAdjustments]);
 
   const categoryRatesSummary = formatCategoryRatesSummary(categoryRateRows);
 
@@ -181,15 +204,23 @@ export function PayrollBillDetailScreen() {
       const bonus = d ? num(d.bonus) : line.bonus;
       const deduction = d ? num(d.deduction) : line.deduction;
       const overtime = d ? num(d.overtime) : line.overtime;
-      return sum + line.basePay + bonus + overtime - deduction;
+      const basePay = line.routes.reduce((s, r) => s + routePay(r), 0);
+      return sum + basePay + bonus + overtime - deduction;
     }, 0);
-  }, [bill, draft, canEditAdjustments, visibleLineItems]);
+  }, [bill, draft, canEditAdjustments, visibleLineItems, routeRateDraft]);
 
   const hasChanges = useMemo(() => {
     if (!bill) return false;
     if (removedRouteIds.size > 0) return true;
     if ((opsNote ?? "") !== (bill.note ?? "")) return true;
-    if (effectiveRate !== bill.standardRate) return true;
+    const routeChanged = bill.lineItems.some((line) =>
+      line.routes.some((r) => {
+        const draftRate = Number(routeRateDraft[r.routeId]);
+        const saved = r.rate ?? r.defaultRate ?? 0;
+        return Number.isFinite(draftRate) && Math.abs(draftRate - saved) > 0.009;
+      })
+    );
+    if (routeChanged) return true;
     return bill.lineItems.some((line) => {
       const d = draft[line.driverId];
       if (!d) return false;
@@ -199,7 +230,7 @@ export function PayrollBillDetailScreen() {
         num(d.overtime) !== line.overtime
       );
     });
-  }, [bill, draft, opsNote, effectiveRate, removedRouteIds]);
+  }, [bill, draft, opsNote, routeRateDraft, removedRouteIds]);
 
   const canSaveBill = canEditAdjustments && (hasChanges || isResendToTeamLead);
 
@@ -213,12 +244,38 @@ export function PayrollBillDetailScreen() {
   }
 
   function buildUpdatePayload() {
+    const routeRates = Object.entries(routeRateDraft)
+      .map(([routeId, value]) => ({ routeId, rate: Number(value) }))
+      .filter((item) => Number.isFinite(item.rate) && item.rate > 0);
     return {
       adjustments: buildAdjustments(),
       note: opsNote.trim() || null,
-      standardRate: effectiveRate,
       removeRouteIds: removedRouteIds.size > 0 ? [...removedRouteIds] : undefined,
+      routeRates: routeRates.length > 0 ? routeRates : undefined,
     };
+  }
+
+  function openRoutePayEditor(route) {
+    const category = (route.routeCategory ?? "SMALL").toUpperCase();
+    setEditingRoute(route);
+    setEditAmount(String(routePay(route)));
+    setMessage(null);
+    setError(null);
+  }
+
+  function applyRoutePayEdit() {
+    if (!editingRoute) return;
+    const amount = Number(editAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter a positive amount for this route.");
+      return;
+    }
+    setRouteRateDraft((prev) => ({
+      ...prev,
+      [editingRoute.routeId]: String(Math.round(amount * 100) / 100),
+    }));
+    setEditingRoute(null);
+    setError(null);
   }
 
   async function handleSave() {
@@ -469,15 +526,32 @@ export function PayrollBillDetailScreen() {
           <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
             {categoryRatesSummary
               ? `${categoryRatesSummary} per route · `
-              : `$${canEditAdjustments ? effectiveRate : bill.standardRate} per completed route · `}
+              : `$${bill.standardRate} per completed route · `}
             {visibleLineItems.length} driver{visibleLineItems.length === 1 ? "" : "s"}
           </p>
+          {bill.hasMissingReturnPhotos ? (
+            <div
+              className="mt-3 rounded-xl px-3 py-2.5 text-sm font-semibold"
+              style={{
+                background: "rgba(245, 158, 11, 0.15)",
+                border: "1px solid rgba(245, 158, 11, 0.45)",
+                color: "#fbbf24",
+              }}
+            >
+              Warning: {bill.missingReturnPhotoRouteCount ?? "some"} route
+              {(bill.missingReturnPhotoRouteCount ?? 0) === 1 ? "" : "s"} have returns without
+              store photos. Driver did not upload the return picture.
+            </div>
+          ) : null}
         </div>
 
         {canEditAdjustments ? (
           <div id="payroll-bill-edit" className="ops-panel ops-fade p-4">
             <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Edit bill</p>
-            <p className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Rates per route ($)</p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Category defaults ($)</p>
+            <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
+              Click a route&apos;s pay amount below to set that route separately
+            </p>
             <div className="mt-1 overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
               {categoryRateRows.map((row) => (
                 <div key={row.category} className="flex items-center justify-between px-3 py-2.5" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -485,25 +559,16 @@ export function PayrollBillDetailScreen() {
                     <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{row.label}</p>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {row.count > 0
-                        ? `${row.count} route${row.count === 1 ? "" : "s"} on bill`
+                        ? `${row.count} route${row.count === 1 ? "" : "s"} on bill${row.varies ? " · amounts vary" : ""}`
                         : "Default rate"}
                     </p>
                   </div>
-                  <p className="text-base font-extrabold" style={{ color: "var(--green)" }}>${row.rate}</p>
+                  <p className="text-base font-extrabold" style={{ color: "var(--green)" }}>
+                    {row.varies ? "Varies" : `$${row.rate}`}
+                  </p>
                 </div>
               ))}
             </div>
-            <label className="mt-4 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Flat override ($)</label>
-            <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
-              Optional — applies the same rate to all routes when saved
-            </p>
-            <input
-              type="number"
-              value={standardRateDraft}
-              onChange={(e) => setStandardRateDraft(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-sm"
-              style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
-            />
             <label className="mt-3 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Internal note</label>
             <textarea
               value={opsNote}
@@ -546,8 +611,13 @@ export function PayrollBillDetailScreen() {
             const bonus = d ? num(d.bonus) : line.bonus;
             const deduction = d ? num(d.deduction) : line.deduction;
             const overtime = d ? num(d.overtime) : line.overtime;
-            const lineTotal = line.basePay + bonus + overtime - deduction;
+            const basePay = line.routes.reduce((s, r) => s + routePay(r), 0);
+            const lineTotal = basePay + bonus + overtime - deduction;
             const isOpen = expanded.has(line.driverId);
+            const routesWithDraft = line.routes.map((r) => ({
+              ...r,
+              rate: routePay(r),
+            }));
 
             return (
               <div key={line.driverId} className="ops-panel ops-fade p-4">
@@ -556,7 +626,7 @@ export function PayrollBillDetailScreen() {
                     <p className="font-bold" style={{ color: "var(--text)" }}>{line.driverName}</p>
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {line.routes.length} route{line.routes.length === 1 ? "" : "s"} ·{" "}
-                      {formatMoney(line.basePay)} base
+                      {formatMoney(basePay)} base
                     </p>
                   </div>
                   <p className="text-lg font-extrabold" style={{ color: "var(--accent)" }}>{formatMoney(lineTotal)}</p>
@@ -606,8 +676,13 @@ export function PayrollBillDetailScreen() {
 
                 {isOpen ? (
                   <PayrollBillRouteGrid
-                    routes={line.routes}
+                    routes={routesWithDraft}
                     canRemove={canEditAdjustments}
+                    canEditPay={canEditAdjustments}
+                    onEditPay={(routeId) => {
+                      const route = line.routes.find((r) => r.routeId === routeId);
+                      if (route) openRoutePayEditor(route);
+                    }}
                     onRemove={(routeId) =>
                       setRemovedRouteIds((prev) => new Set([...prev, routeId]))
                     }
@@ -743,6 +818,68 @@ export function PayrollBillDetailScreen() {
           </div>
         </div>
       ) : null}
+
+      <ModalSheet
+        open={Boolean(editingRoute)}
+        title="Set route pay"
+        onClose={() => setEditingRoute(null)}
+      >
+        {editingRoute ? (
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                {editingRoute.routeName || "Route"}
+              </p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                {ROUTE_CATEGORY_LABELS[(editingRoute.routeCategory ?? "SMALL").toUpperCase()] ??
+                  editingRoute.routeCategory}
+                {editingRoute.defaultRate != null
+                  ? ` · Default ${formatMoney(editingRoute.defaultRate)}`
+                  : ""}
+              </p>
+            </div>
+
+            <RateField label="Amount for this route" value={editAmount} onChange={setEditAmount} />
+
+            {editingRoute.defaultRate > 0 ? (
+              <button
+                type="button"
+                className="text-sm font-semibold"
+                style={{ color: "var(--accent)" }}
+                onClick={() => setEditAmount(String(Math.round(editingRoute.defaultRate)))}
+              >
+                Use default {formatMoney(editingRoute.defaultRate)}
+              </button>
+            ) : null}
+
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Applies to this bill preview — tap Save to keep it.
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                className="ops-btn flex-1 justify-center px-4 py-2.5 text-sm font-semibold"
+                onClick={() => setEditingRoute(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ops-btn flex-1 justify-center px-4 py-2.5 text-sm font-bold"
+                style={{
+                  background: "var(--accent)",
+                  borderColor: "var(--accent)",
+                  color: "#ffffff",
+                }}
+                onClick={applyRoutePayEdit}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </ModalSheet>
     </DashboardLayout>
   );
 }

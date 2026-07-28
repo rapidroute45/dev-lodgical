@@ -39,6 +39,7 @@ export const UserRole = {
   ADMIN: "admin",
   DISPATCH_MANAGER: "dispatch manager",
   DISPATCH_TEAM: "dispatch team",
+  ONSITE_MANAGER: "onsite manager",
   TEAM_LEAD: "team lead",
   TEAM_DRIVER: "team driver",
   DRIVER: "driver",
@@ -47,10 +48,19 @@ export const UserRole = {
 
 export const MANAGER_ROLES = [UserRole.ADMIN, UserRole.DISPATCH_MANAGER];
 
+/** Create schedules / routes (not onsite manager). */
+export const ROUTE_CREATOR_ROLES = [
+  UserRole.ADMIN,
+  UserRole.DISPATCH_MANAGER,
+  UserRole.DISPATCH_TEAM,
+];
+
+/** View/manage routes including onsite manager. */
 export const OPS_ROLES = [
   UserRole.ADMIN,
   UserRole.DISPATCH_MANAGER,
   UserRole.DISPATCH_TEAM,
+  UserRole.ONSITE_MANAGER,
 ];
 
 export const MOBILE_ONLY_ROLES = [
@@ -61,17 +71,15 @@ export const MOBILE_ONLY_ROLES = [
 
 export const PAYROLL_VIEWER_ROLES = [
   UserRole.ADMIN,
-  UserRole.DISPATCH_MANAGER,
   UserRole.ACCOUNTANT,
   UserRole.TEAM_LEAD,
 ];
 
-/** Roles assignable by managers (excludes admin / dispatch manager). */
+/** Roles assignable by managers (excludes admin / dispatch manager / onsite manager). */
 export const ASSIGNABLE_ROLES = [
   UserRole.DISPATCH_TEAM,
   UserRole.DRIVER,
   UserRole.TEAM_LEAD,
-  UserRole.TEAM_DRIVER,
   UserRole.ACCOUNTANT,
 ];
 
@@ -102,12 +110,14 @@ export function canManageTeams(role, dispatchUnlocked = false) {
   return canManageStores(role, dispatchUnlocked);
 }
 
-/** Admin and dispatch manager may use global state/city scope in the ops header. */
+/** Admin, dispatch manager, and onsite manager may use global state/city scope in the ops header. */
 export function canManageLocationScope(role) {
-  return MANAGER_ROLES.includes(role);
+  return (
+    MANAGER_ROLES.includes(role) || role === UserRole.ONSITE_MANAGER
+  );
 }
 
-/** Admin, dispatch manager, and dispatch team may use the ops header location picker. */
+/** Admin, dispatch manager, dispatch team, and onsite manager may use the ops header location picker. */
 export function canUseLocationScopePicker(role) {
   return isDispatchOps(role);
 }
@@ -120,6 +130,10 @@ export function isDispatchManager(role) {
   return role === UserRole.DISPATCH_MANAGER;
 }
 
+export function isOnsiteManager(role) {
+  return role === UserRole.ONSITE_MANAGER;
+}
+
 export function isFullManager(role) {
   return isAdmin(role) || isDispatchManager(role);
 }
@@ -129,7 +143,15 @@ export function isDispatchTeam(role) {
 }
 
 export function isDispatchOps(role) {
-  return isFullManager(role) || isDispatchTeam(role);
+  return isFullManager(role) || isDispatchTeam(role) || isOnsiteManager(role);
+}
+
+export function canCreateRoutes(role) {
+  return ROUTE_CREATOR_ROLES.includes(role);
+}
+
+export function canConfirmRoutes(role) {
+  return isAdmin(role) || isOnsiteManager(role);
 }
 
 /** Admin must unlock dispatch ops via PIN before create/edit mutations. */
@@ -137,9 +159,9 @@ export function adminNeedsDispatchElevation(role) {
   return isAdmin(role);
 }
 
-/** Admin and dispatch manager must unlock payroll via PIN before payroll mutations. */
+/** Admin must unlock payroll via PIN before payroll mutations. */
 export function roleNeedsPayrollElevation(role) {
-  return isAdmin(role) || isDispatchManager(role);
+  return isAdmin(role);
 }
 
 export const UserStatus = {

@@ -55,8 +55,13 @@ export function PayrollRouteDetailScreen() {
                   Payroll line
                 </p>
                 <p className="mt-1 text-sm" style={{ color: "var(--text)" }}>
-                  {routeLine.routeName} · {formatMoney(routeLine.amount ?? 0)}
+                  {routeLine.routeName} · {formatMoney(routeLine.rate ?? routeLine.amount ?? 0)}
                 </p>
+                {routeLine.hasMissingReturnPhotos ? (
+                  <p className="mt-2 text-sm font-semibold" style={{ color: "var(--rose)" }}>
+                    Warning: driver did not upload the picture of the return for this route.
+                  </p>
+                ) : null}
                 {routeLine.overtimeHours > 0 ? (
                   <p className="text-xs" style={{ color: "var(--amber)" }}>
                     OT: {routeLine.overtimeHours} hr

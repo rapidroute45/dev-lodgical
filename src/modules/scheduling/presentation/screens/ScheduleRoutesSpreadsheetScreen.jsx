@@ -317,37 +317,52 @@ export function ScheduleRoutesSpreadsheetScreen() {
     setError(null);
     setMessage(null);
 
-    const count = dirtyIds.size;
+    const dirtyRows = [...dirtyIds]
+      .map((routeId) => rows.find((r) => r.id === routeId))
+      .filter(Boolean);
 
-    try {
-      let created = 0;
-      let updated = 0;
-      const savedDraftIds = [];
+    const createRows = dirtyRows.filter((row) => row.isNew || String(row.id).startsWith("new-"));
+    const updateRows = dirtyRows.filter((row) => !row.isNew && !String(row.id).startsWith("new-"));
 
-      for (const routeId of dirtyIds) {
-        const row = rows.find((r) => r.id === routeId);
-        if (!row) continue;
+    let created = 0;
+    let updated = 0;
+    const savedDraftIds = [];
+    const clearedIds = [];
+    const errors = [];
 
+    // Persist new routes first so a bad update on an existing returned route
+    // cannot block creating additional routes for the day.
+    for (const row of createRows) {
+      try {
         if (!row.teamId) {
-          throw new Error(`Route "${row.routeName || routeId}" needs a team.`);
+          throw new Error(`Route "${row.routeName || row.id}" needs a team.`);
         }
         if (!row.routeName.trim()) throw new Error("Each route needs a name.");
 
-        if (row.isNew) {
-          const draft = spreadsheetRowToDraft(row, mergedSchedule?.store);
-          const team = teams.find((t) => t.id === row.teamId);
-          if (team) draft.teamName = team.name;
+        const draft = spreadsheetRowToDraft(row, mergedSchedule?.store);
+        const team = teams.find((t) => t.id === row.teamId);
+        if (team) draft.teamName = team.name;
 
-          await createRoute.mutateAsync({
-            scheduleId: row.scheduleId || scheduleId,
-            ...draftRoutePayload(draft),
-          });
-          savedDraftIds.push(routeId);
-          created += 1;
-          continue;
+        await createRoute.mutateAsync({
+          scheduleId: row.scheduleId || scheduleId,
+          ...draftRoutePayload(draft, { includeStatus: true }),
+        });
+        savedDraftIds.push(row.id);
+        clearedIds.push(row.id);
+        created += 1;
+      } catch (err) {
+        errors.push(apiErrorMessage(err, `Could not create "${row.routeName || "route"}".`));
+      }
+    }
+
+    for (const row of updateRows) {
+      try {
+        if (!row.teamId) {
+          throw new Error(`Route "${row.routeName || row.id}" needs a team.`);
         }
+        if (!row.routeName.trim()) throw new Error("Each route needs a name.");
 
-        const entry = routeById.get(routeId);
+        const entry = routeById.get(row.id);
         if (!entry) continue;
 
         const draft = spreadsheetRowToDraft(row, mergedSchedule?.store);
@@ -355,33 +370,52 @@ export function ScheduleRoutesSpreadsheetScreen() {
         if (team) draft.teamName = team.name;
 
         await updateRoute.mutateAsync({
-          routeId,
+          routeId: row.id,
           scheduleId: entry.scheduleId,
-          body: draftRoutePayload(draft),
+          body: draftRoutePayload(draft, { includeStatus: false }),
         });
+        clearedIds.push(row.id);
         updated += 1;
+      } catch (err) {
+        errors.push(apiErrorMessage(err, `Could not update "${row.routeName || "route"}".`));
       }
+    }
 
-      if (savedDraftIds.length > 0) {
-        setRows((prev) => prev.filter((row) => !savedDraftIds.includes(row.id)));
-      }
-      setDirtyIds(new Set());
+    if (savedDraftIds.length > 0) {
+      setRows((prev) => prev.filter((row) => !savedDraftIds.includes(row.id)));
+    }
+    if (clearedIds.length > 0) {
+      setDirtyIds((prev) => {
+        const next = new Set(prev);
+        for (const id of clearedIds) next.delete(id);
+        return next;
+      });
       setServerSyncKey((key) => key + 1);
+    }
+
+    setSaving(false);
+
+    if (errors.length > 0) {
       const parts = [];
       if (created > 0) parts.push(`created ${created}`);
       if (updated > 0) parts.push(`updated ${updated}`);
-      setMessage(
+      setError(
         parts.length > 0
-          ? `Saved — ${parts.join(", ")} route${count === 1 ? "" : "s"}.`
-          : `Saved ${count} route${count === 1 ? "" : "s"}.`
+          ? `Partial save (${parts.join(", ")}). ${errors[0]}`
+          : errors[0]
       );
-      return true;
-    } catch (err) {
-      setError(apiErrorMessage(err, "Save failed"));
-      return false;
-    } finally {
-      setSaving(false);
+      return created > 0 || updated > 0;
     }
+
+    const parts = [];
+    if (created > 0) parts.push(`created ${created}`);
+    if (updated > 0) parts.push(`updated ${updated}`);
+    setMessage(
+      parts.length > 0
+        ? `Saved — ${parts.join(", ")} route${created + updated === 1 ? "" : "s"}.`
+        : "Saved."
+    );
+    return true;
   }
 
   async function handleBack() {
@@ -485,9 +519,15 @@ export function ScheduleRoutesSpreadsheetScreen() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Link to={`/schedules/${scheduleId}`} className="ops-btn px-4 py-2 text-sm font-semibold">
-              Card view
-            </Link>
+            {(mergedSchedule?.returnedStopCount ?? 0) > 0 ? (
+              <Link
+                to={`/schedules/${scheduleId}/returns`}
+                className="ops-btn px-4 py-2 text-sm font-semibold"
+                style={{ color: "var(--rose)" }}
+              >
+                Returns ({mergedSchedule.returnedStopCount})
+              </Link>
+            ) : null}
             <button
               type="button"
               disabled={saving || dirtyCount === 0}

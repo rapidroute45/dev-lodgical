@@ -47,32 +47,41 @@ export default defineConfig(({ mode }) => {
   const uploadsProxyTarget =
     env.VITE_UPLOADS_PROXY_TARGET?.trim() || apiProxyTarget
 
+  const uploadsDirectBase =
+    env.VITE_UPLOADS_BASE_URL?.trim() || env.VITE_S3_PUBLIC_BASE_URL?.trim() || "";
+
+  const proxy = {
+    // Browser → localhost:5173/api/v1/... → Vite proxies to local Dev-co (or override).
+    "/api": {
+      target: apiProxyTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+    "/socket.io": {
+      target: apiProxyTarget,
+      changeOrigin: true,
+      ws: true,
+    },
+  };
+
+  // When images load from S3/CDN directly, skip /uploads proxy (avoids 10s+ hang if API is down).
+  if (!uploadsDirectBase) {
+    proxy["/uploads"] = {
+      target: uploadsProxyTarget,
+      changeOrigin: true,
+      secure: false,
+    };
+  }
+
   return {
     plugins: [firebaseSwConfigPlugin(env), react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src'),
+        "@": path.resolve(__dirname, "src"),
       },
     },
     server: {
-      proxy: {
-        // Browser → localhost:5173/api/v1/... → Vite proxies to local Dev-co (or override).
-        '/api': {
-          target: apiProxyTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-        '/uploads': {
-          target: uploadsProxyTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-        '/socket.io': {
-          target: apiProxyTarget,
-          changeOrigin: true,
-          ws: true,
-        },
-      },
+      proxy,
     },
-  }
-})
+  };
+});

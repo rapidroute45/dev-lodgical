@@ -5,6 +5,8 @@ const STAT_ICONS = {
     "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
   routes:
     "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m-6 3l6-3",
+  returns:
+    "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5",
   active:
     "M13 10V3L4 14h7v7l9-11h-7z",
   payroll:
@@ -118,9 +120,11 @@ export function OpsLifecycleStrip({ stages, activeKey, onSelect, loading }) {
   );
 }
 
-export function OpsPanel({ title, subtitle, action, children }) {
+export function OpsPanel({ title, subtitle, action, children, fill = false, bodyClassName = "" }) {
   return (
-    <section className="ops-panel ops-fade flex flex-col">
+    <section
+      className={`ops-panel ops-fade flex flex-col${fill ? " min-h-0 flex-1" : ""}`}
+    >
       <div className="ops-panel__head flex items-center justify-between gap-3 px-6 py-4">
         <div className="min-w-0">
           <h2 className="text-base font-bold" style={{ color: "var(--text)" }}>
@@ -134,7 +138,15 @@ export function OpsPanel({ title, subtitle, action, children }) {
         </div>
         {action}
       </div>
-      <div className="max-h-[380px] overflow-auto">{children}</div>
+      <div
+        className={
+          fill
+            ? `min-h-0 flex-1 overflow-auto ${bodyClassName}`.trim()
+            : `max-h-[380px] overflow-auto ${bodyClassName}`.trim()
+        }
+      >
+        {children}
+      </div>
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { UserRole, MANAGER_ROLES, PAYROLL_VIEWER_ROLES } from "@/shared/utils/constants.js";
 import { usePayrollPendingSummaryQuery } from "@/modules/payroll/infrastructure/api/payroll.queries.js";
@@ -8,8 +8,7 @@ import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
 import { useOpsDateScope } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
 import {
   useDashboardStatsQuery,
-  useAvailableDriversQuery,
-  useDriverPerformanceQuery,
+  useDayReturnsQuery,
 } from "@/modules/manager-home/infrastructure/api/dashboard.queries.js";
 import { useTodayRoutesQuery } from "@/modules/manager-home/infrastructure/api/routes.queries.js";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
@@ -26,7 +25,6 @@ import {
   formatStatusLabel,
 } from "@/modules/manager-home/utils/routeStatus.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
-import { AvailableDriverRow } from "@/modules/manager-home/presentation/components/AvailableDriverRow.jsx";
 
 function displayNameFromUser(user) {
   if (user?.fullName?.trim()) return user.fullName.trim();
@@ -70,6 +68,7 @@ const STAGE_FILTERS = {
 
 export function ManagerDashboardScreen() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { date } = useOpsDateScope();
   const [stageFilter, setStageFilter] = useState(null);
   const isToday = date === todayIsoDate();
@@ -78,9 +77,8 @@ export function ManagerDashboardScreen() {
 
   const statsQuery = useDashboardStatsQuery(date, isManager);
   const payrollQuery = usePayrollPendingSummaryQuery(canViewPayroll);
-  const availableQuery = useAvailableDriversQuery(date, isManager);
+  const returnsQuery = useDayReturnsQuery(date, isManager);
   const routesQuery = useTodayRoutesQuery(date, isManager);
-  const performanceQuery = useDriverPerformanceQuery(7, isManager);
 
   const {
     data: statsRaw,
@@ -89,11 +87,11 @@ export function ManagerDashboardScreen() {
     refetch: refetchStats,
   } = statsQuery;
   const {
-    data: availableRaw,
-    isLoading: driversLoading,
-    isFetching: driversFetching,
-    refetch: refetchDrivers,
-  } = availableQuery;
+    data: returnsRaw,
+    isLoading: returnsLoading,
+    isFetching: returnsFetching,
+    refetch: refetchReturns,
+  } = returnsQuery;
   const {
     data: routesData,
     isLoading: routesLoading,
@@ -103,7 +101,7 @@ export function ManagerDashboardScreen() {
   } = routesQuery;
 
   const stats = dataForSelectedDate(statsRaw, date);
-  const available = dataForSelectedDate(availableRaw, date);
+  const dayReturns = dataForSelectedDate(returnsRaw, date);
 
   const routes = routesData?.items ?? [];
   const routeSummary = useMemo(() => summarizeRoutes(routes), [routes]);
@@ -129,18 +127,9 @@ export function ManagerDashboardScreen() {
 
   const { total: routeTotal, completed, inProgress, pending } = routeMetrics;
 
-  const availableCount = stats?.availableDrivers ?? available?.count ?? 0;
-
-  const assignedDriverCount = useMemo(() => {
-    const ids = new Set();
-    routes.forEach((r) => {
-      if (r.driverId) ids.add(r.driverId);
-    });
-    return ids.size;
-  }, [routes]);
-
-  const driverPool = availableCount + assignedDriverCount;
-  const availablePercent = pct(availableCount, driverPool);
+  const returnsCount = dayReturns?.totalReturns ?? stats?.pendingReturns ?? 0;
+  const returnsRouteCount = dayReturns?.routes?.length ?? 0;
+  const returnsPercent = pct(returnsCount, Math.max(returnsCount, 1));
 
   const filteredRoutes = useMemo(() => {
     if (!stageFilter) return routes;
@@ -149,22 +138,13 @@ export function ManagerDashboardScreen() {
     return routes.filter((r) => set.has(r.status ?? ""));
   }, [routes, stageFilter]);
 
-  const performanceByDriverId = useMemo(() => {
-    const map = new Map();
-    for (const entry of performanceQuery.data?.drivers ?? []) {
-      map.set(entry.userId, entry);
-    }
-    return map;
-  }, [performanceQuery.data?.drivers]);
-
   const metricsLoading =
     statsLoading ||
     routesLoading ||
     (statsFetching && !stats) ||
     (routesFetching && !routesFetched);
 
-  const driversBusy =
-    statsFetching || driversFetching || routesFetching || performanceQuery.isFetching;
+  const pageBusy = statsFetching || returnsFetching || routesFetching;
 
   const lifecycleStages = [
     { key: "pending", label: "Pending", value: pending, color: "var(--amber)" },
@@ -175,13 +155,12 @@ export function ManagerDashboardScreen() {
 
   function refreshAll() {
     void refetchStats();
-    void refetchDrivers();
+    void refetchReturns();
     void refetchRoutes();
-    void performanceQuery.refetch();
   }
 
   const topBar = (
-    <OpsTopBar onRefresh={refreshAll} refreshing={driversBusy} />
+    <OpsTopBar onRefresh={refreshAll} refreshing={pageBusy} />
   );
 
   if (user?.role === UserRole.ACCOUNTANT) {
@@ -258,13 +237,14 @@ export function ManagerDashboardScreen() {
         {/* KPI stat cards */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <OpsStatCard
-            icon="drivers"
-            label="Available drivers"
-            value={availableCount}
-            sublabel="free"
-            percent={availablePercent}
-            barColor="var(--green)"
-            loading={statsLoading || driversLoading || (statsFetching && !stats) || (driversFetching && !available)}
+            icon="returns"
+            label="Returns"
+            value={returnsCount}
+            sublabel={isToday ? "today" : "on date"}
+            percent={returnsCount > 0 ? returnsPercent : 0}
+            barColor="var(--amber)"
+            loading={returnsLoading || (returnsFetching && !dayReturns)}
+            to="/returns"
             delay={0}
           />
           <OpsStatCard
@@ -333,7 +313,7 @@ export function ManagerDashboardScreen() {
           {[
             { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
             { to: "/tracking", label: "Live tracking", icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
-            { to: "/available-drivers", label: "Available drivers", icon: "M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" },
+            { to: "/returns", label: "Returns", icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" },
             { to: "/all-routes", label: "All routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
           ].map((a) => (
             <Link key={a.to} to={a.to} className="ops-quick">
@@ -350,29 +330,55 @@ export function ManagerDashboardScreen() {
         {/* Panels */}
         <div className="grid gap-5 xl:grid-cols-2">
           <OpsPanel
-            title="Available drivers"
-            subtitle={driversLoading ? "Loading…" : `${available?.count ?? 0} drivers with no route ${isToday ? "today" : "on date"}`}
+            title="Returns"
+            subtitle={
+              returnsLoading
+                ? "Loading…"
+                : `${returnsCount} return${returnsCount === 1 ? "" : "s"} · ${returnsRouteCount} route${
+                    returnsRouteCount === 1 ? "" : "s"
+                  } ${isToday ? "today" : "on date"}`
+            }
             action={
-              <Link to="/available-drivers" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
-                View performance
+              <Link to="/returns" className="text-xs font-bold" style={{ color: "var(--accent)" }}>
+                View all
               </Link>
             }
           >
-            {driversLoading ? (
-              <OpsEmpty>Loading drivers…</OpsEmpty>
-            ) : !available?.drivers?.length ? (
-              <OpsEmpty>No available drivers for this date.</OpsEmpty>
+            {returnsLoading ? (
+              <OpsEmpty>Loading returns…</OpsEmpty>
+            ) : !dayReturns?.routes?.length ? (
+              <OpsEmpty>No returns for this date.</OpsEmpty>
             ) : (
               <ul>
-                {available.drivers.map((d) => (
-                  <AvailableDriverRow
-                    key={d.id}
-                    driver={d}
-                    performance={performanceByDriverId.get(d.id) ?? null}
-                    performanceLoading={performanceQuery.isLoading}
-                    showTeam
-                    variant="panel"
-                  />
+                {dayReturns.routes.map((route) => (
+                  <li key={route.routeId}>
+                    <button
+                      type="button"
+                      className="ops-row flex w-full flex-wrap items-center gap-3 px-6 py-3 text-left cursor-pointer"
+                      onClick={() =>
+                        navigate(`/returns?routeId=${encodeURIComponent(route.routeId)}`)
+                      }
+                    >
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold"
+                        style={{ background: "rgba(245,158,11,0.16)", color: "var(--amber)" }}
+                      >
+                        {route.returnsCount}
+                      </span>
+                      <div className="min-w-0 flex-1 basis-[140px]">
+                        <p className="truncate text-sm font-semibold" style={{ color: "var(--text)" }}>
+                          {route.routeName}
+                        </p>
+                        <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
+                          {route.driverName || route.driverEmail || "Unassigned"}
+                          {route.storeName ? ` · ${route.storeName}` : ""}
+                        </p>
+                      </div>
+                      <span className="ops-teamtag shrink-0">
+                        {route.teamName || route.teamCode || "No team"}
+                      </span>
+                    </button>
+                  </li>
                 ))}
               </ul>
             )}
@@ -407,24 +413,34 @@ export function ManagerDashboardScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRoutes.map((r) => (
-                    <tr key={r.id} className="ops-row border-t" style={{ borderColor: "var(--border)" }}>
-                      <td className="px-5 py-3">
-                        <p className="font-medium" style={{ color: "var(--text)" }}>
-                          {r.routeName || "Route"}
-                        </p>
-                        <p className="text-xs" style={{ color: "var(--text-dim)" }}>
-                          {r.location || "—"} · {r.arrivalTime}–{r.departureTime}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
-                        {r.driverName || r.driverEmail || "Unassigned"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <OpsStatusBadge status={r.status} label={formatStatusLabel(r.status)} />
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredRoutes.map((r) => {
+                    const scheduleId = r.scheduleId ?? r.schedule?.id;
+                    return (
+                      <tr
+                        key={r.id}
+                        className={`ops-row border-t${scheduleId ? " cursor-pointer" : ""}`}
+                        style={{ borderColor: "var(--border)" }}
+                        onClick={() => {
+                          if (scheduleId) navigate(`/schedules/${scheduleId}/routes`);
+                        }}
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-medium" style={{ color: "var(--text)" }}>
+                            {r.routeName || "Route"}
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+                            {r.location || "—"} · {r.arrivalTime}–{r.departureTime}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
+                          {r.driverName || r.driverEmail || "Unassigned"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <OpsStatusBadge status={r.status} label={formatStatusLabel(r.status)} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

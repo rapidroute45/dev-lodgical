@@ -7,6 +7,10 @@ import {
 } from "@/modules/scheduling/utils/scheduleStatus.js";
 import { formatStatusLabel } from "@/modules/manager-home/utils/routeStatus.js";
 import { RouteOpsVerification } from "./RouteOpsVerification.jsx";
+import {
+  RouteConfirmationBadge,
+  RoutePayrollConfirmation,
+} from "./RoutePayrollConfirmation.jsx";
 
 export function RouteDetailCard({ route, index, scheduleId }) {
   const title = route.routeName || `Route ${index}`;
@@ -32,6 +36,7 @@ export function RouteDetailCard({ route, index, scheduleId }) {
                 label={formatRouteStatus(status)}
                 className={routeStatusClass(status)}
               />
+              <RouteConfirmationBadge confirmationStatus={route.confirmationStatus} />
               {route.routeCategory ? (
                 <span className="ops-badge ops-badge--category">
                   {ROUTE_CATEGORY_LABELS[route.routeCategory] ?? route.routeCategory}
@@ -81,6 +86,7 @@ export function RouteDetailCard({ route, index, scheduleId }) {
       {scheduleId ? (
         <div className="px-5 pb-5 sm:px-6 sm:pb-6">
           <RouteOpsVerification route={route} scheduleId={scheduleId} />
+          <RoutePayrollConfirmation route={route} scheduleId={scheduleId} />
         </div>
       ) : null}
 

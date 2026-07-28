@@ -8,6 +8,7 @@ import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import { todayIsoDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { formatRoleLabel, formatStatusLabel } from "@/modules/users/utils/editableRoles.js";
+import { MANAGER_ROLES } from "@/shared/utils/constants.js";
 import {
   useMeQuery,
   useUpdateProfileMutation,
@@ -80,6 +81,7 @@ export function ProfileScreen() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -88,10 +90,13 @@ export function ProfileScreen() {
   const [passwordMessage, setPasswordMessage] = useState(null);
   const [passwordError, setPasswordError] = useState(null);
 
+  const canEditEmail = Boolean(profile?.role && MANAGER_ROLES.includes(profile.role));
+
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.fullName ?? "");
     setPhone(profile.phone ?? "");
+    setEmail(profile.email ?? "");
   }, [profile]);
 
   const displayName = profile?.displayName ?? resolveDisplayName(profile?.fullName, profile?.email);
@@ -112,10 +117,19 @@ export function ProfileScreen() {
     setProfileError(null);
     setProfileMessage(null);
     try {
-      await updateProfile.mutateAsync({
+      const payload = {
         fullName: fullName.trim() || null,
         phone: phone.trim() || null,
-      });
+      };
+      if (canEditEmail) {
+        const nextEmail = email.trim().toLowerCase();
+        if (!nextEmail || !/^\S+@\S+\.\S+$/.test(nextEmail)) {
+          setProfileError(t("auth.emailInvalid"));
+          return;
+        }
+        payload.email = nextEmail;
+      }
+      await updateProfile.mutateAsync(payload);
       await refetch();
       setProfileMessage(t("profile.profileUpdated"));
     } catch (err) {
@@ -249,12 +263,18 @@ export function ProfileScreen() {
                     autoComplete="tel"
                   />
                 </ProfileField>
-                <ProfileField label={t("profile.email")} hint={t("profile.emailHint")}>
+                <ProfileField
+                  label={t("profile.email")}
+                  hint={canEditEmail ? t("profile.emailHintAdmin") : t("profile.emailHint")}
+                >
                   <input
-                    className="ops-field w-full text-sm opacity-70"
-                    value={profile?.email ?? ""}
-                    readOnly
-                    disabled
+                    type="email"
+                    className={`ops-field w-full text-sm${canEditEmail ? "" : " opacity-70"}`}
+                    value={canEditEmail ? email : profile?.email ?? ""}
+                    onChange={canEditEmail ? (e) => setEmail(e.target.value) : undefined}
+                    readOnly={!canEditEmail}
+                    disabled={!canEditEmail}
+                    autoComplete="email"
                   />
                 </ProfileField>
 

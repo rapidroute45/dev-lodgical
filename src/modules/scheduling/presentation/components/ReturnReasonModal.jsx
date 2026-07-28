@@ -7,11 +7,13 @@ export function ReturnReasonModal({ open, stopName, busy, onCancel, onConfirm })
   const { theme } = useOpsTheme();
   const [reason, setReason] = useState("wrong_address");
   const [customReason, setCustomReason] = useState("");
+  const [createStoreReturn, setCreateStoreReturn] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setReason("wrong_address");
     setCustomReason("");
+    setCreateStoreReturn(false);
   }, [open]);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export function ReturnReasonModal({ open, stopName, busy, onCancel, onConfirm })
     onConfirm({
       reason,
       customReason: reason === "custom" ? customReason.trim() : undefined,
+      createStoreReturn,
     });
   };
 
@@ -108,6 +111,21 @@ export function ReturnReasonModal({ open, stopName, busy, onCancel, onConfirm })
               onChange={(event) => setCustomReason(event.target.value)}
             />
           ) : null}
+
+          <label className="mt-3 flex items-start gap-2 rounded-lg px-2 py-2" style={{ background: "var(--surface-2, transparent)" }}>
+            <input
+              type="checkbox"
+              checked={createStoreReturn}
+              onChange={(event) => setCreateStoreReturn(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+            />
+            <span className="text-sm" style={{ color: "var(--text)" }}>
+              Create store return
+              <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
+                Optional — only if packages need to go back to the store
+              </span>
+            </span>
+          </label>
         </div>
 
         <div

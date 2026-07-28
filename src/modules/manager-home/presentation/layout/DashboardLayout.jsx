@@ -10,13 +10,25 @@ import {
   OPS_ROLES,
   PAYROLL_VIEWER_ROLES,
   UserRole,
+  canCreateRoutes,
   isAdmin,
   isDispatchManager,
+  isOnsiteManager,
 } from "@/shared/utils/constants.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { OpsPinModal } from "@/modules/auth/presentation/components/OpsPinModal.jsx";
 
 const HIDE_DELAY_MS = 280;
+const IT_SUPPORT_WHATSAPP_URL = "https://wa.me/923078858959";
+
+function itSupportNavItem(t) {
+  return {
+    label: t("nav.itSupport"),
+    icon: "support",
+    href: IT_SUPPORT_WHATSAPP_URL,
+    external: true,
+  };
+}
 
 /** Active for /schedules and schedule detail/spreadsheet — not /schedules/create. */
 function matchSchedulesNav(location) {
@@ -42,12 +54,13 @@ function buildNav(user, t, elevation) {
     return [
       { to: "/payroll", label: t("nav.payroll"), icon: "payroll", end: true },
       { to: "/payroll/store-payroll", label: t("nav.storePayroll"), icon: "receipt" },
+      itSupportNavItem(t),
       { to: "/profile", label: t("nav.profile"), icon: "profile" },
     ];
   }
 
-  if (role === UserRole.DISPATCH_TEAM) {
-    return [
+  if (role === UserRole.DISPATCH_TEAM || isOnsiteManager(role)) {
+    const items = [
       { to: "/dashboard", label: t("nav.dashboard"), icon: "grid", end: true },
       { to: "/tracking", label: t("nav.liveTracking"), icon: "tracking" },
       {
@@ -56,12 +69,24 @@ function buildNav(user, t, elevation) {
         icon: "calendar",
         matchActive: matchSchedulesNav,
       },
-      { to: "/schedules/create", label: t("nav.createSchedule"), icon: "map", end: true },
+    ];
+    if (canCreateRoutes(role)) {
+      items.push({
+        to: "/schedules/create",
+        label: t("nav.createSchedule"),
+        icon: "map",
+        end: true,
+      });
+    }
+    items.push(
       { to: "/all-routes", label: t("nav.allRoutes"), icon: "routes" },
       { to: "/stores", label: t("nav.stores"), icon: "store" },
+      { to: "/store-returns", label: t("nav.returns"), icon: "returns" },
       { to: "/chat", label: t("nav.chat"), icon: "chat" },
-      { to: "/profile", label: t("nav.profile"), icon: "profile" },
-    ];
+      itSupportNavItem(t),
+      { to: "/profile", label: t("nav.profile"), icon: "profile" }
+    );
+    return items;
   }
 
   const baseOps = [
@@ -89,7 +114,8 @@ function buildNav(user, t, elevation) {
 
   baseOps.push(
     { to: "/all-routes", label: t("nav.allRoutes"), icon: "routes" },
-    { to: "/stores", label: t("nav.stores"), icon: "store" }
+    { to: "/stores", label: t("nav.stores"), icon: "store" },
+    { to: "/store-returns", label: t("nav.returns"), icon: "returns" }
   );
 
   const items = [...baseOps];
@@ -108,7 +134,8 @@ function buildNav(user, t, elevation) {
   items.push({ to: "/chat", label: t("nav.chat"), icon: "chat" });
 
   const showPayrollNav =
-    (isDispatchManager(role) || (isAdmin(role) && payrollUnlocked)) &&
+    isAdmin(role) &&
+    payrollUnlocked &&
     PAYROLL_VIEWER_ROLES.includes(role);
 
   if (showPayrollNav) {
@@ -120,8 +147,7 @@ function buildNav(user, t, elevation) {
     });
   }
 
-  const showStorePayrollNav =
-    showPayrollNav && OPS_ROLES.includes(role);
+  const showStorePayrollNav = showPayrollNav && OPS_ROLES.includes(role);
 
   if (showStorePayrollNav) {
     items.push({
@@ -132,6 +158,7 @@ function buildNav(user, t, elevation) {
     });
   }
 
+  items.push(itSupportNavItem(t));
   items.push({ to: "/profile", label: t("nav.profile"), icon: "profile" });
   return items;
 }
@@ -156,6 +183,8 @@ function NavIcon({ name }) {
     dispatchTeam: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
     driverTeams: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
     users: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+    support: "M18 8a6 6 0 00-12 0v4a2 2 0 002 2h1v-6H7a4 4 0 118 0h-2v6h1a2 2 0 002-2V8zM6 14v1a4 4 0 004 4h2",
+    returns: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
   };
   const d = paths[name] ?? paths.users;
   return (
@@ -197,6 +226,20 @@ function SidebarNav({ nav }) {
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
       {nav.map((item) => {
+        if (item.external) {
+          return (
+            <a
+              key={item.href}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ops-navlink"
+            >
+              <NavIcon name={item.icon} />
+              {item.label}
+            </a>
+          );
+        }
         const active = isNavItemActive(item, pathname);
         return (
           <NavLink

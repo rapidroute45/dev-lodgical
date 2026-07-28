@@ -21,6 +21,7 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
   const storeName = group.store?.storeName ?? "Unknown store";
   const total = group.routeCount ?? 0;
   const pending = group.pendingRouteCount ?? 0;
+  const returned = group.returnedStopCount ?? 0;
   const primaryScheduleId = group.primaryScheduleId ?? schedules[0]?.id;
 
   const detailQueries = useScheduleGroupQuery(
@@ -39,6 +40,11 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
         )
       )
     : [];
+
+  const expandedReturned =
+    expanded && !detailLoading
+      ? routes.reduce((n, r) => n + (r.progress?.returnedDropoffs ?? 0), 0)
+      : returned;
 
   return (
     <article className="ops-card ops-card--hover ops-fade overflow-hidden">
@@ -75,6 +81,11 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
               {total} route{total === 1 ? "" : "s"}
             </span>
+            {returned > 0 ? (
+              <span className="flex items-center gap-1" style={{ color: "var(--rose)" }}>
+                {returned} return{returned === 1 ? "" : "s"}
+              </span>
+            ) : null}
             <span>{formatDisplayDate(group.date)}</span>
           </div>
           <ScheduleAttribution
@@ -103,7 +114,7 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
                 className="text-[11px] font-bold hover:underline"
                 style={{ color: "var(--accent)" }}
               >
-                Full view
+                Spreadsheet
               </Link>
             ) : null}
           </div>
@@ -116,6 +127,8 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
             group={group}
             detailQueries={detailQueries}
             loading={detailLoading}
+            returnedCount={expandedReturned}
+            primaryScheduleId={primaryScheduleId}
           />
 
           <h4 className="mb-3 mt-5 text-sm font-bold" style={{ color: "var(--text)" }}>
@@ -139,7 +152,7 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
                   key={route.id}
                   route={route}
                   index={i + 1}
-                  to={`/routes/${route.id}`}
+                  to={`/schedules/${route._scheduleId ?? primaryScheduleId}/routes`}
                 />
               ))}
             </div>
@@ -150,7 +163,7 @@ export function ScheduleCard({ group, expanded, onToggle, showDispatchTeam = fal
   );
 }
 
-function ScheduleMetaGrid({ group, detailQueries, loading }) {
+function ScheduleMetaGrid({ group, detailQueries, loading, returnedCount, primaryScheduleId }) {
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -179,6 +192,11 @@ function ScheduleMetaGrid({ group, detailQueries, loading }) {
     { label: "Total routes", value: String(group.routeCount ?? 0) },
     { label: "Pending routes", value: String(group.pendingRouteCount ?? 0) },
     {
+      label: "Returns",
+      value: String(returnedCount ?? 0),
+      to: primaryScheduleId ? `/schedules/${primaryScheduleId}/returns` : null,
+    },
+    {
       label: "Created by",
       value: group.createdByName ?? group.schedules?.[0]?.createdByName ?? "—",
     },
@@ -187,16 +205,33 @@ function ScheduleMetaGrid({ group, detailQueries, loading }) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => (
-        <div key={item.label} className="ops-field px-3 py-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
-            {item.label}
-          </p>
-          <p className="mt-0.5 text-sm font-semibold break-words" style={{ color: "var(--text)" }}>
-            {item.value}
-          </p>
-        </div>
-      ))}
+      {items.map((item) =>
+        item.to ? (
+          <Link
+            key={item.label}
+            to={item.to}
+            className="ops-field px-3 py-2.5 transition hover:opacity-90"
+            style={{ outline: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)" }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+              {item.label}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold break-words" style={{ color: "var(--accent)" }}>
+              {item.value}
+              <span className="ml-1 text-[11px] font-bold">View →</span>
+            </p>
+          </Link>
+        ) : (
+          <div key={item.label} className="ops-field px-3 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+              {item.label}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold break-words" style={{ color: "var(--text)" }}>
+              {item.value}
+            </p>
+          </div>
+        )
+      )}
     </div>
   );
 }

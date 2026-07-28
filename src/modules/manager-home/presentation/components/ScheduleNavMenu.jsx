@@ -111,7 +111,7 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   }
   function gotoSchedule(id) {
     if (!id) return;
-    navigate(`/schedules/${id}`);
+    navigate(`/schedules/${id}/routes`);
     close();
   }
 

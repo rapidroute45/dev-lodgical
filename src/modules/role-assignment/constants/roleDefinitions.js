@@ -9,17 +9,17 @@ export const ROLE_DEFINITIONS = [
   {
     role: UserRole.TEAM_LEAD,
     title: "Team Lead",
-    description: "Web + Mobile access",
-  },
-  {
-    role: UserRole.TEAM_DRIVER,
-    title: "Team Driver",
-    description: "Field driver on a team",
+    description: "Mobile App access only",
   },
   {
     role: UserRole.DISPATCH_TEAM,
     title: "Dispatch Team",
     description: "City-scoped operations",
+  },
+  {
+    role: UserRole.ONSITE_MANAGER,
+    title: "Onsite Manager",
+    description: "Route management & payroll confirmation",
   },
   {
     role: UserRole.ACCOUNTANT,

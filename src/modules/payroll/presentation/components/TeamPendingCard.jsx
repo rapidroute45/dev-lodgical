@@ -114,31 +114,46 @@ export function TeamPendingCard({ team, isOps, onOpenBill }) {
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {driver.routeCount} route{driver.routeCount === 1 ? "" : "s"} ·{" "}
                         {formatMoney(driver.pendingAmount)}
+                        {driver.hasMissingReturnPhotos ? " · return photo missing" : ""}
                       </p>
                     </div>
                     <span style={{ color: "var(--text-muted)" }}>{open ? "▲" : "▼"}</span>
                   </button>
                   {open
-                    ? driver.routes.map((r) => (
-                        <div
-                          key={r.routeId}
-                          className="flex items-center justify-between py-2 pl-2 text-sm"
-                          style={{ borderBottom: "1px solid var(--border)" }}
-                        >
-                          <div>
-                            <p className="font-semibold" style={{ color: "var(--text)" }}>
-                              {r.routeName || "Route"}
-                              {r.location ? ` · ${r.location}` : ""}
-                            </p>
-                            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                              {formatDisplayDate(r.scheduleDate)} · {formatMoney(r.rate)}
-                              {r.routeCategory
-                                ? ` · ${ROUTE_CATEGORY_LABELS[r.routeCategory] ?? r.routeCategory}`
-                                : ""}
-                            </p>
+                    ? driver.routes.map((r) => {
+                        const missing = Boolean(r.hasMissingReturnPhotos);
+                        return (
+                          <div
+                            key={r.routeId}
+                            className="flex items-center justify-between py-2 pl-2 text-sm"
+                            style={{
+                              borderBottom: "1px solid var(--border)",
+                              background: missing ? "rgba(225, 29, 72, 0.10)" : undefined,
+                              borderRadius: missing ? 8 : undefined,
+                            }}
+                          >
+                            <div>
+                              <p
+                                className="font-semibold"
+                                style={{ color: missing ? "var(--rose)" : "var(--text)" }}
+                              >
+                                {r.routeName || "Route"}
+                                {r.location ? ` · ${r.location}` : ""}
+                              </p>
+                              <p
+                                className="text-xs"
+                                style={{ color: missing ? "var(--rose)" : "var(--text-muted)" }}
+                              >
+                                {formatDisplayDate(r.scheduleDate)} · {formatMoney(r.rate)}
+                                {r.routeCategory
+                                  ? ` · ${ROUTE_CATEGORY_LABELS[r.routeCategory] ?? r.routeCategory}`
+                                  : ""}
+                                {missing ? " · return photo missing" : ""}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     : null}
                 </div>
               );

@@ -8,6 +8,7 @@ import {
   stopStatusTone,
 } from "@/modules/scheduling/utils/stopStatus.js";
 import { RETURN_REASON_OPTIONS } from "@/modules/scheduling/constants/returnReasons.js";
+import { DeliveryPhoto } from "./DeliveryPhoto.jsx";
 import "./stopsCsvImportGrid.css";
 
 function resolveServerStopId(stop) {
@@ -34,6 +35,7 @@ function toGridRows(stops) {
     completedAt: stop.completedAt ?? null,
     returnReason: stop.returnReason ?? null,
     returnReasonCustom: stop.returnReasonCustom ?? null,
+    deliveryPhotoUrl: stop.deliveryPhotoUrl ?? null,
   }));
 }
 
@@ -41,6 +43,30 @@ function rowStatusClass(status) {
   if (status === "completed") return "route-stop-row--completed";
   if (status === "returned") return "route-stop-row--returned";
   return undefined;
+}
+
+function StopPictureCell({ row }) {
+  const photoPath =
+    typeof row.deliveryPhotoUrl === "string" && row.deliveryPhotoUrl.trim()
+      ? row.deliveryPhotoUrl.trim()
+      : null;
+
+  if (!photoPath) {
+    return (
+      <span className="route-stops-table__photo-empty" title="No delivery photo uploaded">
+        Not uploaded
+      </span>
+    );
+  }
+
+  return (
+    <DeliveryPhoto
+      compact
+      photoPath={photoPath}
+      alt={`Delivery proof for ${row.name || "stop"}`}
+      className="route-stops-table__photo"
+    />
+  );
 }
 
 function StopStatusField({
@@ -161,6 +187,7 @@ export function RouteStopsGrid({
             <th>Customer</th>
             <th>Address</th>
             <th className="route-stops-table__col-code">Gate / apt code</th>
+            <th className="route-stops-table__col-photo">Picture</th>
             {showStatus ? <th className="route-stops-table__col-status">Status</th> : null}
             {editable ? <th className="route-stops-table__col-actions" aria-label="Actions" /> : null}
           </tr>
@@ -208,6 +235,9 @@ export function RouteStopsGrid({
                   row.accessCode?.trim() || "—"
                 )}
               </td>
+              <td className="route-stops-table__photo-cell">
+                <StopPictureCell row={row} />
+              </td>
               {showStatus ? (
                 <td>
                   <StopStatusField
@@ -243,7 +273,7 @@ export function RouteStopsGrid({
       {editable ? (
         <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
           {statusEditable
-            ? "Edit stop details below. Change status from the dropdown — Failure asks for a reason."
+            ? "Edit stop details below. Change status from the dropdown — Failure asks for a reason. Click a picture thumbnail to view the delivery photo."
             : "Edit stop details below. Changes are saved when you press Save stops."}
         </p>
       ) : null}
@@ -263,6 +293,7 @@ export function gridRowsToDropoffs(rows) {
     completedAt: row.completedAt ?? null,
     returnReason: row.returnReason ?? null,
     returnReasonCustom: row.returnReasonCustom ?? null,
+    deliveryPhotoUrl: row.deliveryPhotoUrl ?? null,
   }));
 }
 
@@ -278,6 +309,7 @@ export function normalizeDropoffsForEdit(stops) {
     completedAt: stop.completedAt ?? null,
     returnReason: stop.returnReason ?? null,
     returnReasonCustom: stop.returnReasonCustom ?? null,
+    deliveryPhotoUrl: stop.deliveryPhotoUrl ?? null,
     lat: stop.lat,
     lng: stop.lng,
     placeId: stop.placeId,
@@ -297,6 +329,7 @@ export function mergeStopStatusFromServer(localStops, serverStops) {
         completedAt: stop.completedAt,
         returnReason: stop.returnReason,
         returnReasonCustom: stop.returnReasonCustom,
+        deliveryPhotoUrl: stop.deliveryPhotoUrl,
         serverId: stop.serverId,
         lat: stop.lat,
         lng: stop.lng,
@@ -315,6 +348,7 @@ export function mergeStopStatusFromServer(localStops, serverStops) {
       completedAt: fresh.completedAt,
       returnReason: fresh.returnReason,
       returnReasonCustom: fresh.returnReasonCustom,
+      deliveryPhotoUrl: fresh.deliveryPhotoUrl ?? stop.deliveryPhotoUrl ?? null,
       lat: fresh.lat ?? stop.lat,
       lng: fresh.lng ?? stop.lng,
     };
@@ -328,6 +362,7 @@ function newDropoffStop() {
     address: "",
     accessCode: "",
     status: "pending",
+    deliveryPhotoUrl: null,
   };
 }
 

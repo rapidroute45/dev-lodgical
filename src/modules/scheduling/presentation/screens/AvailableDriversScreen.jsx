@@ -173,6 +173,8 @@ export function AvailableDriversScreen() {
                             driver={driver}
                             performance={performanceByDriverId.get(driver.id) ?? null}
                             performanceLoading={performanceLoading}
+                            to={`/drivers/${driver.id}`}
+                            backTo="/available-drivers"
                           />
                         ))}
                       </ul>
@@ -191,6 +193,8 @@ export function AvailableDriversScreen() {
                       driver={driver}
                       performance={performanceByDriverId.get(driver.id) ?? null}
                       performanceLoading={performanceLoading}
+                      to={`/drivers/${driver.id}`}
+                      backTo="/available-drivers"
                     />
                   ))}
                 </ul>

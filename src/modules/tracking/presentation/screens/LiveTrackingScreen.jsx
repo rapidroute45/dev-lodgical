@@ -29,6 +29,7 @@ import {
   formatBreakLabel,
   isDriverOnBreak,
 } from "@/modules/tracking/utils/breakStatus.js";
+import { getArrivalStatus, formatEtaTime } from "@/modules/tracking/utils/arrivalStatus.js";
 import "../components/liveTracking.css";
 
 const STATUS_TABS = [
@@ -58,6 +59,7 @@ function formatLastSeen(updatedAt) {
 function locationBadgeVariant(mode) {
   if (mode === "shared" || mode === "background") return "done";
   if (mode === "foreground") return "active";
+  if (mode === "estimated") return "active";
   return "pending";
 }
 
@@ -72,6 +74,7 @@ function mergeLiveDriver(items, payload) {
 
   const index = items.findIndex((item) => item.id === payload.routeId);
   const existing = index === -1 ? null : items[index];
+  const isEstimated = Boolean(payload.estimated);
 
   const nextItem = {
     id: payload.routeId,
@@ -82,9 +85,16 @@ function mergeLiveDriver(items, payload) {
     driverLocation: {
       lat: payload.lat,
       lng: payload.lng,
-      updatedAt: payload.recordedAt,
-      ingestedAt: payload.ingestedAt ?? payload.recordedAt,
+      updatedAt: isEstimated
+        ? (existing?.driverLocation?.updatedAt ?? payload.recordedAt)
+        : payload.recordedAt,
+      ingestedAt: isEstimated
+        ? (existing?.driverLocation?.ingestedAt ??
+            payload.ingestedAt ??
+            payload.recordedAt)
+        : (payload.ingestedAt ?? payload.recordedAt),
       sharingInBackground: Boolean(payload.backgroundSharing),
+      estimated: isEstimated,
     },
     progress: payload.progress ?? existing?.progress,
     dwell: payload.dwell ?? existing?.dwell ?? null,
@@ -93,6 +103,7 @@ function mergeLiveDriver(items, payload) {
       payload.driverBreak ??
       existing?.driverBreak ??
       null,
+    eta: payload.eta ?? existing?.eta ?? null,
     schedule: {
       city: payload.city ?? existing?.schedule?.city,
       state: payload.state ?? existing?.schedule?.state,
@@ -172,13 +183,19 @@ function SelectedRouteMapPanel({ routeId, routeMeta, onClearSelection }) {
       }
       if (payload?.routeId !== routeId) return;
       if (payload.lat != null && payload.lng != null) {
-        setDriverLocation({
+        const isEstimated = Boolean(payload.estimated);
+        setDriverLocation((prev) => ({
           lat: payload.lat,
           lng: payload.lng,
-          updatedAt: payload.recordedAt,
-          ingestedAt: payload.ingestedAt ?? payload.recordedAt,
+          updatedAt: isEstimated
+            ? (prev?.updatedAt ?? payload.recordedAt)
+            : payload.recordedAt,
+          ingestedAt: isEstimated
+            ? (prev?.ingestedAt ?? payload.ingestedAt ?? payload.recordedAt)
+            : (payload.ingestedAt ?? payload.recordedAt),
           sharingInBackground: Boolean(payload.backgroundSharing),
-        });
+          estimated: isEstimated,
+        }));
         setTrail((prev) => applyDriverLocationPayloadToTrail(prev, payload));
       }
     });
@@ -452,6 +469,8 @@ export function LiveTrackingScreen() {
                   const locationSharing = live
                     ? getLocationSharingStatus(live.driverLocation)
                     : null;
+                  const arrival = live ? getArrivalStatus(live.eta) : null;
+                  const etaLabel = live?.eta ? formatEtaTime(live.eta.etaAt) : null;
                   const isLive = isLiveRouteTracking(route.status);
                   const isCompleted = isCompletedRouteTracking(route.status);
                   const storeName = route.schedule?.store?.storeName ?? live?.schedule?.storeName;
@@ -504,6 +523,15 @@ export function LiveTrackingScreen() {
                                   <span className="inline-flex h-1.5 w-1.5 rounded-full" style={{ background: "var(--green)" }} />
                                 ) : null}
                                 Location · {locationSharing.label}
+                              </span>
+                            ) : null}
+                            {arrival?.label ? (
+                              <span
+                                className={`ops-badge ops-badge--${arrival.badgeVariant} mt-1`}
+                                title={etaLabel ? `ETA ${etaLabel}` : undefined}
+                              >
+                                Pace · {arrival.label}
+                                {etaLabel ? ` · ETA ${etaLabel}` : ""}
                               </span>
                             ) : null}
                             {stationaryLabel && !onBreak ? (

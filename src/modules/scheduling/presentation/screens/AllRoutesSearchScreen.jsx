@@ -112,7 +112,16 @@ export function AllRoutesSearchScreen() {
 
               return (
                 <div key={route.id} className="ops-card ops-fade overflow-hidden">
-                  <RouteSummaryRow route={route} index={index + 1} nested to={`/routes/${route.id}`} />
+                  <RouteSummaryRow
+                    route={route}
+                    index={index + 1}
+                    nested
+                    to={
+                      route.scheduleId
+                        ? `/schedules/${route.scheduleId}/routes`
+                        : undefined
+                    }
+                  />
                   <div className="flex flex-wrap items-center gap-2 px-4 pb-4 pl-[4.25rem] text-xs" style={{ color: "var(--text-muted)" }}>
                     {cityState ? <span className="ops-citychip">{cityState}</span> : null}
                     {storeName ? <span>{storeName}</span> : null}

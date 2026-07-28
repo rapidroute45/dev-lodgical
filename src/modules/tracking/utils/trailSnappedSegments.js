@@ -45,7 +45,33 @@ const UNSNAPPED_TRAIL_LINE = {
   ],
 };
 
-export function trailSegmentPolylineOptions(snapped) {
+export const TRAIL_SEGMENT_KIND_GAP = "gap";
+
+/**
+ * Sparse pale-blue dots across a GPS hole: same trail, but the path between the
+ * two fixes is unknown. Deliberately lighter and sparser than the unsnapped dashes.
+ */
+const GAP_BRIDGE_TRAIL_LINE = {
+  strokeColor: "#60a5fa",
+  strokeOpacity: 0,
+  strokeWeight: 3,
+  icons: [
+    {
+      icon: { path: "M 0,-1 0,1", strokeOpacity: 0.45, scale: 2 },
+      offset: "0",
+      repeat: "24px",
+    },
+  ],
+};
+
+/** Accepts a drawable segment or a bare `snapped` flag (legacy call sites). */
+export function trailSegmentPolylineOptions(segmentOrSnapped) {
+  const isSegment = segmentOrSnapped !== null && typeof segmentOrSnapped === "object";
+  if (isSegment && segmentOrSnapped.kind === TRAIL_SEGMENT_KIND_GAP) {
+    return GAP_BRIDGE_TRAIL_LINE;
+  }
+
+  const snapped = isSegment ? segmentOrSnapped.snapped : segmentOrSnapped;
   if (snapped === false) {
     return UNSNAPPED_TRAIL_LINE;
   }

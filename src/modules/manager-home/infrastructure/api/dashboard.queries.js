@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchDashboardStats,
   fetchAvailableDrivers,
+  fetchDayReturns,
   fetchDriverPerformance,
   fetchDispatchPerformance,
   fetchTeamPerformance,
@@ -19,6 +20,13 @@ export const dashboardKeys = {
     scope?.state ?? "",
   ],
   availableDrivers: (date) => ["dashboard", "available-drivers", date ?? "today"],
+  dayReturns: (date, scope) => [
+    "dashboard",
+    "returns",
+    date ?? "today",
+    scope?.city ?? "",
+    scope?.state ?? "",
+  ],
   driverPerformance: (days) => ["dashboard", "driver-performance", days ?? 7],
   dispatchPerformance: (days) => ["dashboard", "dispatch-performance", days ?? 7],
   teamPerformance: (days) => ["dashboard", "team-performance", days ?? 7],
@@ -37,6 +45,15 @@ export function useAvailableDriversQuery(date, enabled = true) {
   return useQuery({
     queryKey: dashboardKeys.availableDrivers(date),
     queryFn: () => fetchAvailableDrivers(date),
+    enabled,
+  });
+}
+
+export function useDayReturnsQuery(date, enabled = true) {
+  const scopeParams = useLocationQueryParams();
+  return useQuery({
+    queryKey: dashboardKeys.dayReturns(date, scopeParams),
+    queryFn: () => fetchDayReturns(date, scopeParams),
     enabled,
   });
 }

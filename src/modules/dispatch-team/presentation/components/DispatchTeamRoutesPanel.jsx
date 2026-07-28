@@ -167,7 +167,7 @@ export function DispatchTeamRoutesPanel({ city }) {
                       <button
                         type="button"
                         onClick={() => {
-                          if (scheduleId) navigate(`/schedules/${scheduleId}`);
+                          if (scheduleId) navigate(`/schedules/${scheduleId}/routes`);
                         }}
                         disabled={!scheduleId}
                         className="w-full text-left disabled:cursor-default disabled:opacity-70"
@@ -223,18 +223,11 @@ export function DispatchTeamRoutesPanel({ city }) {
                           style={{ borderTop: "1px solid var(--border)" }}
                         >
                           <Link
-                            to={`/schedules/${scheduleId}`}
+                            to={`/schedules/${scheduleId}/routes`}
                             className="text-xs font-bold hover:underline"
                             style={{ color: "var(--accent)" }}
                           >
-                            View schedule
-                          </Link>
-                          <Link
-                            to={`/schedules/${scheduleId}/routes`}
-                            className="text-xs font-bold hover:underline"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            Edit routes
+                            Spreadsheet
                           </Link>
                         </div>
                       ) : null}

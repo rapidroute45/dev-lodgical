@@ -40,11 +40,16 @@ function writeStoredDate(date) {
 export function OpsDateScopeProvider({ children }) {
   const queryClient = useQueryClient();
   const skipInvalidateRef = useRef(true);
+  const userPickedRef = useRef(false);
   const [date, setDateRaw] = useState(todayIsoDate);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setDateRaw(readStoredDate() ?? todayIsoDate());
+    const stored = readStoredDate();
+    setDateRaw((current) => {
+      if (userPickedRef.current) return current;
+      return stored ?? todayIsoDate();
+    });
     setHydrated(true);
   }, []);
 
@@ -62,6 +67,7 @@ export function OpsDateScopeProvider({ children }) {
         typeof nextOrFn === "function" ? nextOrFn(current) : nextOrFn;
       const normalized = typeof resolved === "string" ? resolved.trim() : "";
       if (!isIsoDate(normalized) || normalized === current) return current;
+      userPickedRef.current = true;
       writeStoredDate(normalized);
       return normalized;
     });
@@ -73,7 +79,7 @@ export function OpsDateScopeProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      date: hydrated ? date : todayIsoDate(),
+      date,
       setDate,
       resetToToday,
       hydrated,

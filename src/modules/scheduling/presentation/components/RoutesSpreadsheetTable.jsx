@@ -359,12 +359,21 @@ export function RoutesSpreadsheetTable({
           deliveryVerification: "verified",
         };
       } else if (nextKey === SPREADSHEET_STATUS.NOT_VERIFIED) {
+        const remarks = window.prompt(
+          "Add remarks for marking this route not verified (sent to driver and team lead):"
+        );
+        if (remarks == null) return;
+        if (!String(remarks).trim()) {
+          window.alert("Remarks are required.");
+          return;
+        }
         if (isLiveSpreadsheetRoute(row)) {
           await completeRouteOps.mutateAsync({ routeId: row.id });
         }
         await markRouteNotVerified.mutateAsync({
           routeId: row.id,
           scheduleId: row.scheduleId || scheduleId,
+          remarks: String(remarks).trim(),
         });
         patch = {
           ...buildCompletedStopsPatch(row),
@@ -727,6 +736,7 @@ export function RoutesSpreadsheetTable({
                         {canTrackDriver(row) ? (
                           <Link
                             to={`/routes/tracking/${row.id}`}
+                            state={{ from: `${location.pathname}${location.search}` }}
                             className={
                               isLiveRouteTracking(row.status)
                                 ? "route-grid-track-btn route-grid-track-btn--live"

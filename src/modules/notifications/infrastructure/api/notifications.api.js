@@ -9,3 +9,9 @@ export async function markNotificationRead(notificationId) {
   const res = await api.patch(`/notifications/${notificationId}/read`);
   return res.data?.data;
 }
+
+export async function clearAllNotifications() {
+  const res = await api.delete("/notifications");
+  const data = res.data?.data;
+  return { deletedCount: data?.deletedCount ?? 0 };
+}

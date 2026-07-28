@@ -57,7 +57,7 @@ export function useScheduleDateNavigation({
           const path =
             target === "routes"
               ? `/schedules/${next.id}/routes`
-              : `/schedules/${next.id}`;
+              : `/schedules/${next.id}/routes`;
           navigate(path, { replace: true });
           return;
         }

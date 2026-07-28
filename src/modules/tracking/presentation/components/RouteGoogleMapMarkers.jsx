@@ -9,9 +9,21 @@ const MARKER_COLORS = {
 };
 
 const MARKER_TWEEN_MS = 1_000;
+const MARKER_TWEEN_MIN_MS = 250;
+const MARKER_TWEEN_MAX_MS = 5_000;
 
 function lerp(start, end, progress) {
   return start + (end - start) * progress;
+}
+
+/** Tween over the real time between two fixes so marker speed matches reality. */
+function resolveTweenDurationMs(fromRecordedAt, toRecordedAt) {
+  const fromMs = Date.parse(fromRecordedAt ?? "");
+  const toMs = Date.parse(toRecordedAt ?? "");
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return MARKER_TWEEN_MS;
+  const elapsedMs = toMs - fromMs;
+  if (!(elapsedMs > 0)) return MARKER_TWEEN_MS;
+  return Math.min(MARKER_TWEEN_MAX_MS, Math.max(MARKER_TWEEN_MIN_MS, elapsedMs));
 }
 
 function MarkerBubble({ label, color, size = 22 }) {
@@ -82,16 +94,25 @@ export function RouteDropoffMarker({ position, sequence, title }) {
   );
 }
 
-export function RouteDriverMarker({ position, title = "Driver (live)", animate = false }) {
+export function RouteDriverMarker({
+  position,
+  recordedAt = null,
+  title = "Driver (live)",
+  animate = false,
+}) {
   const [displayPosition, setDisplayPosition] = useState(position);
   const displayRef = useRef(position);
   const frameRef = useRef(null);
+  const previousRecordedAtRef = useRef(recordedAt);
 
   useEffect(() => {
     displayRef.current = displayPosition;
   }, [displayPosition]);
 
   useEffect(() => {
+    const previousRecordedAt = previousRecordedAtRef.current;
+    previousRecordedAtRef.current = recordedAt ?? null;
+
     if (!position) {
       setDisplayPosition(null);
       return;
@@ -107,10 +128,11 @@ export function RouteDriverMarker({ position, title = "Driver (live)", animate =
       return;
     }
 
+    const durationMs = resolveTweenDurationMs(previousRecordedAt, recordedAt);
     const startedAt = performance.now();
 
     const step = (now) => {
-      const progress = Math.min(1, (now - startedAt) / MARKER_TWEEN_MS);
+      const progress = Math.min(1, (now - startedAt) / durationMs);
       setDisplayPosition({
         lat: lerp(from.lat, position.lat, progress),
         lng: lerp(from.lng, position.lng, progress),
@@ -126,7 +148,7 @@ export function RouteDriverMarker({ position, title = "Driver (live)", animate =
         cancelAnimationFrame(frameRef.current);
       }
     };
-  }, [animate, position?.lat, position?.lng]);
+  }, [animate, position?.lat, position?.lng, recordedAt]);
 
   if (!displayPosition) return null;
 

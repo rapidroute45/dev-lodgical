@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchNotifications, markNotificationRead } from "./notifications.api.js";
+import {
+  clearAllNotifications,
+  fetchNotifications,
+  markNotificationRead,
+} from "./notifications.api.js";
 
 export const notificationKeys = {
   all: ["notifications"],
@@ -34,6 +38,28 @@ export function useMarkNotificationReadMutation() {
           n.id === notificationId ? { ...n, read: true } : n
         );
       });
+    },
+  });
+}
+
+export function useClearAllNotificationsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: clearAllNotifications,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previous = queryClient.getQueryData(notificationKeys.all);
+      queryClient.setQueryData(notificationKeys.all, []);
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(notificationKeys.all, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     },
   });
 }

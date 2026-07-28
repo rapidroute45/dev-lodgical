@@ -13,16 +13,19 @@ import {
 } from "@/shared/utils/constants.js";
 import { roleUsesMultipleCities } from "@/shared/utils/assignedCities.js";
 import { ROLE_DEFINITIONS } from "@/modules/role-assignment/constants/roleDefinitions.js";
+import { getEditableRoles } from "@/modules/users/utils/editableRoles.js";
 import { TeamPickerModal } from "@/modules/role-assignment/presentation/components/TeamPickerModal.jsx";
 import { CityPickerModal } from "@/modules/role-assignment/presentation/components/CityPickerModal.jsx";
 import {
   useUpdateUserMutation,
   useUserQuery,
 } from "@/modules/users/infrastructure/api/users.queries.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 
 export function AssignRoleDetailScreen() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { user: actor } = useAuth();
   const { data: user, isLoading, isError } = useUserQuery(userId, true);
   const updateMutation = useUpdateUserMutation();
 
@@ -179,7 +182,9 @@ export function AssignRoleDetailScreen() {
         <div>
           <h2 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Select role</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {ROLE_DEFINITIONS.map((role) => {
+            {ROLE_DEFINITIONS.filter((role) =>
+              getEditableRoles(actor?.role).includes(role.role)
+            ).map((role) => {
               const selected = selectedRole === role.role;
               return (
                 <button
