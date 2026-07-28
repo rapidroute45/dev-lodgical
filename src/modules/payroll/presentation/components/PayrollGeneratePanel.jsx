@@ -206,7 +206,7 @@ export function PayrollGeneratePanel() {
       />
       <ModalSheet
         open={photoWarningCount != null}
-        title="Missing return photos"
+        title="Defaulter warning — missing return photos"
         onClose={() => {
           if (!generateMutation.isPending) setPhotoWarningCount(null);
         }}
@@ -243,11 +243,11 @@ export function PayrollGeneratePanel() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold" style={{ color: "#fbbf24" }}>
-                {photoWarningCount} route{photoWarningCount === 1 ? "" : "s"} missing return photos
+                {photoWarningCount} route{photoWarningCount === 1 ? "" : "s"} marked as defaulter
               </p>
               <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                These routes have returns, but the driver did not upload the store return picture.
-                You can still generate payroll, or cancel and wait for the photos.
+                The driver did not upload the store return picture for these routes.
+                Do you still want to create the payroll?
               </p>
               <p className="mt-2 text-xs font-bold" style={{ color: "#fbbf24" }}>
                 Tap to open store returns →
@@ -274,7 +274,7 @@ export function PayrollGeneratePanel() {
               disabled={generateMutation.isPending}
               onClick={() => void runGenerate()}
             >
-              {generateMutation.isPending ? "Generating…" : "Generate anyway"}
+              {generateMutation.isPending ? "Generating…" : "Yes, create payroll"}
             </button>
           </div>
         </div>

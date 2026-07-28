@@ -7,13 +7,13 @@ export function ReturnReasonModal({ open, stopName, busy, onCancel, onConfirm })
   const { theme } = useOpsTheme();
   const [reason, setReason] = useState("wrong_address");
   const [customReason, setCustomReason] = useState("");
-  const [createStoreReturn, setCreateStoreReturn] = useState(false);
+  const [createStoreReturn, setCreateStoreReturn] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     setReason("wrong_address");
     setCustomReason("");
-    setCreateStoreReturn(false);
+    setCreateStoreReturn(true);
   }, [open]);
 
   useEffect(() => {
@@ -119,12 +119,12 @@ export function ReturnReasonModal({ open, stopName, busy, onCancel, onConfirm })
               onChange={(event) => setCreateStoreReturn(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
             />
-            <span className="text-sm" style={{ color: "var(--text)" }}>
-              Create store return
-              <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
-                Optional — only if packages need to go back to the store
+              <span className="text-sm" style={{ color: "var(--text)" }}>
+                Create store return
+                <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
+                  Tracks this package on the Store returns screen
+                </span>
               </span>
-            </span>
           </label>
         </div>
 

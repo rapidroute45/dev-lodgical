@@ -120,10 +120,37 @@ export function useDeletePayrollBillMutation() {
   });
 }
 
-export function useSendPayrollToTeamLeadMutation() {
+export function useSendPayrollToOnsiteManagerMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: payrollApi.sendPayrollToTeamLead,
+    mutationFn: payrollApi.sendPayrollToOnsiteManager,
+    onSuccess: (bill) => {
+      qc.setQueryData(payrollKeys.bill(bill.id), bill);
+      invalidatePayroll(qc);
+    },
+  });
+}
+
+/** @deprecated Prefer useSendPayrollToOnsiteManagerMutation */
+export function useSendPayrollToTeamLeadMutation() {
+  return useSendPayrollToOnsiteManagerMutation();
+}
+
+export function useOnsiteManagerApprovePayrollMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: payrollApi.onsiteManagerApprovePayroll,
+    onSuccess: (bill) => {
+      qc.setQueryData(payrollKeys.bill(bill.id), bill);
+      invalidatePayroll(qc);
+    },
+  });
+}
+
+export function useOnsiteManagerDisputePayrollMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }) => payrollApi.onsiteManagerDisputePayroll(id, note),
     onSuccess: (bill) => {
       qc.setQueryData(payrollKeys.bill(bill.id), bill);
       invalidatePayroll(qc);

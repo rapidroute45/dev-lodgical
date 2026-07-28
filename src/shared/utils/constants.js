@@ -72,7 +72,14 @@ export const MOBILE_ONLY_ROLES = [
 export const PAYROLL_VIEWER_ROLES = [
   UserRole.ADMIN,
   UserRole.ACCOUNTANT,
+  UserRole.ONSITE_MANAGER,
   UserRole.TEAM_LEAD,
+];
+
+/** Admin / accountant — edit draft & disputed bills, send to onsite manager. */
+export const PAYROLL_OPS_EDITOR_ROLES = [
+  UserRole.ADMIN,
+  UserRole.ACCOUNTANT,
 ];
 
 /** Roles assignable by managers (excludes admin / dispatch manager / onsite manager). */

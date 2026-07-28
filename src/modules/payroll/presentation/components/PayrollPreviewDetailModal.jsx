@@ -50,8 +50,9 @@ export function PayrollPreviewDetailModal({ open, preview, teamLabel, loading, o
 
           {preview.hasMissingReturnPhotos ? (
             <div className="ops-banner ops-banner--error">
-              Warning: {preview.missingReturnPhotoRouteCount} route
-              {preview.missingReturnPhotoRouteCount === 1 ? "" : "s"} have returns, but the driver did not upload the store return picture.
+              Defaulter: {preview.missingReturnPhotoRouteCount} route
+              {preview.missingReturnPhotoRouteCount === 1 ? "" : "s"} — the driver did not upload
+              the store return picture. You will be asked to confirm before creating payroll.
             </div>
           ) : null}
 

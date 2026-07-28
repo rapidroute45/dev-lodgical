@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { OPS_ROLES } from "@/shared/utils/constants.js";
+import { PAYROLL_OPS_EDITOR_ROLES, UserRole } from "@/shared/utils/constants.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import {
   usePayrollBillsQuery,
@@ -18,13 +18,18 @@ import { TeamPendingCard } from "../components/TeamPendingCard.jsx";
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "draft", label: "Draft" },
+  { key: "pending_onsite_manager", label: "With OM" },
+  { key: "onsite_manager_disputed", label: "OM disputed" },
   { key: "pending_team_lead", label: "With lead" },
   { key: "team_lead_approved", label: "Ready to pay" },
+  { key: "team_lead_disputed", label: "TL disputed" },
   { key: "paid", label: "Paid" },
 ];
 
 const STATUS_BADGE = {
   draft: "muted",
+  pending_onsite_manager: "pending",
+  onsite_manager_disputed: "rose",
   pending_team_lead: "pending",
   team_lead_approved: "done",
   team_lead_disputed: "rose",
@@ -37,7 +42,9 @@ function statusBadgeClass(status) {
 
 export function PayrollBillsListScreen() {
   const { user } = useAuth();
-  const isOps = OPS_ROLES.includes(user?.role);
+  const isOpsEditor =
+    user?.role && PAYROLL_OPS_EDITOR_ROLES.includes(user.role);
+  const isAdmin = user?.role === UserRole.ADMIN;
   const [filter, setFilter] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -68,7 +75,7 @@ export function PayrollBillsListScreen() {
     [summary?.teams]
   );
 
-  const pendingModalTitle = isOps ? "Pending by team" : "Your team pending";
+  const pendingModalTitle = isOpsEditor ? "Pending by team" : "Your team pending";
 
   const topBar = (
     <OpsTopBar
@@ -91,7 +98,7 @@ export function PayrollBillsListScreen() {
             title={pendingModalTitle}
             summary={summary}
             teams={teamsWithActivity}
-            isOps={isOps}
+            isOps={Boolean(isOpsEditor)}
             onClose={() => setPendingModalOpen(false)}
           />
         ) : null}
@@ -105,7 +112,7 @@ export function PayrollBillsListScreen() {
               Driver bills and pending balances
             </p>
           </div>
-          {isOps ? (
+          {isAdmin ? (
             <div className="relative">
               <button
                 type="button"
@@ -150,7 +157,7 @@ export function PayrollBillsListScreen() {
           <p className="ops-banner ops-banner--error">Could not load pending payroll.</p>
         ) : summary ? (
           <>
-            {isOps ? <PayrollGeneratePanel /> : null}
+            {isAdmin ? <PayrollGeneratePanel /> : null}
             <button
               type="button"
               onClick={() => setPendingModalOpen(true)}
@@ -160,7 +167,7 @@ export function PayrollBillsListScreen() {
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
-                  {isOps ? "Total pending (all teams)" : "Your team pending"}
+                  {isOpsEditor ? "Total pending (all teams)" : "Your team pending"}
                 </p>
                 <span className="text-sm" style={{ color: "var(--accent)" }} aria-hidden="true">→</span>
               </div>
@@ -186,7 +193,7 @@ export function PayrollBillsListScreen() {
                     <TeamPendingCard
                       key={team.teamId}
                       team={team}
-                      isOps={isOps}
+                      isOps={Boolean(isOpsEditor)}
                     />
                   ))}
                 </div>

@@ -27,9 +27,17 @@ export function payrollReceiptUrl(path) {
 
 const STATUS_META = {
   draft: { label: "Draft", className: "bg-slate-100 text-slate-700" },
+  pending_onsite_manager: {
+    label: "With onsite manager",
+    className: "bg-sky-100 text-sky-800",
+  },
+  onsite_manager_disputed: {
+    label: "OM disputed",
+    className: "bg-orange-100 text-orange-800",
+  },
   pending_team_lead: { label: "With team lead", className: "bg-amber-100 text-amber-800" },
   team_lead_approved: { label: "Ready to pay", className: "bg-emerald-100 text-emerald-800" },
-  team_lead_disputed: { label: "Disputed", className: "bg-red-100 text-red-800" },
+  team_lead_disputed: { label: "TL disputed", className: "bg-red-100 text-red-800" },
   paid: { label: "Paid", className: "bg-dispatch-primary-soft text-dispatch-primary" },
 };
 

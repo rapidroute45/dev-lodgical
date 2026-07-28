@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { OPS_ROLES, UserRole } from "@/shared/utils/constants.js";
+import { PAYROLL_OPS_EDITOR_ROLES, UserRole } from "@/shared/utils/constants.js";
 import { formatTimestamp } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import {
@@ -11,7 +11,9 @@ import {
   usePayrollSettingsQuery,
   useUpdatePayrollBillMutation,
   useDeletePayrollBillMutation,
-  useSendPayrollToTeamLeadMutation,
+  useSendPayrollToOnsiteManagerMutation,
+  useOnsiteManagerApprovePayrollMutation,
+  useOnsiteManagerDisputePayrollMutation,
   useAcknowledgePayrollMutation,
   useApprovePayrollMutation,
   useDisputePayrollMutation,
@@ -32,6 +34,8 @@ const ROUTE_CATEGORIES = ["SMALL", "MEDIUM", "FULL"];
 
 const STATUS_BADGE = {
   draft: "muted",
+  pending_onsite_manager: "pending",
+  onsite_manager_disputed: "rose",
   pending_team_lead: "pending",
   team_lead_approved: "done",
   team_lead_disputed: "rose",
@@ -70,7 +74,9 @@ export function PayrollBillDetailScreen() {
   const { data: bill, isLoading, isError, refetch, isFetching } = usePayrollBillQuery(billId);
   const updateMutation = useUpdatePayrollBillMutation();
   const deleteMutation = useDeletePayrollBillMutation();
-  const sendMutation = useSendPayrollToTeamLeadMutation();
+  const sendMutation = useSendPayrollToOnsiteManagerMutation();
+  const omApproveMutation = useOnsiteManagerApprovePayrollMutation();
+  const omDisputeMutation = useOnsiteManagerDisputePayrollMutation();
   const acknowledgeMutation = useAcknowledgePayrollMutation();
   const approveMutation = useApprovePayrollMutation();
   const disputeMutation = useDisputePayrollMutation();
@@ -80,6 +86,8 @@ export function PayrollBillDetailScreen() {
   const [expanded, setExpanded] = useState(new Set());
   const [disputing, setDisputing] = useState(false);
   const [disputeNote, setDisputeNote] = useState("");
+  const [omDisputing, setOmDisputing] = useState(false);
+  const [omDisputeNote, setOmDisputeNote] = useState("");
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [receiptFile, setReceiptFile] = useState(null);
   const [opsNote, setOpsNote] = useState("");
@@ -92,26 +100,36 @@ export function PayrollBillDetailScreen() {
   const [message, setMessage] = useState(null);
 
   const isTeamLead = user?.role === UserRole.TEAM_LEAD;
-  const isOps = OPS_ROLES.includes(user?.role);
+  const isOnsiteManager = user?.role === UserRole.ONSITE_MANAGER;
+  const isOpsEditor =
+    user?.role && PAYROLL_OPS_EDITOR_ROLES.includes(user.role);
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   const canEditAdjustments =
-    isOps &&
+    isOpsEditor &&
     (bill?.status === "draft" ||
-      bill?.status === "team_lead_disputed" ||
-      bill?.status === "pending_team_lead");
+      bill?.status === "onsite_manager_disputed" ||
+      bill?.status === "team_lead_disputed");
 
   const { data: payrollSettings } = usePayrollSettingsQuery(canEditAdjustments);
   const canTeamLeadReview = isTeamLead && bill?.status === "pending_team_lead";
   const canAcknowledge = canTeamLeadReview && !bill?.teamLeadAcknowledgedAt;
   const canApproveAfterAck = canTeamLeadReview && Boolean(bill?.teamLeadAcknowledgedAt);
-  const canMarkPaid = isOps && bill?.status === "team_lead_approved";
+  const canOmReview = isOnsiteManager && bill?.status === "pending_onsite_manager";
+  const canMarkPaid = isAdmin && bill?.status === "team_lead_approved";
   const canDelete =
-    isOps &&
+    isOpsEditor &&
     (bill?.status === "draft" ||
+      bill?.status === "onsite_manager_disputed" ||
       bill?.status === "team_lead_disputed" ||
+      bill?.status === "pending_onsite_manager" ||
       bill?.status === "pending_team_lead");
   const showAdjustments =
-    isOps || (bill?.status !== "draft" && bill?.status !== "team_lead_disputed");
+    isOpsEditor ||
+    isOnsiteManager ||
+    (bill?.status !== "draft" &&
+      bill?.status !== "onsite_manager_disputed" &&
+      bill?.status !== "team_lead_disputed");
 
   useEffect(() => {
     if (!bill) return;
@@ -190,11 +208,13 @@ export function PayrollBillDetailScreen() {
 
   const categoryRatesSummary = formatCategoryRatesSummary(categoryRateRows);
 
-  const canSendToTeamLead =
-    isOps &&
-    (bill?.status === "draft" || bill?.status === "team_lead_disputed") &&
+  const canSendToOnsiteManager =
+    isOpsEditor &&
+    (bill?.status === "draft" ||
+      bill?.status === "onsite_manager_disputed" ||
+      bill?.status === "team_lead_disputed") &&
     visibleLineItems.length > 0;
-  const isResendToTeamLead = bill?.status === "pending_team_lead";
+  const isResendToOnsiteManager = bill?.status === "pending_onsite_manager";
 
   const grandTotal = useMemo(() => {
     if (!bill) return 0;
@@ -232,7 +252,7 @@ export function PayrollBillDetailScreen() {
     });
   }, [bill, draft, opsNote, routeRateDraft, removedRouteIds]);
 
-  const canSaveBill = canEditAdjustments && (hasChanges || isResendToTeamLead);
+  const canSaveBill = canEditAdjustments && (hasChanges || isResendToOnsiteManager);
 
   function buildAdjustments() {
     return Object.entries(draft).map(([driverId, v]) => ({
@@ -284,9 +304,9 @@ export function PayrollBillDetailScreen() {
       if (hasChanges) {
         await updateMutation.mutateAsync({ id: billId, ...buildUpdatePayload() });
       }
-      if (isResendToTeamLead) {
+      if (isResendToOnsiteManager) {
         await sendMutation.mutateAsync(billId);
-        setMessage(hasChanges ? "Saved and team lead notified" : "Team lead notified");
+        setMessage(hasChanges ? "Saved and onsite manager notified" : "Onsite manager notified");
       } else {
         setMessage("Payroll bill saved");
       }
@@ -306,16 +326,38 @@ export function PayrollBillDetailScreen() {
     }
   }
 
-  async function handleSendToTeamLead() {
+  async function handleSendToOnsiteManager() {
     setError(null);
     try {
       if (canEditAdjustments) {
         await updateMutation.mutateAsync({ id: billId, ...buildUpdatePayload() });
       }
       await sendMutation.mutateAsync(billId);
-      setMessage("Sent to team lead for review");
+      setMessage("Sent to onsite manager for review");
     } catch (err) {
       setError(err.message || "Could not send");
+    }
+  }
+
+  async function handleOmApprove() {
+    setError(null);
+    try {
+      await omApproveMutation.mutateAsync(billId);
+      setMessage("Approved and sent to team lead");
+    } catch (err) {
+      setError(err.message || "Could not approve");
+    }
+  }
+
+  async function handleOmDispute() {
+    setError(null);
+    try {
+      await omDisputeMutation.mutateAsync({ id: billId, note: omDisputeNote });
+      setOmDisputing(false);
+      setOmDisputeNote("");
+      setMessage("Issue reported — returned to ops");
+    } catch (err) {
+      setError(err.message || "Could not report issue");
     }
   }
 
@@ -392,6 +434,8 @@ export function PayrollBillDetailScreen() {
     updateMutation.isPending ||
     deleteMutation.isPending ||
     sendMutation.isPending ||
+    omApproveMutation.isPending ||
+    omDisputeMutation.isPending ||
     approveMutation.isPending ||
     acknowledgeMutation.isPending ||
     disputeMutation.isPending ||
@@ -416,7 +460,7 @@ export function PayrollBillDetailScreen() {
           ) : null}
         </div>
       </div>
-      {isOps && bill && (canEditAdjustments || canDelete || canSendToTeamLead) ? (
+      {isOpsEditor && bill && (canEditAdjustments || canDelete || canSendToOnsiteManager) ? (
         <div className="relative">
           <button
             type="button"
@@ -539,8 +583,8 @@ export function PayrollBillDetailScreen() {
               }}
             >
               Warning: {bill.missingReturnPhotoRouteCount ?? "some"} route
-              {(bill.missingReturnPhotoRouteCount ?? 0) === 1 ? "" : "s"} have returns without
-              store photos. Driver did not upload the return picture.
+              {(bill.missingReturnPhotoRouteCount ?? 0) === 1 ? "" : "s"} are marked as defaulter
+              (driver did not upload the store return picture).
             </div>
           ) : null}
         </div>
@@ -583,6 +627,13 @@ export function PayrollBillDetailScreen() {
           <div className="ops-panel ops-fade p-4">
             <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Ops note</p>
             <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{bill.note}</p>
+          </div>
+        ) : null}
+
+        {bill.status === "onsite_manager_disputed" && bill.onsiteManagerNote ? (
+          <div className="ops-banner ops-banner--error">
+            <p className="text-sm font-bold">Onsite manager note</p>
+            <p className="mt-1 text-sm">{bill.onsiteManagerNote}</p>
           </div>
         ) : null}
 
@@ -703,6 +754,37 @@ export function PayrollBillDetailScreen() {
           </div>
         ) : null}
 
+        {omDisputing ? (
+          <div className="ops-panel ops-fade p-4">
+            <label className="text-sm font-bold" style={{ color: "var(--text)" }}>Describe the issue</label>
+            <textarea
+              value={omDisputeNote}
+              onChange={(e) => setOmDisputeNote(e.target.value)}
+              rows={3}
+              className="mt-2 w-full rounded-xl px-3 py-2 text-sm"
+              style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", color: "var(--text)" }}
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOmDisputing(false)}
+                className="ops-btn px-4 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleOmDispute()}
+                disabled={busy}
+                className="ops-btn px-4 py-2 text-sm font-bold"
+                style={{ borderColor: "rgba(251, 113, 133, 0.4)", background: "rgba(251, 113, 133, 0.12)", color: "#fda4af" }}
+              >
+                Send back to ops
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {disputing ? (
           <div className="ops-panel ops-fade p-4">
             <label className="text-sm font-bold" style={{ color: "var(--text)" }}>Describe the issue</label>
@@ -735,7 +817,13 @@ export function PayrollBillDetailScreen() {
         ) : null}
       </div>
 
-      {canSendToTeamLead || canAcknowledge || canApproveAfterAck || canEditAdjustments || canDelete || canMarkPaid ? (
+      {canSendToOnsiteManager ||
+      canOmReview ||
+      canAcknowledge ||
+      canApproveAfterAck ||
+      canEditAdjustments ||
+      canDelete ||
+      canMarkPaid ? (
         <div
           className="fixed bottom-0 left-0 right-0 z-20 px-4 py-3 backdrop-blur-md"
           style={{ borderTop: "1px solid var(--border)", background: "rgba(7, 11, 18, 0.85)" }}
@@ -762,15 +850,37 @@ export function PayrollBillDetailScreen() {
                 Save
               </button>
             ) : null}
-            {canSendToTeamLead ? (
+            {canSendToOnsiteManager ? (
               <button
                 type="button"
-                onClick={() => void handleSendToTeamLead()}
+                onClick={() => void handleSendToOnsiteManager()}
                 disabled={busy}
                 className="ops-btn ops-btn--accent px-5 py-2.5 font-bold"
               >
-                Send to team lead
+                Send to onsite manager
               </button>
+            ) : null}
+            {canOmReview && !omDisputing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setOmDisputing(true)}
+                  disabled={busy}
+                  className="ops-btn px-4 py-2.5 text-sm font-bold"
+                  style={{ borderColor: "rgba(251, 191, 36, 0.4)", background: "rgba(251, 191, 36, 0.12)", color: "#fcd34d" }}
+                >
+                  Report issue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleOmApprove()}
+                  disabled={busy}
+                  className="ops-btn px-5 py-2.5 font-bold"
+                  style={{ borderColor: "rgba(52, 211, 153, 0.4)", background: "rgba(52, 211, 153, 0.12)", color: "#6ee7b7" }}
+                >
+                  Approve &amp; send to team lead
+                </button>
+              </>
             ) : null}
             {canAcknowledge && !disputing ? (
               <button

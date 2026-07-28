@@ -12,7 +12,11 @@ export async function fetchPayrollBills(params = {}) {
 
 export async function fetchPayrollBill(id) {
   const res = await api.get(`/payroll/bills/${id}`);
-  return res.data.data;
+  const bill = res.data?.data;
+  if (!bill?.id) {
+    throw new Error("Payroll bill not found");
+  }
+  return bill;
 }
 
 export async function fetchPayrollSettings() {
@@ -54,8 +58,23 @@ export async function deletePayrollBill(id) {
   await api.delete(`/payroll/bills/${id}`);
 }
 
+export async function sendPayrollToOnsiteManager(id) {
+  const res = await api.post(`/payroll/bills/${id}/send-to-onsite-manager`);
+  return res.data.data;
+}
+
+/** @deprecated Prefer sendPayrollToOnsiteManager */
 export async function sendPayrollToTeamLead(id) {
-  const res = await api.post(`/payroll/bills/${id}/send-to-team-lead`);
+  return sendPayrollToOnsiteManager(id);
+}
+
+export async function onsiteManagerApprovePayroll(id) {
+  const res = await api.post(`/payroll/bills/${id}/onsite-manager/approve`);
+  return res.data.data;
+}
+
+export async function onsiteManagerDisputePayroll(id, note) {
+  const res = await api.post(`/payroll/bills/${id}/onsite-manager/dispute`, { note });
   return res.data.data;
 }
 

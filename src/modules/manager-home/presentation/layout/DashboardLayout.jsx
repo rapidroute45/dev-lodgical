@@ -82,7 +82,17 @@ function buildNav(user, t, elevation) {
       { to: "/all-routes", label: t("nav.allRoutes"), icon: "routes" },
       { to: "/stores", label: t("nav.stores"), icon: "store" },
       { to: "/store-returns", label: t("nav.returns"), icon: "returns" },
-      { to: "/chat", label: t("nav.chat"), icon: "chat" },
+      { to: "/chat", label: t("nav.chat"), icon: "chat" }
+    );
+    if (isOnsiteManager(role)) {
+      items.push({
+        to: "/payroll",
+        label: t("nav.payroll"),
+        icon: "payroll",
+        matchActive: matchPayrollNav,
+      });
+    }
+    items.push(
       itSupportNavItem(t),
       { to: "/profile", label: t("nav.profile"), icon: "profile" }
     );
@@ -134,9 +144,8 @@ function buildNav(user, t, elevation) {
   items.push({ to: "/chat", label: t("nav.chat"), icon: "chat" });
 
   const showPayrollNav =
-    isAdmin(role) &&
-    payrollUnlocked &&
-    PAYROLL_VIEWER_ROLES.includes(role);
+    PAYROLL_VIEWER_ROLES.includes(role) &&
+    (!isAdmin(role) || payrollUnlocked);
 
   if (showPayrollNav) {
     items.push({
@@ -147,7 +156,7 @@ function buildNav(user, t, elevation) {
     });
   }
 
-  const showStorePayrollNav = showPayrollNav && OPS_ROLES.includes(role);
+  const showStorePayrollNav = isAdmin(role) && payrollUnlocked;
 
   if (showStorePayrollNav) {
     items.push({
