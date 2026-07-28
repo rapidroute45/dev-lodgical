@@ -3,10 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { UserRole } from "@/shared/utils/constants.js";
+import {
+  isDispatchTeam,
+  isFullManager,
+  isOnsiteManager,
+} from "@/shared/utils/constants.js";
 import { resolveDisplayName } from "@/shared/utils/displayName.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
-import { todayIsoDate } from "@/shared/utils/time.js";
 import {
   useChatDriversQuery,
   useChatOpsPeersQuery,
@@ -17,13 +20,15 @@ import {
 export function NewChatScreen() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isDispatchTeam = user?.role === UserRole.DISPATCH_TEAM;
+  const isCityOps = isDispatchTeam(user?.role);
+  const showOpsTab =
+    isCityOps || isOnsiteManager(user?.role) || isFullManager(user?.role);
   const [tab, setTab] = useState("drivers");
   const [search, setSearch] = useState("");
 
   const { data: drivers = [], isLoading: driversLoading } = useChatDriversQuery(tab === "drivers");
   const { data: peers = [], isLoading: peersLoading } = useChatOpsPeersQuery(
-    tab === "ops" && isDispatchTeam
+    tab === "ops" && showOpsTab
   );
   const createChat = useCreateConversationMutation();
   const createInternal = useCreateInternalConversationMutation();
@@ -94,10 +99,10 @@ export function NewChatScreen() {
           </div>
         </div>
 
-        {isDispatchTeam ? (
+        {showOpsTab ? (
           <div className="ops-panel ops-fade flex p-1">
             {tabButton("drivers", "Drivers")}
-            {tabButton("ops", "Dispatch manager")}
+            {tabButton("ops", isCityOps ? "Dispatch manager" : "Ops")}
           </div>
         ) : null}
 
@@ -121,7 +126,9 @@ export function NewChatScreen() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={tab === "drivers" ? "Search drivers" : "Search dispatch managers"}
+              placeholder={
+                tab === "drivers" ? "Search drivers & team leads" : "Search ops contacts"
+              }
             />
           </div>
 
