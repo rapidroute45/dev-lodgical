@@ -76,7 +76,6 @@ export function LiveTrackingMap({
     planned: L.layerGroup(),
     stops: L.layerGroup(),
   });
-console.warn("layersRef",layersRef)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;

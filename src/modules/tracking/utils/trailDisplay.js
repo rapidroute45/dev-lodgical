@@ -4,6 +4,7 @@ import {
   filterTrailOutAndBackSpikes,
   splitTrailIntoSegments,
   TRAIL_DISPLAY_MAX_JUMP_M,
+  TRAIL_DISPLAY_SNAPPED_GAP_M,
   TRAIL_SEGMENT_GAP_M,
   TRAIL_SEGMENT_GAP_SEC,
 } from "./mapPathFilters.js";
@@ -143,7 +144,11 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
   snappedGroups.forEach((group, groupIndex) => {
     if (group.points.length < 2) return;
 
-    const jumpGapM = group.snapped === false ? TRAIL_DISPLAY_MAX_JUMP_M : TRAIL_DISPLAY_MAX_JUMP_M;
+    // Snapped runs are OSRM road geometry, already continuous and already following the
+    // street grid, so they only split at a genuine data hole. Raw runs keep the tight
+    // threshold because a long edge there really is a straight line through buildings.
+    const jumpGapM =
+      group.snapped === false ? TRAIL_DISPLAY_MAX_JUMP_M : TRAIL_DISPLAY_SNAPPED_GAP_M;
 
     prepareTrailSegmentsForDisplay(group.points, {
       source,

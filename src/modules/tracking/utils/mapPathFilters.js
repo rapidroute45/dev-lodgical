@@ -7,6 +7,11 @@ export const TRAIL_SEGMENT_GAP_M = 3_000;
 export const TRAIL_DISPLAY_URBAN_GAP_M = 120;
 /** Split drawable edges longer than this (meters). */
 export const TRAIL_DISPLAY_MAX_JUMP_M = 300;
+/**
+ * Road-matched geometry is dense and follows real streets, so a long edge inside a
+ * snapped run means the server could not bridge it — not that we are cutting a corner.
+ */
+export const TRAIL_DISPLAY_SNAPPED_GAP_M = 1_500;
 /** Split when time gap is large and movement is non-trivial. */
 export const TRAIL_SEGMENT_GAP_SEC = 10 * 60;
 /** Reject display segments implying impossible driving speed (180 km/h). */

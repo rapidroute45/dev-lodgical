@@ -68,6 +68,12 @@
   justify-content: center;
 }
 
+/* Rotation is driven per frame by the marker tween, so no CSS transition here. */
+.route-driver-live-marker__heading {
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
 @keyframes route-driver-pulse {
   0% {
     transform: scale(0.7);

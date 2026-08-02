@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AdvancedMarker } from "@vis.gl/react-google-maps";
+import { bearingDegrees, interpolateHeading } from "@/modules/tracking/utils/markerBearing.js";
 
 const MARKER_COLORS = {
   pickup: "#16a34a",
@@ -50,17 +51,32 @@ function MarkerBubble({ label, color, size = 22 }) {
   );
 }
 
-function DriverLiveMarker() {
+function DriverLiveMarker({ headingDeg = null }) {
+  const hasHeading = Number.isFinite(headingDeg);
+
   return (
     <div className="route-driver-live-marker" aria-hidden="true">
       <span className="route-driver-live-marker__pulse" />
       <span className="route-driver-live-marker__core">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-          <path
-            d="M5 11h14l-1.5-4.5A2 2 0 0 0 15.7 5H8.3a2 2 0 0 0-1.8 1.5L5 11Zm0 0v5.5a1.5 1.5 0 0 0 1.5 1.5H7a1 1 0 0 0 1-1v-1H16v1a1 1 0 0 0 1 1h.5a1.5 1.5 0 0 0 1.5-1.5V11"
-            fill="#ffffff"
-          />
-        </svg>
+        {hasHeading ? (
+          <svg
+            className="route-driver-live-marker__heading"
+            style={{ transform: `rotate(${headingDeg}deg)` }}
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            aria-hidden="true"
+          >
+            <path d="M12 3 19 20 12 16.2 5 20 12 3Z" fill="#ffffff" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+            <path
+              d="M5 11h14l-1.5-4.5A2 2 0 0 0 15.7 5H8.3a2 2 0 0 0-1.8 1.5L5 11Zm0 0v5.5a1.5 1.5 0 0 0 1.5 1.5H7a1 1 0 0 0 1-1v-1H16v1a1 1 0 0 0 1 1h.5a1.5 1.5 0 0 0 1.5-1.5V11"
+              fill="#ffffff"
+            />
+          </svg>
+        )}
       </span>
     </div>
   );
@@ -101,13 +117,19 @@ export function RouteDriverMarker({
   animate = false,
 }) {
   const [displayPosition, setDisplayPosition] = useState(position);
+  const [displayHeading, setDisplayHeading] = useState(null);
   const displayRef = useRef(position);
+  const headingRef = useRef(null);
   const frameRef = useRef(null);
   const previousRecordedAtRef = useRef(recordedAt);
 
   useEffect(() => {
     displayRef.current = displayPosition;
   }, [displayPosition]);
+
+  useEffect(() => {
+    headingRef.current = displayHeading;
+  }, [displayHeading]);
 
   useEffect(() => {
     const previousRecordedAt = previousRecordedAtRef.current;
@@ -118,16 +140,22 @@ export function RouteDriverMarker({
       return;
     }
 
+    const from = displayRef.current ?? position;
+    // Bearing comes from consecutive fixes rather than the device compass, which reports
+    // nothing useful while the phone sits in a cradle.
+    const targetHeading = bearingDegrees(from, position);
+
     if (!animate) {
       setDisplayPosition(position);
+      if (targetHeading != null) setDisplayHeading(targetHeading);
       return;
     }
 
-    const from = displayRef.current ?? position;
     if (from.lat === position.lat && from.lng === position.lng) {
       return;
     }
 
+    const fromHeading = headingRef.current;
     const durationMs = resolveTweenDurationMs(previousRecordedAt, recordedAt);
     const startedAt = performance.now();
 
@@ -137,6 +165,9 @@ export function RouteDriverMarker({
         lat: lerp(from.lat, position.lat, progress),
         lng: lerp(from.lng, position.lng, progress),
       });
+      if (targetHeading != null) {
+        setDisplayHeading(interpolateHeading(fromHeading, targetHeading, progress));
+      }
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(step);
       }
@@ -154,7 +185,7 @@ export function RouteDriverMarker({
 
   return (
     <AdvancedMarker position={displayPosition} title={title} zIndex={50}>
-      <DriverLiveMarker />
+      <DriverLiveMarker headingDeg={displayHeading} />
     </AdvancedMarker>
   );
 }

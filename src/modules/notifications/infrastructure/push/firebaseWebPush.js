@@ -154,9 +154,8 @@ export async function clearWebPushTokenFromBackend() {
 
   try {
     await unregisterDeviceToken(token);
-    console.log("[Firebase] Web push token removed from backend on logout.");
-  } catch (error) {
-    console.warn("[Firebase] Failed to unregister web push token", error);
+  } catch {
+    // Best-effort cleanup on logout.
   }
   AppStorage.removeItem(FCM_TOKEN_STORAGE_KEY);
 }

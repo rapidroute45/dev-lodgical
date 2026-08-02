@@ -14,22 +14,8 @@
 /**
  * @param {FirebaseWebClientStatus} status
  */
-export function logFirebaseWebClientStatus(status) {
-  const line = status.connected ? "CONNECTED" : "NOT CONNECTED";
-  console.log("[Firebase] ─── web push status ───");
-  console.log(`[Firebase] status: ${line}`);
-  console.log(`[Firebase] ${status.message}`);
-  console.log("[Firebase] details:", {
-    configured: status.configured,
-    supported: status.supported,
-    permissionGranted: status.permissionGranted,
-    hasFcmToken: status.hasFcmToken,
-    registeredWithBackend: status.registeredWithBackend,
-    projectId: status.projectId ?? null,
-    appId: status.appId ?? null,
-    tokenPreview: status.tokenPreview ?? null,
-  });
-  console.log("[Firebase] ───────────────────────────");
+export function logFirebaseWebClientStatus(_status) {
+  // Intentionally quiet — status is used by callers; avoid console noise.
 }
 
 /**
