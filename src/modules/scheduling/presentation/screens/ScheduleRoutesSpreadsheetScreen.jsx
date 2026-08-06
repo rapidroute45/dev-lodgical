@@ -32,6 +32,10 @@ import {
 } from "../components/RoutesSpreadsheetTable.jsx";
 import { SPREADSHEET_STATUS } from "@/modules/scheduling/utils/routeSpreadsheetStatus.js";
 import { useDriverStopsCsvUpload } from "../hooks/useDriverStopsCsvUpload.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
+import { useAssignedCityScope } from "@/modules/scheduling/presentation/hooks/useAssignedCityScope.js";
+import { canEditRoutesInCity } from "@/shared/utils/constants.js";
 
 function Banner({ type, children }) {
   return (
@@ -47,6 +51,9 @@ export function ScheduleRoutesSpreadsheetScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { setDate: setGlobalDate } = useOpsDateScope();
   const { id: scheduleId } = useParams();
+  const { user } = useAuth();
+  const { canManageRoutes } = useOpsElevation();
+  const { assignedCities } = useAssignedCityScope();
   const { data: teams = [] } = useTeamsQuery();
   const updateRoute = useUpdateRouteMutation();
   const createRoute = useCreateRouteMutation();
@@ -87,6 +94,11 @@ export function ScheduleRoutesSpreadsheetScreen() {
       routeCount: allRoutes.length,
     };
   }, [groupQueries, schedule, scheduleId]);
+
+  const allowEdit =
+    canManageRoutes(user?.role) &&
+    (!mergedSchedule ||
+      canEditRoutesInCity(user?.role, mergedSchedule.city, assignedCities));
 
   const storeId = mergedSchedule?.storeId ?? mergedSchedule?.store?.id ?? schedule?.storeId ?? schedule?.store?.id;
   const scheduleDate = mergedSchedule?.date ?? schedule?.date;
@@ -528,14 +540,20 @@ export function ScheduleRoutesSpreadsheetScreen() {
                 Returns ({mergedSchedule.returnedStopCount})
               </Link>
             ) : null}
-            <button
-              type="button"
-              disabled={saving || dirtyCount === 0}
-              onClick={() => void saveChanges()}
-              className="ops-btn ops-btn--accent px-5 py-2 font-bold disabled:opacity-50"
-            >
-              {saving ? "Saving…" : dirtyCount > 0 ? `Save ${dirtyCount} change${dirtyCount === 1 ? "" : "s"}` : "No changes"}
-            </button>
+            {allowEdit ? (
+              <button
+                type="button"
+                disabled={saving || dirtyCount === 0}
+                onClick={() => void saveChanges()}
+                className="ops-btn ops-btn--accent px-5 py-2 font-bold disabled:opacity-50"
+              >
+                {saving ? "Saving…" : dirtyCount > 0 ? `Save ${dirtyCount} change${dirtyCount === 1 ? "" : "s"}` : "No changes"}
+              </button>
+            ) : (
+              <span className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+                View only
+              </span>
+            )}
           </div>
         </div>
 
@@ -591,7 +609,7 @@ export function ScheduleRoutesSpreadsheetScreen() {
               {storeName} has no routes on this date.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {storeId ? (
+              {allowEdit && storeId ? (
                 <Link
                   to={`/schedules/create?storeId=${encodeURIComponent(storeId)}&date=${encodeURIComponent(displayDate)}`}
                   className="ops-btn ops-btn--accent px-6 py-2.5 font-bold"
@@ -622,22 +640,25 @@ export function ScheduleRoutesSpreadsheetScreen() {
               scheduleId={scheduleId}
               scheduleDate={mergedSchedule.date}
               scheduleStore={mergedSchedule.store}
-              dirtyIds={dirtyIds}
-              onChangeRow={handleChangeRow}
-              onAddRoute={addSingleRoute}
-              onBulkAdd={() => setBulkModalOpen(true)}
-              onUploadStopsCsv={handleUploadStopsCsv}
+              dirtyIds={allowEdit ? dirtyIds : new Set()}
+              onChangeRow={allowEdit ? handleChangeRow : () => {}}
+              onAddRoute={allowEdit ? addSingleRoute : null}
+              onBulkAdd={allowEdit ? () => setBulkModalOpen(true) : null}
+              onUploadStopsCsv={allowEdit ? handleUploadStopsCsv : null}
               uploadingStopsCsv={uploadingStopsCsv}
-              onDeleteRoute={handleDeleteRoute}
+              onDeleteRoute={allowEdit ? handleDeleteRoute : null}
               deletingRouteId={deletingRouteId}
-              onRouteStatusUpdated={handleRouteStatusUpdated}
+              onRouteStatusUpdated={allowEdit ? handleRouteStatusUpdated : undefined}
+              readOnly={!allowEdit}
             />
-            <BulkAddRoutesModal
-              open={bulkModalOpen}
-              storeName={mergedSchedule.store?.storeName}
-              onClose={() => setBulkModalOpen(false)}
-              onAdd={addBulkRoutes}
-            />
+            {allowEdit ? (
+              <BulkAddRoutesModal
+                open={bulkModalOpen}
+                storeName={mergedSchedule.store?.storeName}
+                onClose={() => setBulkModalOpen(false)}
+                onAdd={addBulkRoutes}
+              />
+            ) : null}
           </>
         )}
       </div>

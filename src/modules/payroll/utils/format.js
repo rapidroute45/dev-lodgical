@@ -48,5 +48,5 @@ export function statusMeta(status) {
 export const ROUTE_CATEGORY_LABELS = {
   SMALL: "Small",
   MEDIUM: "Medium",
-  FULL: "Full",
+  FULL: "Big",
 };

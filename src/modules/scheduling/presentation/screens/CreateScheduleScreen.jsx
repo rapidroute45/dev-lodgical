@@ -31,7 +31,7 @@ import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { apiErrorMessage } from "@/shared/utils/api.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
-import { canManageStores } from "@/shared/utils/constants.js";
+import { canManageStores, canCreateRoutes } from "@/shared/utils/constants.js";
 import { useDriverStopsCsvUpload } from "../hooks/useDriverStopsCsvUpload.js";
 import { DateNavigator } from "../components/DateNavigator.jsx";
 import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
@@ -50,6 +50,7 @@ export function CreateScheduleScreen() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { dispatchUnlocked } = useOpsElevation();
+  const allowCreate = canCreateRoutes(user?.role);
   const { minDate, maxDate } = useScheduleDateBounds();
   const { assignedCity, assignedCities, isCityLocked, isCityScoped } = useAssignedCityScope();
   const { effectiveCity, effectiveState } = useOpsLocationScope();
@@ -106,6 +107,10 @@ export function CreateScheduleScreen() {
     if (effectiveCity) setCity(effectiveCity);
     if (effectiveState) setState(effectiveState);
   }, [assignedCity, isCityLocked, effectiveCity, effectiveState]);
+
+  useEffect(() => {
+    if (!allowCreate) navigate("/schedules", { replace: true });
+  }, [allowCreate, navigate]);
 
   useResolvedStoreLocation(allStores, city, state, setCity, setState);
 
@@ -311,6 +316,18 @@ export function CreateScheduleScreen() {
   const topBar = (
     <OpsTopBar onRefresh={() => {}} refreshing={false} maxDate={maxDate} />
   );
+
+  if (!allowCreate) {
+    return (
+      <DashboardLayout topBar={topBar}>
+        <div className={PAGE_CONTENT}>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Redirecting…
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout topBar={topBar}>

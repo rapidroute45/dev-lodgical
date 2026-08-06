@@ -7,7 +7,7 @@ export const DEFAULT_ROUTE_CATEGORY = "SMALL";
 export const ROUTE_CATEGORY_LABELS = {
   SMALL: "Small",
   MEDIUM: "Medium",
-  FULL: "Full",
+  FULL: "Big",
 };
 
 export const ROUTE_CATEGORY_SLUG = {

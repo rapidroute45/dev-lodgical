@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { UserRole, MANAGER_ROLES, PAYROLL_VIEWER_ROLES } from "@/shared/utils/constants.js";
+import { UserRole, MANAGER_ROLES, PAYROLL_VIEWER_ROLES, canCreateRoutes } from "@/shared/utils/constants.js";
 import { usePayrollPendingSummaryQuery } from "@/modules/payroll/infrastructure/api/payroll.queries.js";
 import { formatMoney } from "@/modules/payroll/utils/format.js";
 import { todayIsoDate, formatDisplayDate } from "@/shared/utils/time.js";
@@ -311,11 +311,15 @@ export function ManagerDashboardScreen() {
         {/* Quick actions */}
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" },
+            canCreateRoutes(user?.role)
+              ? { to: "/schedules/create", label: "Create schedule", icon: "M12 4v16m8-8H4" }
+              : null,
             { to: "/tracking", label: "Live tracking", icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
             { to: "/store-returns", label: "Returns", icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" },
             { to: "/all-routes", label: "All routes", icon: "M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" },
-          ].map((a) => (
+          ]
+            .filter(Boolean)
+            .map((a) => (
             <Link key={a.to} to={a.to} className="ops-quick">
               <span className="ops-quick__icon">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

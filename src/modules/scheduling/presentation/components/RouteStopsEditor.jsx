@@ -37,6 +37,7 @@ export function RouteStopsEditor({
   stops,
   pickup,
   saving = false,
+  readOnly = false,
   onSave,
   onBack,
 }) {
@@ -54,7 +55,7 @@ export function RouteStopsEditor({
   const routeCompleted = isRouteCompleted(routeStatus);
   const isNewRoute = Boolean(route?.isNew || String(route?.id ?? "").startsWith("new-"));
   const routeId = route?.id;
-  const statusEditable = Boolean(!isNewRoute && routeId);
+  const statusEditable = Boolean(!readOnly && !isNewRoute && routeId);
 
   useEffect(() => {
     setLocalDropoffs(normalizeDropoffsForEdit(stops));
@@ -308,6 +309,14 @@ export function RouteStopsEditor({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {readOnly ? (
+            <span
+              className="rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+            >
+              View only
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={onBack}
@@ -316,14 +325,16 @@ export function RouteStopsEditor({
           >
             Back
           </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="ops-btn ops-btn--accent px-5 py-2.5 font-bold disabled:opacity-50"
-          >
-            {saving ? "Saving…" : isNewRoute ? "Apply changes" : "Save stops"}
-          </button>
+          {!readOnly ? (
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="ops-btn ops-btn--accent px-5 py-2.5 font-bold disabled:opacity-50"
+            >
+              {saving ? "Saving…" : isNewRoute ? "Apply changes" : "Save stops"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -336,22 +347,26 @@ export function RouteStopsEditor({
             ? `${finishedCount} / ${stopCount} stop${stopCount === 1 ? "" : "s"} completed`
             : `${stopCount} stop${stopCount === 1 ? "" : "s"}`}
         </span>
-        <button
-          type="button"
-          onClick={handleAddStop}
-          className="ops-btn ops-btn--accent px-3 py-1.5 text-xs font-semibold"
-        >
-          + Add stop
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            onClick={handleAddStop}
+            className="ops-btn ops-btn--accent px-3 py-1.5 text-xs font-semibold"
+          >
+            + Add stop
+          </button>
+        ) : null}
         {isNewRoute ? (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             Save the route spreadsheet to persist new routes.
           </span>
         ) : (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {statusEditable
-              ? "Use Complete route above, or change each stop from the status dropdown."
-              : "Stop completion updates automatically when the driver finishes deliveries."}
+            {readOnly
+              ? "Route stops are view-only for your role."
+              : statusEditable
+                ? "Use Complete route above, or change each stop from the status dropdown."
+                : "Stop completion updates automatically when the driver finishes deliveries."}
           </span>
         )}
       </div>
@@ -435,13 +450,13 @@ export function RouteStopsEditor({
         <RouteStopsGrid
           stops={localDropoffs}
           compact
-          editable
+          editable={!readOnly}
           showStatus
           statusEditable={statusEditable}
           statusBusyId={statusBusyId}
-          onStatusChange={handleStatusChange}
-          onChange={handleGridChange}
-          onDeleteRow={handleDeleteRow}
+          onStatusChange={readOnly ? undefined : handleStatusChange}
+          onChange={readOnly ? undefined : handleGridChange}
+          onDeleteRow={readOnly ? undefined : handleDeleteRow}
         />
       </div>
 

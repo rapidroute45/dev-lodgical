@@ -88,6 +88,35 @@ export function defaultDepartureFromArrival(arrival) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function parseTimeToMinutes(value) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? "").trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+/** Planned shift length from arrival → departure (hours, 2 decimals). */
+export function plannedHoursFromWindow(arrivalTime, departureTime) {
+  const start = parseTimeToMinutes(arrivalTime);
+  const end = parseTimeToMinutes(departureTime);
+  if (start == null || end == null || end <= start) return null;
+  return Math.round(((end - start) / 60) * 100) / 100;
+}
+
+/** Set departure = arrival + hours (clamped to 23:59). */
+export function departureFromArrivalAndHours(arrivalTime, hours) {
+  const start = parseTimeToMinutes(arrivalTime);
+  const hrs = Number(hours);
+  if (start == null || !Number.isFinite(hrs) || hrs < 0) return null;
+  let total = start + Math.round(hrs * 60);
+  if (total >= 24 * 60) total = 23 * 60 + 59;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** Hours from driver start → route complete, or first→last stop completion as fallback. */
 export function routeDurationHours(startedAt, completedAt, dropoffs = []) {
   if (startedAt && completedAt) {

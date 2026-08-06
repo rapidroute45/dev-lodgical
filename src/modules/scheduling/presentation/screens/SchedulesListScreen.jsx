@@ -15,15 +15,13 @@ import { ScheduleCard } from "../components/ScheduleCard.jsx";
 import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
-import { isFullManager } from "@/shared/utils/constants.js";
+import { canCreateRoutes, isFullManager } from "@/shared/utils/constants.js";
 import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 
 export function SchedulesListScreen() {
   const { user } = useAuth();
-  const { canMutateOps } = useOpsElevation();
   const { maxDate } = useScheduleDateBounds();
-  const allowCreate = canMutateOps(user?.role);
+  const allowCreate = canCreateRoutes(user?.role);
   const showDispatchTeam = isFullManager(user?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const { date, setDate } = useOpsDateScope();

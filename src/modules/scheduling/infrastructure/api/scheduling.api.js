@@ -51,6 +51,12 @@ export async function updateRoute(routeId, body) {
   return res.data.data;
 }
 
+/** Driving miles pickup → dropoffs (Google Directions / OSRM on server). */
+export async function estimateRouteMileage(body) {
+  const res = await api.post("/routes/estimate-mileage", body);
+  return res.data.data;
+}
+
 export async function confirmRoute(routeId) {
   const res = await api.post(`/routes/${routeId}/confirm`);
   return res.data.data;

@@ -26,6 +26,14 @@ import {
   formatStatusLabel,
   getEditableRoles,
 } from "@/modules/users/utils/editableRoles.js";
+import {
+  ExtendedProfileFields,
+  emptyExtendedProfileValues,
+  extendedProfileFromUser,
+  extendedProfileToPayload,
+  roleUsesExtendedProfile,
+} from "@/modules/users/presentation/components/ExtendedProfileFields.jsx";
+import { uploadUserProfileDocument } from "@/modules/users/infrastructure/api/users.api.js";
 
 const STATUS_OPTIONS = [UserStatus.PENDING, UserStatus.ACTIVE, UserStatus.SUSPENDED];
 
@@ -73,6 +81,8 @@ export function EditUserScreen() {
   const [resetPasswordEnabled, setResetPasswordEnabled] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [extendedProfile, setExtendedProfile] = useState(emptyExtendedProfileValues);
+  const [docUploading, setDocUploading] = useState(null);
 
   const canResetPassword =
     currentUser?.role === UserRole.ADMIN ||
@@ -95,6 +105,7 @@ export function EditUserScreen() {
     }
     setSelectedCity(user.assignedCity ?? null);
     setSelectedCities(getUserAssignedCities(user));
+    setExtendedProfile(extendedProfileFromUser(user));
   }, [user]);
 
   const displayName = user
@@ -140,7 +151,7 @@ export function EditUserScreen() {
     }
     if (needsCity && roleUsesMultipleCities(selectedRole) && selectedCities.length === 0) {
       setCityModalOpen(true);
-      setError("Assign at least one city for dispatch team.");
+      setError("Assign at least one city for this role.");
       return;
     }
     if (needsCity && !roleUsesMultipleCities(selectedRole) && !selectedCity?.trim()) {
@@ -173,6 +184,9 @@ export function EditUserScreen() {
         assignedCity: needsCity && !roleUsesMultipleCities(selectedRole) ? selectedCity?.trim() ?? null : null,
         assignedCities: needsCity && roleUsesMultipleCities(selectedRole) ? selectedCities : null,
       };
+      if (roleUsesExtendedProfile(selectedRole)) {
+        Object.assign(payload, extendedProfileToPayload(extendedProfile));
+      }
       if (resetPasswordEnabled) {
         payload.password = newPassword;
       }
@@ -420,6 +434,68 @@ export function EditUserScreen() {
                     <span style={{ color: "var(--accent)" }}>→</span>
                   </button>
                 )}
+              </div>
+            ) : null}
+
+            {selectedRole && roleUsesExtendedProfile(selectedRole) ? (
+              <div className="space-y-3">
+                <ExtendedProfileFields
+                  values={extendedProfile}
+                  onChange={setExtendedProfile}
+                  disabled={updateMutation.isPending || Boolean(docUploading)}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm" style={{ color: "var(--text-muted)" }}>
+                    Upload insurance certificate
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="mt-1 block w-full text-sm"
+                      disabled={Boolean(docUploading)}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file || !userId) return;
+                        setDocUploading("insurance");
+                        setError(null);
+                        try {
+                          const result = await uploadUserProfileDocument(userId, "insurance", file);
+                          setExtendedProfile(extendedProfileFromUser(result?.data));
+                          setMessage("Insurance certificate uploaded.");
+                        } catch (err) {
+                          setError(err?.response?.data?.message || err.message || "Upload failed");
+                        } finally {
+                          setDocUploading(null);
+                        }
+                      }}
+                    />
+                  </label>
+                  <label className="block text-sm" style={{ color: "var(--text-muted)" }}>
+                    Upload W-9 document
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="mt-1 block w-full text-sm"
+                      disabled={Boolean(docUploading)}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file || !userId) return;
+                        setDocUploading("w9");
+                        setError(null);
+                        try {
+                          const result = await uploadUserProfileDocument(userId, "w9", file);
+                          setExtendedProfile(extendedProfileFromUser(result?.data));
+                          setMessage("W-9 uploaded.");
+                        } catch (err) {
+                          setError(err?.response?.data?.message || err.message || "Upload failed");
+                        } finally {
+                          setDocUploading(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             ) : null}
 

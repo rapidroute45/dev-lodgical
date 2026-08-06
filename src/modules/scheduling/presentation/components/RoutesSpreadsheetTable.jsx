@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ROUTE_CATEGORIES,
@@ -9,10 +9,20 @@ import {
   normalizeRouteCategory,
   sortRoutesByCategory,
 } from "@/modules/scheduling/utils/routeSort.js";
-import { fetchAvailableDrivers } from "@/modules/scheduling/infrastructure/api/scheduling.api.js";
+import {
+  estimateRouteMileage,
+  fetchAvailableDrivers,
+} from "@/modules/scheduling/infrastructure/api/scheduling.api.js";
 import { useCompleteRouteOpsMutation, useMarkRouteNotVerifiedMutation, useVerifyRouteDeliveryMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { routeNameWithCategory } from "@/modules/scheduling/utils/routeDraft.js";
-import { defaultDepartureFromArrival, formatRouteDurationHours } from "@/shared/utils/time.js";
+import { walmartHoursForCategory } from "@/modules/scheduling/utils/walmartRouteHours.js";
+import {
+  defaultDepartureFromArrival,
+  departureFromArrivalAndHours,
+  formatRouteDurationHours,
+  plannedHoursFromWindow,
+  routeDurationHours,
+} from "@/shared/utils/time.js";
 import {
   canEditSpreadsheetStatus,
   formatSpreadsheetStatus,
@@ -125,6 +135,37 @@ function canTrackDriver(row) {
   return isPersistedRoute(row) && canTrackRoute(row);
 }
 
+function stopHasCoords(stop) {
+  if (!stop) return false;
+  const lat = Number(stop.destinationLat ?? stop.lat);
+  const lng = Number(stop.destinationLng ?? stop.lng);
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+function canEstimateMileage(row) {
+  return stopHasCoords(row?.pickup) && (row?.dropoffs ?? []).some(stopHasCoords);
+}
+
+function buildMileageEstimatePayload(row) {
+  return {
+    pickup: row.pickup
+      ? {
+          lat: row.pickup.lat ?? null,
+          lng: row.pickup.lng ?? null,
+          destinationLat: row.pickup.destinationLat ?? row.pickup.lat ?? null,
+          destinationLng: row.pickup.destinationLng ?? row.pickup.lng ?? null,
+        }
+      : null,
+    dropoffs: (row.dropoffs ?? []).map((stop, index) => ({
+      lat: stop.lat ?? null,
+      lng: stop.lng ?? null,
+      destinationLat: stop.destinationLat ?? stop.lat ?? null,
+      destinationLng: stop.destinationLng ?? stop.lng ?? null,
+      sequence: stop.sequence ?? index + 1,
+    })),
+  };
+}
+
 function buildCompletedStopsPatch(row) {
   const stopCount = row.stopCount ?? row.dropoffs?.length ?? 0;
   const now = new Date().toISOString();
@@ -185,6 +226,7 @@ export function RoutesSpreadsheetTable({
   deletingRouteId = null,
   onRouteStatusUpdated,
   showTrack = true,
+  readOnly = false,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -196,6 +238,8 @@ export function RoutesSpreadsheetTable({
   const [driversCache, setDriversCache] = useState({});
   const [loadingDriverRow, setLoadingDriverRow] = useState(null);
   const [statusUpdatingRouteId, setStatusUpdatingRouteId] = useState(null);
+  const [mileageLoadingIds, setMileageLoadingIds] = useState(() => new Set());
+  const mileageAttemptedRef = useRef(new Set());
 
   const sortedRows = useMemo(() => sortRoutesByCategory(rows), [rows]);
 
@@ -269,23 +313,42 @@ export function RoutesSpreadsheetTable({
   );
 
   function patchRow(id, patch) {
+    if (readOnly) return;
     onChangeRow(id, patch);
   }
 
   function handleCategoryChange(row, routeCategory) {
+    if (readOnly) return;
     const nextCategory = normalizeRouteCategory(routeCategory);
     if (nextCategory === row.routeCategory) return;
 
-    patchRow(row.id, {
+    const patch = {
       routeCategory: nextCategory,
       routeName: routeNameWithCategory(row.routeName, nextCategory, {
         existingRoutes: rows,
         excludeRouteKey: row.id,
       }),
+    };
+
+    const walmartHours = walmartHoursForCategory(nextCategory, {
+      storeName: scheduleStore?.storeName,
+      routeName: patch.routeName ?? row.routeName,
+      location: row.location,
     });
+    if (walmartHours != null) {
+      const nextDeparture = departureFromArrivalAndHours(row.arrivalTime, walmartHours);
+      if (nextDeparture) {
+        patch.departureTime = nextDeparture;
+        patch.driverId = "";
+        patch.driverName = "";
+      }
+    }
+
+    patchRow(row.id, patch);
   }
 
   function handleTeamChange(row, teamId) {
+    if (readOnly) return;
     const team = teams.find((item) => item.id === teamId);
     patchRow(row.id, {
       teamId,
@@ -311,6 +374,113 @@ export function RoutesSpreadsheetTable({
       driverName: "",
     });
   }
+
+  function handleHoursChange(row, hoursValue) {
+    if (readOnly) return;
+    const nextDeparture = departureFromArrivalAndHours(row.arrivalTime, hoursValue);
+    if (!nextDeparture) return;
+    patchRow(row.id, {
+      departureTime: nextDeparture,
+      driverId: "",
+      driverName: "",
+    });
+  }
+
+  function resolveDisplayHours(row) {
+    const actualHours = routeDurationHours(
+      row.startedAt,
+      row.completedAt,
+      row.dropoffs
+    );
+    if (actualHours != null) return { hours: actualHours, kind: "actual" };
+
+    const walmartHours = walmartHoursForCategory(row.routeCategory, {
+      storeName: scheduleStore?.storeName,
+      routeName: row.routeName,
+      location: row.location,
+    });
+    if (walmartHours != null) return { hours: walmartHours, kind: "walmart" };
+
+    const plannedHours = plannedHoursFromWindow(row.arrivalTime, row.departureTime);
+    return { hours: plannedHours, kind: "planned" };
+  }
+
+  async function recalculateMileage(row, { force = false } = {}) {
+    if (readOnly || !canEstimateMileage(row)) return null;
+    if (!force && row.mileage?.trim()) return null;
+
+    setMileageLoadingIds((prev) => new Set(prev).add(row.id));
+    try {
+      const result = await estimateRouteMileage(buildMileageEstimatePayload(row));
+      const miles = result?.miles;
+      if (miles != null && Number.isFinite(Number(miles))) {
+        patchRow(row.id, { mileage: String(miles) });
+        return miles;
+      }
+    } catch {
+      // Keep existing mileage; stops may lack geocoded coords yet.
+    } finally {
+      setMileageLoadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+    }
+    return null;
+  }
+
+  useEffect(() => {
+    if (readOnly) return;
+    for (const row of rows) {
+      const walmartHours = walmartHoursForCategory(row.routeCategory, {
+        storeName: scheduleStore?.storeName,
+        routeName: row.routeName,
+        location: row.location,
+      });
+      if (walmartHours == null) continue;
+      const planned = plannedHoursFromWindow(row.arrivalTime, row.departureTime);
+      if (planned === walmartHours) continue;
+      const nextDeparture = departureFromArrivalAndHours(row.arrivalTime, walmartHours);
+      if (!nextDeparture || nextDeparture === row.departureTime) continue;
+      patchRow(row.id, {
+        departureTime: nextDeparture,
+        driverId: "",
+        driverName: "",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    readOnly,
+    scheduleStore?.storeName,
+    rows
+      .map((row) => `${row.id}:${row.routeName}:${row.routeCategory}:${row.arrivalTime}:${row.departureTime}`)
+      .join(";"),
+  ]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    for (const row of rows) {
+      if (!canEstimateMileage(row)) continue;
+      if (row.mileage?.trim()) continue;
+      const fingerprint = `${row.id}:${(row.dropoffs ?? [])
+        .map((s) => `${s.lat},${s.lng},${s.destinationLat},${s.destinationLng}`)
+        .join("|")}`;
+      if (mileageAttemptedRef.current.has(fingerprint)) continue;
+      mileageAttemptedRef.current.add(fingerprint);
+      void recalculateMileage(row);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    readOnly,
+    rows
+      .map(
+        (row) =>
+          `${row.id}:${row.mileage}:${row.pickup?.lat},${row.pickup?.lng}:${(row.dropoffs ?? [])
+            .map((s) => `${s.lat},${s.lng},${s.destinationLat},${s.destinationLng}`)
+            .join("|")}`
+      )
+      .join(";"),
+  ]);
 
   function handleDriverChange(row, driverId, drivers) {
     const driver = drivers.find((item) => item.id === driverId);
@@ -503,7 +673,9 @@ export function RoutesSpreadsheetTable({
       <div className="ops-panel ops-fade overflow-hidden">
         {toolbar}
         <p className="px-6 py-12 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-          No routes yet. Add a route or use bulk add to get started.
+          {readOnly
+            ? "No routes on this schedule."
+            : "No routes yet. Add a route or use bulk add to get started."}
         </p>
       </div>
     );
@@ -558,6 +730,7 @@ export function RoutesSpreadsheetTable({
                         <input
                           className="route-grid-input route-grid-input--text"
                           value={row.routeName}
+                          disabled={readOnly}
                           onChange={(e) =>
                             patchRow(row.id, { routeName: e.target.value })
                           }
@@ -567,6 +740,7 @@ export function RoutesSpreadsheetTable({
                         <select
                           className="route-grid-input route-grid-input--select"
                           value={row.routeCategory}
+                          disabled={readOnly}
                           onChange={(e) =>
                             handleCategoryChange(row, e.target.value)
                           }
@@ -582,6 +756,7 @@ export function RoutesSpreadsheetTable({
                         <select
                           className="route-grid-input route-grid-input--select"
                           value={row.teamId}
+                          disabled={readOnly}
                           onChange={(e) => handleTeamChange(row, e.target.value)}
                         >
                           <option value="">Select team</option>
@@ -596,7 +771,7 @@ export function RoutesSpreadsheetTable({
                         <select
                           className="route-grid-input route-grid-input--select"
                           value={row.driverId || ""}
-                          disabled={!row.teamId}
+                          disabled={readOnly || !row.teamId}
                           onFocus={() => void handleDriverFocus(row)}
                           onChange={(e) =>
                             handleDriverChange(row, e.target.value, drivers)
@@ -640,6 +815,7 @@ export function RoutesSpreadsheetTable({
                           type="time"
                           className="route-grid-input route-grid-input--time"
                           value={row.arrivalTime}
+                          disabled={readOnly}
                           onChange={(e) => handleArrivalChange(row, e.target.value)}
                         />
                       </td>
@@ -648,27 +824,48 @@ export function RoutesSpreadsheetTable({
                           type="time"
                           className="route-grid-input route-grid-input--time"
                           value={row.departureTime}
+                          disabled={readOnly}
                           onChange={(e) => handleDepartureChange(row, e.target.value)}
                         />
                       </td>
                       <td>
-                        <span
-                          className="route-grid-static"
-                          title={
-                            formatRouteDurationHours(row.startedAt, row.completedAt, row.dropoffs) !== "—"
-                              ? row.startedAt && row.completedAt
-                                ? `Started ${row.startedAt} · Completed ${row.completedAt}`
-                                : "Based on first and last stop completion times"
-                              : "Complete all stops (driver start optional) to calculate hours"
-                          }
-                        >
-                          {formatRouteDurationHours(row.startedAt, row.completedAt, row.dropoffs)}
-                        </span>
+                        {(() => {
+                          const { hours: displayHours, kind } = resolveDisplayHours(row);
+                          const locked = kind === "actual" || kind === "walmart";
+                          return (
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.25}
+                              className="route-grid-input route-grid-input--number"
+                              value={displayHours ?? ""}
+                              placeholder="—"
+                              disabled={readOnly || locked}
+                              title={
+                                kind === "actual"
+                                  ? formatRouteDurationHours(
+                                      row.startedAt,
+                                      row.completedAt,
+                                      row.dropoffs
+                                    ) !== "—"
+                                    ? row.startedAt && row.completedAt
+                                      ? `Actual hours from start → complete (${row.startedAt} · ${row.completedAt})`
+                                      : "Actual hours from first → last stop completion"
+                                    : "Actual hours"
+                                  : kind === "walmart"
+                                    ? `Walmart fixed hours: Small 5.5 · Medium 8.5 · Big 10 (by category)`
+                                    : "Planned hours (arrival → departure). Edit to update departure time."
+                              }
+                              onChange={(e) => handleHoursChange(row, e.target.value)}
+                            />
+                          );
+                        })()}
                       </td>
                       <td>
                         <select
                           className="route-grid-input route-grid-input--select"
                           value={row.vehicleType}
+                          disabled={readOnly}
                           onChange={(e) =>
                             patchRow(row.id, { vehicleType: e.target.value })
                           }
@@ -681,20 +878,43 @@ export function RoutesSpreadsheetTable({
                         </select>
                       </td>
                       <td>
-                        <input
-                          type="number"
-                          min={0}
-                          className="route-grid-input route-grid-input--number"
-                          value={row.mileage}
-                          placeholder="—"
-                          onChange={(e) => patchRow(row.id, { mileage: e.target.value })}
-                        />
+                        <div className="route-grid-miles">
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            className="route-grid-input route-grid-input--number"
+                            value={row.mileage}
+                            placeholder="—"
+                            disabled={readOnly || mileageLoadingIds.has(row.id)}
+                            title="Driving miles: pickup → stop 1 → … → last stop"
+                            onChange={(e) => patchRow(row.id, { mileage: e.target.value })}
+                          />
+                          {!readOnly ? (
+                            <button
+                              type="button"
+                              className="route-grid-miles__btn"
+                              disabled={
+                                !canEstimateMileage(row) || mileageLoadingIds.has(row.id)
+                              }
+                              title={
+                                canEstimateMileage(row)
+                                  ? "Calculate miles from Google Maps (pickup through all stops)"
+                                  : "Add stop coordinates to calculate miles"
+                              }
+                              onClick={() => void recalculateMileage(row, { force: true })}
+                            >
+                              {mileageLoadingIds.has(row.id) ? "…" : "↻"}
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                       <td>
                         <input
                           className="route-grid-input"
                           value={row.location}
                           placeholder="—"
+                          disabled={readOnly}
                           onChange={(e) => patchRow(row.id, { location: e.target.value })}
                         />
                       </td>
@@ -703,13 +923,14 @@ export function RoutesSpreadsheetTable({
                           className="route-grid-input"
                           value={row.notes}
                           placeholder="—"
+                          disabled={readOnly}
                           onChange={(e) => patchRow(row.id, { notes: e.target.value })}
                         />
                       </td>
                       <td>
                         {row.isNew ? (
                           <span className="route-grid-static">New</span>
-                        ) : canEditSpreadsheetStatus(row) ? (
+                        ) : !readOnly && canEditSpreadsheetStatus(row) ? (
                           <select
                             className="route-grid-input route-grid-input--select"
                             value={getSpreadsheetStatusKey(row)}

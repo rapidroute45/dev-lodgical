@@ -66,6 +66,52 @@ function num(value) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+function displayBankValue(value) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  return trimmed || "—";
+}
+
+function PaymentPartyBlock({ title, party }) {
+  return (
+    <div
+      className="rounded-xl p-3"
+      style={{ border: "1px solid var(--border)", background: "var(--bg-elevated, transparent)" }}
+    >
+      <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+        {title}
+      </p>
+      <p className="mt-1 text-sm font-bold" style={{ color: "var(--text)" }}>
+        {party.displayName || party.email}
+      </p>
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{party.email}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Bank</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{displayBankValue(party.bankName)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Account holder</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{displayBankValue(party.accountHolderName)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Account #</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{displayBankValue(party.accountNumber)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>Routing #</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{displayBankValue(party.routingNumber)}</p>
+        </div>
+      </div>
+      {party.achInformation?.trim() ? (
+        <div className="mt-3">
+          <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>ACH</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{party.achInformation.trim()}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function PayrollBillDetailScreen() {
   const { id: billId } = useParams();
   const navigate = useNavigate();
@@ -587,6 +633,27 @@ export function PayrollBillDetailScreen() {
               (driver did not upload the store return picture).
             </div>
           ) : null}
+        </div>
+
+        <div className="ops-panel ops-fade p-5">
+          <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Payment details</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            Banking info for team lead and onsite manager payout
+          </p>
+          {!bill.paymentDetails?.teamLead && !(bill.paymentDetails?.onsiteManagers?.length > 0) ? (
+            <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
+              No team lead or onsite manager banking info is on file for this bill.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {bill.paymentDetails?.teamLead ? (
+                <PaymentPartyBlock title="Team lead" party={bill.paymentDetails.teamLead} />
+              ) : null}
+              {(bill.paymentDetails?.onsiteManagers ?? []).map((om) => (
+                <PaymentPartyBlock key={om.id} title="Onsite manager" party={om} />
+              ))}
+            </div>
+          )}
         </div>
 
         {canEditAdjustments ? (

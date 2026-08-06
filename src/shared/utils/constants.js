@@ -48,11 +48,12 @@ export const UserRole = {
 
 export const MANAGER_ROLES = [UserRole.ADMIN, UserRole.DISPATCH_MANAGER];
 
-/** Create schedules / routes (not onsite manager). */
+/** Create schedules / routes (onsite manager: assigned cities only). */
 export const ROUTE_CREATOR_ROLES = [
   UserRole.ADMIN,
   UserRole.DISPATCH_MANAGER,
   UserRole.DISPATCH_TEAM,
+  UserRole.ONSITE_MANAGER,
 ];
 
 /** View/manage routes including onsite manager. */
@@ -96,7 +97,7 @@ export const ROLES_REQUIRING_TEAM = [
   UserRole.DRIVER,
 ];
 
-export const ROLES_REQUIRING_CITY = [UserRole.DISPATCH_TEAM];
+export const ROLES_REQUIRING_CITY = [UserRole.DISPATCH_TEAM, UserRole.ONSITE_MANAGER];
 
 export function roleRequiresTeam(role) {
   return ROLES_REQUIRING_TEAM.includes(role);
@@ -117,11 +118,9 @@ export function canManageTeams(role, dispatchUnlocked = false) {
   return canManageStores(role, dispatchUnlocked);
 }
 
-/** Admin, dispatch manager, and onsite manager may use global state/city scope in the ops header. */
+/** Admin and dispatch manager may use global state/city scope in the ops header. */
 export function canManageLocationScope(role) {
-  return (
-    MANAGER_ROLES.includes(role) || role === UserRole.ONSITE_MANAGER
-  );
+  return MANAGER_ROLES.includes(role);
 }
 
 /** Admin, dispatch manager, dispatch team, and onsite manager may use the ops header location picker. */
@@ -155,6 +154,25 @@ export function isDispatchOps(role) {
 
 export function canCreateRoutes(role) {
   return ROUTE_CREATOR_ROLES.includes(role);
+}
+
+/** Same roles as create — onsite managers may edit only in assigned cities. */
+export function canEditRoutes(role) {
+  return canCreateRoutes(role);
+}
+
+export function citiesMatch(a, b) {
+  return Boolean(
+    a?.trim() && b?.trim() && a.trim().toLowerCase() === b.trim().toLowerCase()
+  );
+}
+
+/** Onsite managers may mutate only schedules/routes in their assigned cities. */
+export function canEditRoutesInCity(role, city, assignedCities = []) {
+  if (!canEditRoutes(role)) return false;
+  if (!isOnsiteManager(role)) return true;
+  if (!city?.trim() || assignedCities.length === 0) return false;
+  return assignedCities.some((assigned) => citiesMatch(assigned, city));
 }
 
 export function canConfirmRoutes(role) {

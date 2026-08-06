@@ -16,6 +16,10 @@ import {
 } from "@/modules/scheduling/utils/routeDraft.js";
 import { formatDisplayDate, todayIsoDate } from "@/shared/utils/time.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
+import { useAssignedCityScope } from "@/modules/scheduling/presentation/hooks/useAssignedCityScope.js";
+import { canEditRoutesInCity } from "@/shared/utils/constants.js";
 
 function isDraftRouteId(routeId) {
   return String(routeId ?? "").startsWith("new-");
@@ -25,6 +29,9 @@ export function RouteStopsScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: scheduleId, routeId } = useParams();
+  const { user } = useAuth();
+  const { canManageRoutes } = useOpsElevation();
+  const { assignedCities } = useAssignedCityScope();
   const isDraft = isDraftRouteId(routeId);
   const draftRow = location.state?.draftRow ?? null;
   const returnTo = location.state?.returnTo ?? null;
@@ -57,6 +64,12 @@ export function RouteStopsScreen() {
     schedule?.date ?? routeFromApi?.scheduleDate ?? routeFromApi?.schedule?.date ?? todayIsoDate();
   const scheduleStore = schedule?.store ?? stateScheduleStore;
   const storeId = schedule?.storeId ?? scheduleStore?.id ?? routeFromApi?.storeId;
+  const scheduleCity =
+    schedule?.city ?? scheduleStore?.city ?? routeFromApi?.city ?? routeFromApi?.schedule?.city;
+  const allowEdit =
+    canManageRoutes(user?.role) &&
+    (!scheduleCity ||
+      canEditRoutesInCity(user?.role, scheduleCity, assignedCities));
   const handleTopBarDateChange = useScheduleDateNavigation({
     storeId,
     currentDate: displayDate,
@@ -75,7 +88,7 @@ export function RouteStopsScreen() {
   );
 
   async function handleSave(dropoffs) {
-    if (!routeRow) return;
+    if (!allowEdit || !routeRow) return;
 
     const stopCount = dropoffs.length;
 
@@ -158,7 +171,8 @@ export function RouteStopsScreen() {
               stops={routeRow.dropoffs ?? []}
               pickup={routeRow.pickup}
               saving={saving}
-              onSave={handleSave}
+              readOnly={!allowEdit}
+              onSave={allowEdit ? handleSave : undefined}
               onBack={handleBack}
             />
           </>

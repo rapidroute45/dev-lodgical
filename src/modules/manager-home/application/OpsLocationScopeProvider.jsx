@@ -97,7 +97,8 @@ export function OpsLocationScopeProvider({ children }) {
 
   const allowedLocations = useMemo(() => {
     if (isGlobalScope) return allLocations;
-    if (assignedCities.length === 0) return allLocations;
+    // Dispatch team / onsite manager: only assigned cities (never fall back to all).
+    if (assignedCities.length === 0) return [];
     return filterLocationsByAllowedCities(allLocations, assignedCities);
   }, [allLocations, isGlobalScope, assignedCities]);
 

@@ -58,9 +58,11 @@ export function OpsElevationProvider({ children }) {
     [dispatchUnlocked]
   );
 
+  /** Route/schedule mutations — admin & DM unrestricted; OM city-gated in screens. */
   const canManageRoutes = useCallback(
     (role) => {
       if (isOnsiteManager(role)) return true;
+      if (role === UserRole.ADMIN || role === UserRole.DISPATCH_MANAGER) return true;
       return canMutateOps(role);
     },
     [canMutateOps]

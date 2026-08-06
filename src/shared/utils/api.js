@@ -41,6 +41,7 @@ applyApiEnvironment(getStoredApiEnvironment(), { clearSession: false });
 
 api.interceptors.request.use((config) => {
   config.headers[DISPATCH_DB_ENV_HEADER] = getDispatchDbEnvHeaderValue();
+  config.headers["X-Dispatch-Client"] = "web";
   const token = tokenStorage.get();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

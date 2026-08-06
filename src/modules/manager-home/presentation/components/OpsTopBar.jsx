@@ -7,6 +7,7 @@ import { useFullscreen } from "@/shared/hooks/useFullscreen.js";
 import { DatePickerPopover } from "@/modules/scheduling/presentation/components/DatePickerPopover.jsx";
 import { NotificationBellDropdown } from "@/modules/notifications/presentation/components/NotificationBellDropdown.jsx";
 import { useOpsDateScopeOptional } from "@/modules/manager-home/application/OpsDateScopeProvider.jsx";
+import { useScheduleDateBounds } from "@/modules/scheduling/presentation/hooks/useScheduleDateBounds.js";
 
 function ThemeToggle() {
   const { theme, setTheme } = useOpsTheme();
@@ -82,10 +83,12 @@ export function OpsTopBar({
   maxDate: maxDateProp,
 }) {
   const dateScope = useOpsDateScopeOptional();
+  const { maxDate: roleMaxDate } = useScheduleDateBounds();
   const date = dateProp ?? dateScope?.date ?? todayIsoDate();
   const setDate = setDateProp ?? dateScope?.setDate;
   const navDate = date ?? todayIsoDate();
-  const maxDate = maxDateProp ?? todayIsoDate();
+  // Prefer explicit prop; otherwise allow future dates for schedule creators (DM/DT/OM/unlocked admin).
+  const maxDate = maxDateProp ?? roleMaxDate;
   const isToday = navDate === todayIsoDate();
   const atMaxDate = compareIsoDates(navDate, maxDate) >= 0;
   const canChangeDate = showDate && typeof setDate === "function";

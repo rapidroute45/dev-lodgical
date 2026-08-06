@@ -9,6 +9,7 @@ export function useAssignedCityScope() {
   return {
     assignedCities,
     assignedCity,
+    listScopedCities: assignedCities,
     isCityScoped: assignedCities.length > 0,
     isCityLocked: assignedCities.length === 1,
     hasMultipleCities: assignedCities.length > 1,

@@ -7,6 +7,9 @@ import {
   MenuTrigger,
   useMenuDismiss,
 } from "@/modules/manager-home/presentation/components/opsNavShared.jsx";
+import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
+import { isAdmin } from "@/shared/utils/constants.js";
 
 const PAYROLL_ICON = (
   <svg className="h-4 w-4" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -14,25 +17,30 @@ const PAYROLL_ICON = (
   </svg>
 );
 
-const OPTIONS = [
-  {
-    key: "team",
-    label: "Team payroll",
-    hint: "Bills, route rates, and team payouts",
-    path: "/payroll",
-  },
-  {
-    key: "store",
-    label: "Store payroll",
-    hint: "Store-level payroll and billing",
-    path: "/payroll/store-payroll",
-  },
-];
+const TEAM_OPTION = {
+  key: "team",
+  label: "Team payroll",
+  hint: "Bills, route rates, and team payouts",
+  path: "/payroll",
+};
+
+const STORE_OPTION = {
+  key: "store",
+  label: "Store payroll",
+  hint: "Store-level payroll and billing",
+  path: "/payroll/store-payroll",
+};
 
 export function PayrollNavMenu({ open, onToggle, onClose }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { payrollUnlocked } = useOpsElevation();
   const rootRef = useRef(null);
   const panelRef = useRef(null);
+
+  // Store payroll is admin + payroll PIN only (matches sidebar). OM/DM use team payroll.
+  const showStorePayroll = isAdmin(user?.role) && payrollUnlocked;
+  const options = showStorePayroll ? [TEAM_OPTION, STORE_OPTION] : [TEAM_OPTION];
 
   useMenuDismiss(open, close, rootRef, panelRef);
 
@@ -58,7 +66,7 @@ export function PayrollNavMenu({ open, onToggle, onClose }) {
       >
           <div className="ops-menu__pane ops-menu__pane--full ops-menu__pane--compact">
             <div className="ops-menu__list">
-              {OPTIONS.map((opt) => (
+              {options.map((opt) => (
                 <MenuRow key={opt.key} onClick={() => go(opt.path)}>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">{opt.label}</span>

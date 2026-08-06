@@ -23,13 +23,14 @@ import { StatusBadge } from "../components/StatusBadge.jsx";
 import { ScheduleAttribution } from "../components/ScheduleAttribution.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
-import { isFullManager } from "@/shared/utils/constants.js";
+import { canCreateRoutes, isFullManager } from "@/shared/utils/constants.js";
 
 export function StoreOperationsScreen() {
   const { id: storeId } = useParams();
   const location = useLocation();
   const { user } = useAuth();
   const showDispatchTeam = isFullManager(user?.role);
+  const allowCreate = canCreateRoutes(user?.role);
   const { date, setDate } = useOpsDateScope();
   const { maxDate } = useScheduleDateBounds();
 
@@ -103,12 +104,14 @@ export function StoreOperationsScreen() {
               ) : null}
             </div>
           </div>
-          <Link
-            to={`/schedules/create?storeId=${encodeURIComponent(storeId)}`}
-            className="ops-btn ops-btn--accent shrink-0 px-5 py-2.5 font-bold"
-          >
-            + Schedule
-          </Link>
+          {allowCreate ? (
+            <Link
+              to={`/schedules/create?storeId=${encodeURIComponent(storeId)}`}
+              className="ops-btn ops-btn--accent shrink-0 px-5 py-2.5 font-bold"
+            >
+              + Schedule
+            </Link>
+          ) : null}
         </div>
 
         {storeLoading ? (

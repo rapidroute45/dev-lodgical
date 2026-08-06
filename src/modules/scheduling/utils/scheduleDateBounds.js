@@ -2,6 +2,7 @@ import {
   isAdmin,
   isDispatchManager,
   isDispatchTeam,
+  isOnsiteManager,
 } from "@/shared/utils/constants.js";
 import { addDaysToIsoDate, todayIsoDate } from "@/shared/utils/time.js";
 
@@ -19,8 +20,15 @@ export function maxScheduleBrowseDate() {
 
 /** Roles that may pick future dates when creating or browsing schedules. */
 export function canPickFutureScheduleDates(role, dispatchUnlocked = false) {
-  if (isDispatchTeam(role) || isDispatchManager(role)) return true;
-  if (isAdmin(role) && dispatchUnlocked) return true;
+  if (
+    isAdmin(role) ||
+    isDispatchTeam(role) ||
+    isDispatchManager(role) ||
+    isOnsiteManager(role)
+  ) {
+    return true;
+  }
+  void dispatchUnlocked;
   return false;
 }
 

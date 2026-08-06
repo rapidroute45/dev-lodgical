@@ -31,6 +31,16 @@ export async function updateUser(userId, body) {
   return res.data;
 }
 
+export async function uploadUserProfileDocument(userId, kind, file) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("kind", kind);
+  const res = await api.post(`/users/${userId}/profile-documents`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
 export async function deleteUser(userId) {
   const res = await api.delete(`/users/${userId}`);
   return res.data;

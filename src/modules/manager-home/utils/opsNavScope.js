@@ -68,12 +68,18 @@ export function routesQueryCityParam(allowedCities) {
 export function getOpsNavScope(user, locationScope = {}) {
   const assignedCities = getUserAssignedCities(user);
   const canUseGlobalScope = canManageLocationScope(user?.role);
-  const globalCity = canUseGlobalScope ? locationScope.city?.trim() || null : null;
-  const globalState = canUseGlobalScope ? locationScope.state?.trim() || null : null;
+  const pickerCity = locationScope.city?.trim() || null;
+  const pickerState = locationScope.state?.trim() || null;
 
   let effectiveCities = assignedCities;
-  if (globalCity) {
-    effectiveCities = [globalCity];
+  let globalState = null;
+
+  if (canUseGlobalScope) {
+    if (pickerCity) effectiveCities = [pickerCity];
+    globalState = pickerState;
+  } else if (pickerCity && cityInScope(pickerCity, assignedCities)) {
+    // City-scoped roles (DT / OM) may narrow to one of their assigned cities.
+    effectiveCities = [pickerCity];
   }
 
   const isCityScoped = effectiveCities.length > 0 || Boolean(globalState);
@@ -86,7 +92,9 @@ export function getOpsNavScope(user, locationScope = {}) {
     isCityScoped,
     isDispatchTeam,
     showPayroll,
-    routesQueryCity: globalCity ?? routesQueryCityParam(effectiveCities),
-    routesQueryState: globalState ?? undefined,
+    routesQueryCity: pickerCity && (canUseGlobalScope || cityInScope(pickerCity, assignedCities))
+      ? pickerCity
+      : routesQueryCityParam(effectiveCities),
+    routesQueryState: canUseGlobalScope ? globalState ?? undefined : undefined,
   };
 }

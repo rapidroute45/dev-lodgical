@@ -149,6 +149,53 @@
   text-align: left;
 }
 
+.route-grid-miles {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding-right: 4px;
+}
+
+.route-grid-miles .route-grid-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.route-grid-miles__btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.route-grid-miles__btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.route-grid-miles__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ops-dark .route-grid-miles__btn {
+  border-color: #334155;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.ops-dark .route-grid-miles__btn:hover:not(:disabled) {
+  background: #334155;
+  color: #f8fafc;
+}
+
 .route-grid-static {
   display: block;
   padding: 0 10px;

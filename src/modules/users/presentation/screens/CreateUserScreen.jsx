@@ -17,6 +17,13 @@ import { CityPickerModal } from "@/modules/role-assignment/presentation/componen
 import { apiErrorMessage } from "@/shared/utils/api.js";
 import { showErrorToast } from "@/shared/utils/appToast.js";
 import { useCreateUserMutation } from "@/modules/users/infrastructure/api/users.queries.js";
+import { roleUsesMultipleCities } from "@/shared/utils/assignedCities.js";
+import {
+  ExtendedProfileFields,
+  emptyExtendedProfileValues,
+  extendedProfileToPayload,
+  roleUsesExtendedProfile,
+} from "@/modules/users/presentation/components/ExtendedProfileFields.jsx";
 import {
   formatRoleLabel,
   getEditableRoles,
@@ -56,6 +63,8 @@ export function CreateUserScreen() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedCities, setSelectedCities] = useState([]);
+  const [extendedProfile, setExtendedProfile] = useState(emptyExtendedProfileValues);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [error, setError] = useState(null);
@@ -78,6 +87,7 @@ export function CreateUserScreen() {
     } else {
       setSelectedTeam(null);
       setSelectedCity(null);
+      setSelectedCities([]);
     }
   }
 
@@ -93,7 +103,10 @@ export function CreateUserScreen() {
     if (roleRequiresTeam(selectedRole) && !selectedTeam) {
       return "Select a team for this role.";
     }
-    if (roleRequiresCity(selectedRole) && !selectedCity?.trim()) {
+    if (roleRequiresCity(selectedRole) && roleUsesMultipleCities(selectedRole) && selectedCities.length === 0) {
+      return "Assign at least one city for this role.";
+    }
+    if (roleRequiresCity(selectedRole) && !roleUsesMultipleCities(selectedRole) && !selectedCity?.trim()) {
       return "Assign a city for this role.";
     }
     return null;
@@ -110,7 +123,8 @@ export function CreateUserScreen() {
     }
 
     try {
-      const result = await createMutation.mutateAsync({
+      const needsCity = roleRequiresCity(selectedRole);
+      const payload = {
         email: email.trim(),
         password,
         fullName: fullName.trim(),
@@ -118,10 +132,17 @@ export function CreateUserScreen() {
         role: selectedRole,
         status: UserStatus.ACTIVE,
         teamId: roleRequiresTeam(selectedRole) ? selectedTeam?.id : undefined,
-        assignedCity: roleRequiresCity(selectedRole)
-          ? selectedCity?.trim()
-          : undefined,
-      });
+        assignedCity:
+          needsCity && !roleUsesMultipleCities(selectedRole)
+            ? selectedCity?.trim()
+            : null,
+        assignedCities:
+          needsCity && roleUsesMultipleCities(selectedRole) ? selectedCities : null,
+      };
+      if (roleUsesExtendedProfile(selectedRole)) {
+        Object.assign(payload, extendedProfileToPayload(extendedProfile));
+      }
+      const result = await createMutation.mutateAsync(payload);
       const createdId = result?.data?.id;
       navigate(createdId ? `/users/${createdId}` : "/users", {
         replace: true,
@@ -248,17 +269,52 @@ export function CreateUserScreen() {
 
             {selectedRole && roleRequiresCity(selectedRole) ? (
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>Assigned city</label>
-                <button
-                  type="button"
-                  onClick={() => setCityModalOpen(true)}
-                  className="ops-field flex w-full items-center justify-between text-left text-sm font-semibold"
-                  style={{ color: "var(--text)" }}
-                >
-                  {selectedCity?.trim() || "Select city"}
-                  <span style={{ color: "var(--accent)" }}>→</span>
-                </button>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-dim)" }}>
+                  {roleUsesMultipleCities(selectedRole) ? "Assigned cities" : "Assigned city"}
+                </label>
+                {roleUsesMultipleCities(selectedRole) ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCities.length ? (
+                        selectedCities.map((city) => (
+                          <span key={city} className="ops-chip ops-chip--active">
+                            {city}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm" style={{ color: "var(--text-muted)" }}>No cities assigned</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCityModalOpen(true)}
+                      className="ops-field flex w-full items-center justify-between text-left text-sm font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      Manage cities
+                      <span style={{ color: "var(--accent)" }}>→</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCityModalOpen(true)}
+                    className="ops-field flex w-full items-center justify-between text-left text-sm font-semibold"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {selectedCity?.trim() || "Select city"}
+                    <span style={{ color: "var(--accent)" }}>→</span>
+                  </button>
+                )}
               </div>
+            ) : null}
+
+            {selectedRole && roleUsesExtendedProfile(selectedRole) ? (
+              <ExtendedProfileFields
+                values={extendedProfile}
+                onChange={setExtendedProfile}
+                disabled={createMutation.isPending}
+              />
             ) : null}
 
             {adminRoleCards.length > 0 ? (
@@ -329,7 +385,10 @@ export function CreateUserScreen() {
       <CityPickerModal
         open={cityModalOpen}
         selectedCity={selectedCity}
+        selectedCities={selectedCities}
+        multi={roleUsesMultipleCities(selectedRole)}
         onSelect={setSelectedCity}
+        onSelectMany={setSelectedCities}
         onClose={() => setCityModalOpen(false)}
         enforceDispatchTeamUniqueness={selectedRole === UserRole.DISPATCH_TEAM}
       />

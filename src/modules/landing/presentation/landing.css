@@ -409,10 +409,11 @@
 }
 
 .auth-dark__brand-logo {
-  height: 3.5rem;
-  width: 3.5rem;
-  border-radius: 0.85rem;
-  object-fit: cover;
+  height: 5.5rem;
+  width: 5.5rem;
+  max-width: min(5.5rem, 42vw);
+  border-radius: 1rem;
+  object-fit: contain;
   box-shadow: 0 0 24px rgba(34, 211, 238, 0.25);
 }
 

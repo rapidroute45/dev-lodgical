@@ -341,7 +341,7 @@ function DashboardLayoutShell({ children, topBar }) {
             <img
               src={theme === "light" ? "/logo-light.png" : "/logo-dark.png"}
               alt="GBeyes"
-              className="ops-sidebar__logo h-10 w-10 rounded-xl object-cover"
+              className="ops-sidebar__logo h-14 w-14 rounded-xl object-contain"
             />
             <div>
               <p className="ops-sidebar__brand text-sm">GBeyes</p>
