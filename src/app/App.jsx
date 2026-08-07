@@ -58,6 +58,7 @@ import { ProfileScreen } from "@/modules/auth/presentation/screens/ProfileScreen
 import { PayrollRouteDetailScreen } from "@/modules/payroll/presentation/screens/PayrollRouteDetailScreen.jsx";
 import { DispatchTeamListScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamListScreen.jsx";
 import { DriverTeamsListScreen } from "@/modules/manager-home/presentation/screens/DriverTeamsListScreen.jsx";
+import { DriverTeamDetailScreen } from "@/modules/manager-home/presentation/screens/DriverTeamDetailScreen.jsx";
 import { DriverProfileScreen } from "@/modules/manager-home/presentation/screens/DriverProfileScreen.jsx";
 import { DispatchTeamMemberScreen } from "@/modules/dispatch-team/presentation/screens/DispatchTeamMemberScreen.jsx";
 import { LiveTrackingScreen } from "@/modules/tracking/presentation/screens/LiveTrackingScreen.jsx";
@@ -410,6 +411,16 @@ export default function App() {
                 <ProtectedRoute>
                   <ManagerOnlyRoute>
                     <DriverTeamsListScreen />
+                  </ManagerOnlyRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver-teams/:teamId"
+              element={
+                <ProtectedRoute>
+                  <ManagerOnlyRoute>
+                    <DriverTeamDetailScreen />
                   </ManagerOnlyRoute>
                 </ProtectedRoute>
               }

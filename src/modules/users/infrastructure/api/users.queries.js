@@ -8,6 +8,8 @@ export const usersKeys = {
   pending: ["users", "pending"],
   detail: (userId) => ["users", userId],
   teams: ["teams"],
+  teamsList: (scope) => ["teams", "list", scope?.city ?? "", scope?.state ?? ""],
+  teamDetail: (teamId) => ["teams", "detail", teamId],
   cities: ["cities"],
   rolesRequiringTeam: ["users", "roles-requiring-team"],
   rolesRequiringCity: ["users", "roles-requiring-city"],
@@ -80,10 +82,19 @@ export function useDeleteUserMutation() {
 }
 
 export function useTeamsQuery(enabled = true) {
+  const scopeParams = useLocationQueryParams();
   return useQuery({
-    queryKey: usersKeys.teams,
-    queryFn: usersApi.fetchTeams,
+    queryKey: usersKeys.teamsList(scopeParams),
+    queryFn: () => usersApi.fetchTeams(scopeParams),
     enabled,
+  });
+}
+
+export function useTeamDetailQuery(teamId, enabled = true) {
+  return useQuery({
+    queryKey: usersKeys.teamDetail(teamId),
+    queryFn: () => usersApi.fetchTeamDetail(teamId),
+    enabled: Boolean(teamId) && enabled,
   });
 }
 
@@ -93,6 +104,20 @@ export function useCreateTeamMutation() {
     mutationFn: usersApi.createTeam,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: usersKeys.teams });
+      void qc.invalidateQueries({ queryKey: ["dashboard", "team-performance"] });
+      invalidateUsers(qc);
+    },
+  });
+}
+
+export function useUpdateTeamMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, body }) => usersApi.updateTeam(teamId, body),
+    onSuccess: (_data, variables) => {
+      void qc.invalidateQueries({ queryKey: usersKeys.teams });
+      void qc.invalidateQueries({ queryKey: usersKeys.teamDetail(variables.teamId) });
+      void qc.invalidateQueries({ queryKey: ["dashboard", "team-performance"] });
       invalidateUsers(qc);
     },
   });

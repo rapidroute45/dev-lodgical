@@ -61,12 +61,37 @@ export async function fetchCities() {
   return res.data.data?.cities ?? [];
 }
 
-export async function fetchTeams() {
-  const res = await api.get("/teams");
+export async function fetchTeams(params = {}) {
+  const res = await api.get("/teams", {
+    params: {
+      ...(params.city?.trim?.() ? { city: params.city.trim() } : {}),
+      ...(params.state?.trim?.() ? { state: params.state.trim() } : {}),
+    },
+  });
   return res.data.data ?? [];
 }
 
-export async function createTeam(name) {
-  const res = await api.post("/teams", { name });
+export async function fetchTeamDetail(teamId) {
+  const res = await api.get(`/teams/${teamId}`);
   return res.data.data;
+}
+
+/** @param {string|{name:string,city?:string|null}} input */
+export async function createTeam(input) {
+  const body =
+    typeof input === "string"
+      ? { name: input }
+      : { name: input.name, city: input.city ?? null };
+  const res = await api.post("/teams", body);
+  return res.data.data;
+}
+
+export async function updateTeam(teamId, body) {
+  const res = await api.patch(`/teams/${teamId}`, body);
+  return res.data.data;
+}
+
+export async function deleteTeam(teamId) {
+  const res = await api.delete(`/teams/${teamId}`);
+  return res.data;
 }

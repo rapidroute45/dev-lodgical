@@ -48,7 +48,13 @@ export async function fetchDispatchPerformance({ days = 7 } = {}) {
 }
 
 /** GET /dashboard/team-performance */
-export async function fetchTeamPerformance({ days = 7 } = {}) {
-  const res = await api.get("/dashboard/team-performance", { params: { days } });
+export async function fetchTeamPerformance({ days = 7, city, state } = {}) {
+  const res = await api.get("/dashboard/team-performance", {
+    params: {
+      days,
+      ...(city?.trim?.() ? { city: city.trim() } : {}),
+      ...(state?.trim?.() ? { state: state.trim() } : {}),
+    },
+  });
   return res.data.data;
 }

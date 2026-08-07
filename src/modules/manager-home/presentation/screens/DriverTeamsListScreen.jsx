@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -6,6 +7,8 @@ import { useTeamPerformanceQuery } from "@/modules/manager-home/infrastructure/a
 import { PerformanceSummaryStrip } from "@/modules/manager-home/presentation/components/PerformanceSummaryStrip.jsx";
 import { PerformanceMetricsRow } from "@/modules/manager-home/presentation/components/PerformanceMetricsRow.jsx";
 import { PerformanceBadge } from "@/modules/manager-home/presentation/components/PerformanceBadge.jsx";
+import { ScopedEmptyHint } from "@/modules/manager-home/presentation/components/ScopedEmptyHint.jsx";
+import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 function mapTeamPerformers(teams) {
   return (teams ?? []).map((team) => ({
@@ -15,6 +18,8 @@ function mapTeamPerformers(teams) {
 }
 
 export function DriverTeamsListScreen() {
+  const navigate = useNavigate();
+  const { isScoped, scopeLabel } = useOpsLocationScope();
   const {
     data: performanceData,
     isLoading,
@@ -53,7 +58,9 @@ export function DriverTeamsListScreen() {
               Driver teams
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              All driver teams and their route performance
+              {isScoped
+                ? `Teams in ${scopeLabel}. Tap a team to edit city, lead, and drivers.`
+                : "All driver teams and their route performance. Tap a team to edit city, lead, and drivers."}
             </p>
           </div>
         </div>
@@ -82,8 +89,11 @@ export function DriverTeamsListScreen() {
             </div>
             <p className="text-lg font-bold" style={{ color: "var(--text)" }}>No driver teams</p>
             <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--text-muted)" }}>
-              Create teams and assign drivers to see performance here.
+              {isScoped
+                ? `No teams assigned to ${scopeLabel}.`
+                : "Create teams and assign drivers to see performance here."}
             </p>
+            <ScopedEmptyHint show />
           </div>
         ) : (
           <div className="space-y-3">
@@ -92,9 +102,11 @@ export function DriverTeamsListScreen() {
               const initial = (team.teamName || team.teamCode || "?").charAt(0).toUpperCase();
 
               return (
-                <div
+                <button
                   key={team.teamId}
-                  className="ops-card ops-fade flex flex-wrap items-center gap-4 p-4"
+                  type="button"
+                  onClick={() => navigate(`/driver-teams/${team.teamId}`)}
+                  className="ops-card ops-fade flex w-full flex-wrap items-center gap-4 p-4 text-left transition hover:opacity-95"
                 >
                   <span className="ops-avatar flex h-12 w-12 shrink-0 items-center justify-center text-lg">
                     {initial}
@@ -105,8 +117,14 @@ export function DriverTeamsListScreen() {
                     </p>
                     <p className="truncate text-sm" style={{ color: "var(--text-muted)" }}>
                       {team.teamCode}
+                      {team.teamCity ? ` · ${team.teamCity}` : ""}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      {team.teamCity ? (
+                        <span className="ops-badge">{team.teamCity}</span>
+                      ) : (
+                        <span className="ops-badge ops-badge--pending">No city</span>
+                      )}
                       {team.teamLeadName ? (
                         <span className="ops-badge ops-badge--pending">Lead: {team.teamLeadName}</span>
                       ) : (
@@ -129,8 +147,11 @@ export function DriverTeamsListScreen() {
                         No recent routes
                       </span>
                     )}
+                    <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                      Edit →
+                    </span>
                   </div>
-                </div>
+                </button>
               );
             })}
             {isFetching && !isLoading ? (

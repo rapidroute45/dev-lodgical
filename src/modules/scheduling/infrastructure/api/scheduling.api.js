@@ -119,8 +119,13 @@ export async function fetchRoutesSearch(params) {
   };
 }
 
-export async function fetchTeams() {
-  const res = await api.get("/teams");
+export async function fetchTeams(params = {}) {
+  const res = await api.get("/teams", {
+    params: {
+      ...(params.city?.trim?.() ? { city: params.city.trim() } : {}),
+      ...(params.state?.trim?.() ? { state: params.state.trim() } : {}),
+    },
+  });
   return res.data.data ?? [];
 }
 

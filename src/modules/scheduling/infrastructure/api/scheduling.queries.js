@@ -54,9 +54,10 @@ export function useStoreQuery(id, enabled = true) {
 }
 
 export function useTeamsQuery(enabled = true) {
+  const scopeParams = useLocationQueryParams();
   return useQuery({
-    queryKey: ["teams"],
-    queryFn: fetchTeams,
+    queryKey: ["teams", "list", scopeParams.city ?? "", scopeParams.state ?? ""],
+    queryFn: () => fetchTeams(scopeParams),
     enabled,
   });
 }

@@ -4,6 +4,7 @@ import { useOpsTheme } from "@/modules/manager-home/presentation/context/OpsThem
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { useOpsElevation } from "@/modules/auth/presentation/context/OpsElevationContext.jsx";
 import { OpsPinModal } from "@/modules/auth/presentation/components/OpsPinModal.jsx";
+import { CityPickerModal } from "@/modules/role-assignment/presentation/components/CityPickerModal.jsx";
 import {
   useCreateTeamMutation,
   useTeamsQuery,
@@ -27,10 +28,12 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
   const { user } = useAuth();
   const { dispatchUnlocked, verifyPin } = useOpsElevation();
   const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamCity, setNewTeamCity] = useState("");
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createError, setCreateError] = useState(null);
   const [pinOpen, setPinOpen] = useState(false);
-  const [pendingCreateName, setPendingCreateName] = useState(null);
+  const [pendingCreate, setPendingCreate] = useState(null);
 
   const { data: teams = [], isLoading, isError, refetch } = useTeamsQuery(open);
   const createTeam = useCreateTeamMutation();
@@ -44,12 +47,16 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
     ? "Choose a team for this driver, or create one."
     : "Select a team for this role. Create one if none exist.";
 
-  async function runCreate(name) {
-    const team = await createTeam.mutateAsync(name);
+  async function runCreate(name, city) {
+    const team = await createTeam.mutateAsync({
+      name,
+      city: city?.trim() || null,
+    });
     setNewTeamName("");
+    setNewTeamCity("");
     setShowCreate(false);
     setCreateError(null);
-    setPendingCreateName(null);
+    setPendingCreate(null);
     onSelect(team);
     onClose();
   }
@@ -62,7 +69,7 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
     }
     if (!allowCreateTeam) {
       if (adminNeedsDispatchElevation(user?.role) && !dispatchUnlocked) {
-        setPendingCreateName(name);
+        setPendingCreate({ name, city: newTeamCity });
         setPinOpen(true);
         return;
       }
@@ -71,10 +78,10 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
     }
     setCreateError(null);
     try {
-      await runCreate(name);
+      await runCreate(name, newTeamCity);
     } catch (err) {
       if (isElevationRequiredError(err)) {
-        setPendingCreateName(name);
+        setPendingCreate({ name, city: newTeamCity });
         setPinOpen(true);
         return;
       }
@@ -91,7 +98,7 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
     setCreateError(null);
     if (adminNeedsDispatchElevation(user?.role) && !dispatchUnlocked) {
       setPinOpen(true);
-      setPendingCreateName("");
+      setPendingCreate({ name: "", city: "" });
       return;
     }
     if (!canManageTeams(user?.role, dispatchUnlocked)) {
@@ -104,19 +111,20 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
   async function handlePinVerified(scope, pin) {
     await verifyPin(scope, pin);
     setPinOpen(false);
-    if (pendingCreateName === "") {
+    if (pendingCreate?.name === "") {
       setShowCreate(true);
-      setPendingCreateName(null);
+      setPendingCreate(null);
       return;
     }
-    if (pendingCreateName) {
-      const name = pendingCreateName;
-      setPendingCreateName(null);
+    if (pendingCreate?.name) {
+      const { name, city } = pendingCreate;
+      setPendingCreate(null);
       try {
-        await runCreate(name);
+        await runCreate(name, city);
       } catch (err) {
         setShowCreate(true);
         setNewTeamName(name);
+        setNewTeamCity(city || "");
         setCreateError(
           err?.response?.data?.message ||
             err?.response?.data?.error ||
@@ -130,9 +138,11 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
   function handleClose() {
     setShowCreate(false);
     setNewTeamName("");
+    setNewTeamCity("");
     setCreateError(null);
-    setPendingCreateName(null);
+    setPendingCreate(null);
     setPinOpen(false);
+    setCityPickerOpen(false);
     onClose();
   }
 
@@ -185,6 +195,7 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
                   const leadLabel = team.teamLeadName
                     ? `Team lead: ${team.teamLeadName}`
                     : "No team lead assigned";
+                  const cityLabel = team.city ? `City: ${team.city}` : "No city assigned";
                   return (
                     <li key={team.id}>
                       <button
@@ -198,7 +209,8 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
                         <span className="min-w-0 flex-1 text-left">
                           <span className="block truncate font-semibold" style={{ color: "var(--text)" }}>{team.name}</span>
                           <span className="mt-0.5 block truncate text-xs font-medium" style={{ color: "var(--accent)" }}>{team.code}</span>
-                          <span className="mt-1 block truncate text-xs" style={{ color: "var(--text-muted)" }}>{leadLabel}</span>
+                          <span className="mt-1 block truncate text-xs" style={{ color: "var(--text-muted)" }}>{cityLabel}</span>
+                          <span className="mt-0.5 block truncate text-xs" style={{ color: "var(--text-muted)" }}>{leadLabel}</span>
                         </span>
                         {selected ? (
                           <svg className="h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -229,12 +241,35 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
                 }}
                 autoFocus
               />
+              <button
+                type="button"
+                onClick={() => setCityPickerOpen(true)}
+                className="ops-field mt-2 flex w-full items-center justify-between px-3 py-2.5 text-left text-sm"
+              >
+                <span style={{ color: newTeamCity ? "var(--text)" : "var(--text-muted)" }}>
+                  {newTeamCity || "Assign city (optional)"}
+                </span>
+                <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                  {newTeamCity ? "Change" : "Pick"}
+                </span>
+              </button>
+              {newTeamCity ? (
+                <button
+                  type="button"
+                  onClick={() => setNewTeamCity("")}
+                  className="mt-1 text-xs font-semibold"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Clear city
+                </button>
+              ) : null}
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreate(false);
                     setNewTeamName("");
+                    setNewTeamCity("");
                     setCreateError(null);
                   }}
                   className="ops-btn flex-1 px-3 py-2.5 text-sm font-semibold"
@@ -278,12 +313,23 @@ export function TeamPickerModal({ open, selectedTeamId, onSelect, onClose, forDr
         </div>
       </div>
 
+      <CityPickerModal
+        open={cityPickerOpen}
+        selectedCity={newTeamCity || null}
+        enforceDispatchTeamUniqueness={false}
+        onSelect={(city) => {
+          setNewTeamCity(city);
+          setCityPickerOpen(false);
+        }}
+        onClose={() => setCityPickerOpen(false)}
+      />
+
       <OpsPinModal
         open={pinOpen}
         scope="dispatch"
         onClose={() => {
           setPinOpen(false);
-          setPendingCreateName(null);
+          setPendingCreate(null);
         }}
         onVerified={handlePinVerified}
       />

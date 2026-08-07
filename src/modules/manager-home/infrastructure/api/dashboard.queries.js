@@ -29,7 +29,13 @@ export const dashboardKeys = {
   ],
   driverPerformance: (days) => ["dashboard", "driver-performance", days ?? 7],
   dispatchPerformance: (days) => ["dashboard", "dispatch-performance", days ?? 7],
-  teamPerformance: (days) => ["dashboard", "team-performance", days ?? 7],
+  teamPerformance: (days, scope) => [
+    "dashboard",
+    "team-performance",
+    days ?? 7,
+    scope?.city ?? "",
+    scope?.state ?? "",
+  ],
 };
 
 export function useDashboardStatsQuery(date, enabled = true) {
@@ -75,9 +81,10 @@ export function useDispatchPerformanceQuery(days = 7, enabled = true) {
 }
 
 export function useTeamPerformanceQuery(days = 7, enabled = true) {
+  const scopeParams = useLocationQueryParams();
   return useQuery({
-    queryKey: dashboardKeys.teamPerformance(days),
-    queryFn: () => fetchTeamPerformance({ days }),
+    queryKey: dashboardKeys.teamPerformance(days, scopeParams),
+    queryFn: () => fetchTeamPerformance({ days, ...scopeParams }),
     enabled,
   });
 }
