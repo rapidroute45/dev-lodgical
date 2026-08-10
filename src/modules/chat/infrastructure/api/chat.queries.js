@@ -1,6 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createConversation,
   createGroup,
@@ -20,12 +19,6 @@ import {
   sendVoiceMessage,
   updateGroup,
 } from "./chat.api.js";
-import {
-  filterConversationsByScope,
-  filterPeopleByScope,
-  useScopedUserIdSet,
-} from "@/modules/chat/utils/chatLocationScope.js";
-import { useOpsLocationScope } from "@/modules/manager-home/application/OpsLocationScopeProvider.jsx";
 
 export const chatKeys = {
   all: ["chat"],
@@ -37,58 +30,42 @@ export const chatKeys = {
 };
 
 export function useConversationsQuery(enabled = true) {
-  const { user } = useAuth();
-  const { isScoped, city, state } = useOpsLocationScope();
-  const scopedIds = useScopedUserIdSet();
-  const query = useQuery({
-    queryKey: [...chatKeys.conversations(), city ?? "", state ?? ""],
+  return useQuery({
+    queryKey: chatKeys.conversations(),
     queryFn: fetchConversations,
     enabled,
   });
+}
+
+export function useChatMessagesQuery(conversationId, enabled = true) {
+  const query = useQuery({
+    queryKey: chatKeys.messages(conversationId),
+    queryFn: () => fetchMessages(conversationId),
+    enabled: enabled && Boolean(conversationId),
+    // Socket-driven updates; refetch on focus / invalidation only.
+    staleTime: 30_000,
+  });
   const data = useMemo(
-    () => (isScoped ? filterConversationsByScope(query.data ?? [], scopedIds, user?.id) : query.data ?? []),
-    [query.data, scopedIds, user?.id, isScoped]
+    () => (query.data ?? []).filter((m) => m.type !== "delivery_photo"),
+    [query.data]
   );
   return { ...query, data };
 }
 
-export function useChatMessagesQuery(conversationId, enabled = true) {
-  return useQuery({
-    queryKey: chatKeys.messages(conversationId),
-    queryFn: () => fetchMessages(conversationId),
-    enabled: enabled && Boolean(conversationId),
-    refetchInterval: 5000,
-  });
-}
-
 export function useChatDriversQuery(enabled = true) {
-  const { user } = useAuth();
-  const scopedIds = useScopedUserIdSet();
-  const query = useQuery({
+  return useQuery({
     queryKey: chatKeys.drivers(),
     queryFn: fetchChatDrivers,
     enabled,
   });
-  const data = useMemo(
-    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
-    [query.data, scopedIds, user?.id]
-  );
-  return { ...query, data };
 }
 
 export function useChatOpsPeersQuery(enabled = true) {
-  const { user } = useAuth();
-  const scopedIds = useScopedUserIdSet();
-  const query = useQuery({
+  return useQuery({
     queryKey: chatKeys.opsPeers(),
     queryFn: fetchChatOpsPeers,
     enabled,
   });
-  const data = useMemo(
-    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
-    [query.data, scopedIds, user?.id]
-  );
-  return { ...query, data };
 }
 
 export function useCreateConversationMutation() {
@@ -123,7 +100,8 @@ function mergeSentMessage(qc, message) {
 export function useSendChatMessageMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ conversationId, body }) => sendChatMessage(conversationId, body),
+    mutationFn: ({ conversationId, body, sendLater, delayHours }) =>
+      sendChatMessage(conversationId, body, { sendLater, delayHours }),
     onSuccess: (message) => mergeSentMessage(qc, message),
   });
 }
@@ -146,18 +124,11 @@ export function useSendDocumentMutation() {
 }
 
 export function useGroupCandidatesQuery(enabled = true) {
-  const { user } = useAuth();
-  const scopedIds = useScopedUserIdSet();
-  const query = useQuery({
+  return useQuery({
     queryKey: chatKeys.groupCandidates(),
     queryFn: fetchGroupCandidates,
     enabled,
   });
-  const data = useMemo(
-    () => filterPeopleByScope(query.data ?? [], scopedIds, user?.id),
-    [query.data, scopedIds, user?.id]
-  );
-  return { ...query, data };
 }
 
 export function useCreateGroupMutation() {

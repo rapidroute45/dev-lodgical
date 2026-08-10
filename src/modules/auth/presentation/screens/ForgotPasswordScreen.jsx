@@ -4,19 +4,19 @@ import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/modules/auth/presentation/components/AuthLayout.jsx";
 import { TextField, PasswordField } from "@/modules/auth/presentation/components/TextField.jsx";
 import { Button } from "@/modules/auth/presentation/components/Button.jsx";
-import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
+// import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
 import {
   requestForgotPasswordOtpRequest,
   verifyForgotPasswordOtpRequest,
 } from "@/modules/auth/infrastructure/api/auth.api.js";
 import { apiErrorMessage } from "@/shared/utils/api.js";
-import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
+// import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 import { showErrorToast, showSuccessToast } from "@/shared/utils/appToast.js";
 
 export function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
+  // const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
   const [step, setStep] = useState("email");
   const [pendingEmail, setPendingEmail] = useState("");
   const [form, setForm] = useState({
@@ -127,11 +127,12 @@ export function ForgotPasswordScreen() {
 
       {step === "email" ? (
         <form onSubmit={onRequestOtp} className="space-y-4" noValidate>
-          <ApiEnvironmentSelect
+          {/* Database picker disabled — always uses production. */}
+          {/* <ApiEnvironmentSelect
             value={apiEnvironment}
             onChange={setApiEnvironment}
             tone="dark"
-          />
+          /> */}
 
           <TextField
             tone="dark"

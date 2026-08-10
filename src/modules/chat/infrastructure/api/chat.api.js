@@ -30,8 +30,15 @@ export async function fetchMessages(conversationId) {
   return res.data.data ?? [];
 }
 
-export async function sendChatMessage(conversationId, body) {
-  const res = await api.post(`/chat/conversations/${conversationId}/messages`, { body });
+export async function sendChatMessage(conversationId, body, options = {}) {
+  const payload = {
+    body,
+    sendLater: Boolean(options.sendLater),
+  };
+  if (options.sendLater && options.delayHours != null) {
+    payload.delayHours = options.delayHours;
+  }
+  const res = await api.post(`/chat/conversations/${conversationId}/messages`, payload);
   return res.data.data;
 }
 

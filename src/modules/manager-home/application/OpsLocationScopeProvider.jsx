@@ -19,6 +19,7 @@ import {
   locationKey,
 } from "@/modules/scheduling/utils/storeLocations.js";
 import { useLocationsQuery } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
+import { invalidateOpsScopedQueries } from "@/modules/manager-home/utils/invalidateOpsQueries.js";
 
 const STORAGE_KEY = "ops_location_scope";
 
@@ -145,7 +146,7 @@ export function OpsLocationScopeProvider({ children }) {
   }, [canPickScope, user?.id, locationsPayload, allowedLocations, isLocked]);
 
   const invalidateScopeQueries = useCallback(() => {
-    queryClient.invalidateQueries();
+    invalidateOpsScopedQueries(queryClient);
   }, [queryClient]);
 
   const setState = useCallback(

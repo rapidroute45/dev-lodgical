@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
-import { ScopedEmptyHint } from "@/modules/manager-home/presentation/components/ScopedEmptyHint.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { OPS_ROLES } from "@/shared/utils/constants.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
@@ -77,7 +76,6 @@ export function ChatListScreen() {
                 ? "Start a chat using the compose button above."
                 : "Your conversations will appear here."}
             </p>
-            <ScopedEmptyHint show={!isLoading} />
             {isOps ? (
               <Link to="/chat/new" className="ops-btn ops-btn--accent mt-6 inline-flex px-6 py-2.5 font-bold">
                 Start a conversation

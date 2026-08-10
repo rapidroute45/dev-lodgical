@@ -102,7 +102,15 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
   const rootRef = useRef(null);
   const panelRef = useRef(null);
   const { user } = useAuth();
-  const { assignedCities, isDispatchTeam, routesQueryCity, routesQueryState, globalState } = useOpsNavScope();
+  const {
+    assignedCities,
+    isDispatchTeam,
+    requireAssigned,
+    routesQueryCity,
+    routesQueryState,
+    globalState,
+  } = useOpsNavScope();
+  const scopeOpts = requireAssigned ? { requireAssigned: true } : {};
 
   const [category, setCategory] = useState("driver");
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -144,8 +152,9 @@ export function UserNavMenu({ date, open, onToggle, onClose }) {
   const allUsers = usersQuery.data ?? [];
   const chatDrivers = chatDriversQuery.data ?? [];
   const scopedRoutes = useMemo(
-    () => filterRoutesByScope(routesQuery.data?.items ?? [], assignedCities, globalState),
-    [routesQuery.data, assignedCities, globalState]
+    () =>
+      filterRoutesByScope(routesQuery.data?.items ?? [], assignedCities, globalState, scopeOpts),
+    [routesQuery.data, assignedCities, globalState, scopeOpts]
   );
   const viewerRoutes = useMemo(
     () => filterRoutesForNavViewer(scopedRoutes, user),

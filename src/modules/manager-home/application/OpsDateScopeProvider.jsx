@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { todayIsoDate } from "@/shared/utils/time.js";
+import { invalidateOpsScopedQueries } from "@/modules/manager-home/utils/invalidateOpsQueries.js";
 
 const STORAGE_KEY = "ops_selected_date";
 
@@ -58,7 +59,7 @@ export function OpsDateScopeProvider({ children }) {
       skipInvalidateRef.current = false;
       return;
     }
-    queryClient.invalidateQueries();
+    invalidateOpsScopedQueries(queryClient);
   }, [date, hydrated, queryClient]);
 
   const setDate = useCallback((nextOrFn) => {

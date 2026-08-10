@@ -5,6 +5,10 @@ import {
 } from "@/shared/utils/apiEnvironment.js";
 import { applyApiEnvironment } from "@/shared/utils/api.js";
 
+/**
+ * Database Test/Prod picker — currently unused (prod is forced in apiEnvironment).
+ * Re-enable by uncommenting usages on Login / Register / ForgotPassword screens.
+ */
 export function ApiEnvironmentSelect({ value, onChange, tone = "dark" }) {
   const { t } = useTranslation();
   const isDark = tone === "dark";

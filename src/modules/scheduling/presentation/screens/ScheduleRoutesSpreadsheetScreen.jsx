@@ -78,7 +78,8 @@ export function ScheduleRoutesSpreadsheetScreen() {
   }, [siblingList, scheduleId]);
 
   const groupQueries = useScheduleGroupQuery(siblingIds, siblingIds.length > 0, {
-    refetchInterval: 10_000,
+    // Refetch on focus / mutation invalidation — avoid 10s polling.
+    staleTime: 30_000,
   });
 
   const mergedSchedule = useMemo(() => {

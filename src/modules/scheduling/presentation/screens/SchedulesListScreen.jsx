@@ -15,11 +15,19 @@ import { ScheduleCard } from "../components/ScheduleCard.jsx";
 import { groupSchedulesByStore } from "@/modules/scheduling/utils/groupSchedulesByStore.js";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsNavScope } from "@/modules/manager-home/presentation/hooks/useOpsNavScope.js";
+import { cityInScope } from "@/modules/manager-home/utils/opsNavScope.js";
 import { canCreateRoutes, isFullManager } from "@/shared/utils/constants.js";
 import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 
 export function SchedulesListScreen() {
   const { user } = useAuth();
+  const {
+    assignedCities,
+    requireAssigned,
+    routesQueryCity,
+    routesQueryState,
+  } = useOpsNavScope();
   const { maxDate } = useScheduleDateBounds();
   const allowCreate = canCreateRoutes(user?.role);
   const showDispatchTeam = isFullManager(user?.role);
@@ -50,15 +58,23 @@ export function SchedulesListScreen() {
   const listFilters = useMemo(
     () => ({
       date,
+      city: routesQueryCity,
+      state: routesQueryState,
       storeId: selectedStore?.id,
       status: statusFilter,
     }),
-    [date, selectedStore, statusFilter]
+    [date, routesQueryCity, routesQueryState, selectedStore, statusFilter]
   );
 
   const { data, isLoading, refetch, isFetching } = useSchedulesQuery(listFilters);
-  const schedules = data?.items ?? [];
-  const total = data?.total ?? 0;
+  const schedules = useMemo(() => {
+    const items = data?.items ?? [];
+    if (!requireAssigned) return items;
+    return items.filter((schedule) =>
+      cityInScope(schedule?.city, assignedCities, { requireAssigned: true })
+    );
+  }, [data?.items, assignedCities, requireAssigned]);
+  const total = schedules.length;
 
   const groupedSchedules = useMemo(
     () => groupSchedulesByStore(schedules),

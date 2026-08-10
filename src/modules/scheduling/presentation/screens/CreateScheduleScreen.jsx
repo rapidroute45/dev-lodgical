@@ -257,19 +257,21 @@ export function CreateScheduleScreen() {
     setSaving(true);
     try {
       const sid = await ensureSchedule(status);
-      let savedCount = 0;
+      const newRows = rows.filter((row) => row.isNew !== false);
 
-      for (const row of rows) {
-        if (row.isNew === false) continue;
-        const draft = spreadsheetRowToDraft(row, selectedStore);
-        const team = teams.find((t) => t.id === row.teamId);
-        if (team) draft.teamName = team.name;
-        await createRoute.mutateAsync({
-          scheduleId: sid,
-          ...draftRoutePayload(draft),
-        });
-        savedCount += 1;
-      }
+      await Promise.all(
+        newRows.map((row) => {
+          const draft = spreadsheetRowToDraft(row, selectedStore);
+          const team = teams.find((t) => t.id === row.teamId);
+          if (team) draft.teamName = team.name;
+          return createRoute.mutateAsync({
+            scheduleId: sid,
+            ...draftRoutePayload(draft),
+          });
+        })
+      );
+
+      const savedCount = newRows.length;
 
       if (savedCount === 0 && rows.some((row) => row.isNew !== false)) {
         throw new Error("No routes could be saved.");

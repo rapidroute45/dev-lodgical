@@ -16,6 +16,8 @@ import { ScheduleAttribution } from "../components/ScheduleAttribution.jsx";
 import { PAGE_CONTENT } from "@/shared/layout/pageLayout.js";
 import { useScheduleDateBounds } from "../hooks/useScheduleDateBounds.js";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
+import { useOpsNavScope } from "@/modules/manager-home/presentation/hooks/useOpsNavScope.js";
+import { filterRoutesByScope } from "@/modules/manager-home/utils/opsNavScope.js";
 import { isFullManager } from "@/shared/utils/constants.js";
 
 function groupRoutesByStore(routes) {
@@ -62,6 +64,13 @@ export function RoutesListScreen() {
   const { date } = useOpsDateScope();
   const { user } = useAuth();
   const showDispatchTeam = isFullManager(user?.role);
+  const {
+    assignedCities,
+    globalState,
+    requireAssigned,
+    routesQueryCity,
+    routesQueryState,
+  } = useOpsNavScope();
   const { maxDate } = useScheduleDateBounds();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStore, setSelectedStore] = useState(null);
@@ -76,18 +85,26 @@ export function RoutesListScreen() {
   const listFilters = useMemo(
     () => ({
       date,
+      city: routesQueryCity,
+      state: routesQueryState,
       storeId: selectedStore?.id,
       status: statusFilter === "all" ? undefined : statusFilter,
       page: 1,
       limit: 100,
     }),
-    [date, selectedStore, statusFilter]
+    [date, routesQueryCity, routesQueryState, selectedStore, statusFilter]
   );
 
   const { data, isLoading, refetch, isFetching } = useRoutesQuery(listFilters);
-  const routes = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const count = data?.count ?? routes.length;
+  const routes = useMemo(
+    () =>
+      filterRoutesByScope(data?.items ?? [], assignedCities, globalState, {
+        requireAssigned,
+      }),
+    [data?.items, assignedCities, globalState, requireAssigned]
+  );
+  const total = routes.length;
+  const count = routes.length;
 
   const summary = useMemo(() => summarizeRoutes(routes), [routes]);
 

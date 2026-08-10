@@ -3,17 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthLayout } from "@/modules/auth/presentation/components/AuthLayout.jsx";
 import { TextField, PasswordField } from "@/modules/auth/presentation/components/TextField.jsx";
 import { Button } from "@/modules/auth/presentation/components/Button.jsx";
-import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
+// import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { apiErrorMessage } from "@/shared/utils/api.js";
-import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
+// import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 import { showErrorToast, showSuccessToast } from "@/shared/utils/appToast.js";
 
 export function RegisterScreen() {
   const { requestRegisterOtp, verifyRegisterOtp } = useAuth();
   const navigate = useNavigate();
 
-  const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
+  // const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
   const [step, setStep] = useState("details");
   const [pendingEmail, setPendingEmail] = useState("");
   const [code, setCode] = useState("");
@@ -167,11 +167,12 @@ export function RegisterScreen() {
 
       {step === "details" ? (
         <form onSubmit={onRequestOtp} className="space-y-4" noValidate>
-          <ApiEnvironmentSelect
+          {/* Database picker disabled — always uses production. */}
+          {/* <ApiEnvironmentSelect
             value={apiEnvironment}
             onChange={setApiEnvironment}
             tone="dark"
-          />
+          /> */}
 
           <TextField
             tone="dark"

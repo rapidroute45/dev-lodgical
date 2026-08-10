@@ -444,11 +444,13 @@ export function PayrollBillDetailScreen() {
     }
   }
 
-  function handleReceiptPick(e) {
+  async function handleReceiptPick(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setReceiptFile(file);
-    setReceiptPreview(URL.createObjectURL(file));
+    const { compressImageFile } = await import("@/shared/media/compressImageFile.js");
+    const prepared = await compressImageFile(file);
+    setReceiptFile(prepared);
+    setReceiptPreview(URL.createObjectURL(prepared));
   }
 
   async function handleMarkPaid() {
@@ -814,7 +816,7 @@ export function PayrollBillDetailScreen() {
         {canMarkPaid ? (
           <div className="ops-panel ops-fade p-4">
             <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Payment receipt</p>
-            <input type="file" accept="image/*" onChange={handleReceiptPick} className="mt-2 text-sm" style={{ color: "var(--text-muted)" }} />
+            <input type="file" accept="image/*" onChange={(e) => void handleReceiptPick(e)} className="mt-2 text-sm" style={{ color: "var(--text-muted)" }} />
             {receiptPreview ? (
               <img src={receiptPreview} alt="Receipt preview" className="mt-3 max-h-48 rounded-lg" style={{ border: "1px solid var(--border)" }} />
             ) : null}

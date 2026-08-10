@@ -725,7 +725,11 @@ export function RoutesSpreadsheetTable({
                     completedStopCount > 0 ? `${completedStopCount}/${stopCount}` : String(stopCount);
 
                   return (
-                    <tr key={row.id} className={isDirty ? "route-row-dirty" : undefined}>
+                    <tr
+                      key={row.id}
+                      className={isDirty ? "route-row-dirty" : undefined}
+                      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 52px" }}
+                    >
                       <td className="col-pinned">
                         <input
                           className="route-grid-input route-grid-input--text"

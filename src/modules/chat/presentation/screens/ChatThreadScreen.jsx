@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { DashboardLayout } from "@/modules/manager-home/presentation/layout/DashboardLayout.jsx";
 import { OpsTopBar } from "@/modules/manager-home/presentation/components/OpsTopBar.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { mediaUrl } from "@/shared/utils/mediaUrl.js";
 import { hasPhone, openWhatsApp } from "@/shared/utils/whatsapp.js";
+import { UserRole } from "@/shared/utils/constants.js";
 import { useChatSocket } from "../../application/ChatProvider.jsx";
 import { VoiceMessageBubble } from "../components/VoiceMessageBubble.jsx";
 import { MessageStatusTicks } from "../components/MessageStatusTicks.jsx";
@@ -20,10 +22,28 @@ import {
   fetchMessageInfo,
 } from "../../infrastructure/api/chat.queries.js";
 
+const SCHEDULE_MESSAGE_ROLES = [
+  UserRole.ADMIN,
+  UserRole.DISPATCH_MANAGER,
+  UserRole.DISPATCH_TEAM,
+];
+
 function formatMessageTime(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatScheduledFor(iso) {
+  if (!iso) return "later";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "later";
+  return d.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function formatFileSize(bytes) {
@@ -43,6 +63,7 @@ export function ChatThreadScreen() {
   const { id: conversationId = "" } = useParams();
   const { user } = useAuth();
   const messagesEndRef = useRef(null);
+  const messagesParentRef = useRef(null);
   const fileInputRef = useRef(null);
   const [draft, setDraft] = useState("");
   const [showMembers, setShowMembers] = useState(false);
@@ -71,9 +92,14 @@ export function ChatThreadScreen() {
   const [recording, setRecording] = useState(false);
   const [menu, setMenu] = useState(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleHours, setScheduleHours] = useState("24");
+  const [scheduleError, setScheduleError] = useState("");
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft] = useState("");
   const [infoData, setInfoData] = useState(null);
+  const canScheduleMessage =
+    user?.role != null && SCHEDULE_MESSAGE_ROLES.includes(user.role);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -85,9 +111,17 @@ export function ChatThreadScreen() {
     if (conversationId) joinConversation(conversationId);
   }, [conversationId, joinConversation]);
 
+  const messageVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => messagesParentRef.current,
+    estimateSize: () => 80,
+    overscan: 10,
+  });
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    if (messages.length === 0) return;
+    messageVirtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+  }, [messages.length, messageVirtualizer]);
 
   const openMessageMenu = (item, event) => {
     event.preventDefault();
@@ -119,14 +153,26 @@ export function ChatThreadScreen() {
     typingTimeoutRef.current = setTimeout(() => emitTypingStop(conversationId), 1500);
   };
 
-  const handleSend = async (e) => {
+  const handleSend = async (e, { sendLater = false } = {}) => {
     e?.preventDefault?.();
     const body = draft.trim();
     if (!conversationId || !body || sendMutation.isPending) return;
+
+    let delayHours;
+    if (sendLater) {
+      delayHours = Math.floor(Number(scheduleHours));
+      if (!Number.isFinite(delayHours) || delayHours < 1 || delayHours > 168) {
+        setScheduleError("Enter a whole number of hours between 1 and 168.");
+        return;
+      }
+    }
+
     setDraft("");
+    setScheduleOpen(false);
+    setScheduleError("");
     emitTypingStop(conversationId);
     try {
-      await sendMutation.mutateAsync({ conversationId, body });
+      await sendMutation.mutateAsync({ conversationId, body, sendLater, delayHours });
     } catch {
       setDraft(body);
     }
@@ -137,7 +183,9 @@ export function ChatThreadScreen() {
     e.target.value = "";
     if (!file || !conversationId) return;
     try {
-      await documentMutation.mutateAsync({ conversationId, file });
+      const { compressImageFile } = await import("@/shared/media/compressImageFile.js");
+      const prepared = await compressImageFile(file);
+      await documentMutation.mutateAsync({ conversationId, file: prepared });
     } catch {
       /* surfaced by mutation */
     }
@@ -313,7 +361,7 @@ export function ChatThreadScreen() {
             </div>
           ) : null}
 
-          <div className="ops-chat-messages">
+          <div className="ops-chat-messages" ref={messagesParentRef}>
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -333,12 +381,23 @@ export function ChatThreadScreen() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {messages.map((item) => {
+              <div
+                className="relative w-full"
+                style={{ height: `${messageVirtualizer.getTotalSize()}px` }}
+              >
+                {messageVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const item = messages[virtualRow.index];
+                  if (!item) return null;
                   const mine = item.senderId === user?.id;
                   if (item.type === "system") {
                     return (
-                      <div key={item.id} className="ops-chat-system">
+                      <div
+                        key={item.id}
+                        ref={messageVirtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="ops-chat-system absolute left-0 top-0 w-full"
+                        style={{ transform: `translateY(${virtualRow.start}px)` }}
+                      >
                         <span>{item.body}</span>
                       </div>
                     );
@@ -346,7 +405,13 @@ export function ChatThreadScreen() {
                   const delivered = (item.deliveredTo ?? []).some((id) => id !== item.senderId);
                   const read = (item.readBy ?? []).some((id) => id !== item.senderId);
                   return (
-                    <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div
+                      key={item.id}
+                      ref={messageVirtualizer.measureElement}
+                      data-index={virtualRow.index}
+                      className={`absolute left-0 top-0 flex w-full ${mine ? "justify-end" : "justify-start"}`}
+                      style={{ transform: `translateY(${virtualRow.start}px)` }}
+                    >
                       <div
                         className={`ops-chat-bubble group relative ${mine ? "ops-chat-bubble--mine" : "ops-chat-bubble--other"}`}
                         style={{ color: "var(--text)" }}
@@ -409,22 +474,17 @@ export function ChatThreadScreen() {
                               </span>
                             </span>
                           </a>
-                        ) : item.type === "delivery_photo" ? (
-                          <a href={mediaUrl(item.meta?.photoUrl) ?? "#"} target="_blank" rel="noopener noreferrer">
-                            <img
-                              src={mediaUrl(item.meta?.photoUrl) ?? ""}
-                              alt={item.meta?.stopName || "Delivery photo"}
-                              className="max-h-56 rounded-lg"
-                            />
-                            {item.meta?.stopName ? (
-                              <span className="mt-1 block text-xs" style={{ color: "var(--text-muted)" }}>
-                                {item.meta.stopName}
-                              </span>
-                            ) : null}
-                          </a>
                         ) : (
                           <p className="whitespace-pre-wrap pr-5 text-sm leading-relaxed">{item.body}</p>
                         )}
+                        {item.status === "scheduled" && !item.deletedForAll ? (
+                          <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold opacity-80">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Sends {formatScheduledFor(item.scheduledFor)}
+                          </p>
+                        ) : null}
                         {item.editedAt && !item.deletedForAll ? (
                           <span className="text-[10px] italic opacity-70">edited</span>
                         ) : null}
@@ -433,7 +493,7 @@ export function ChatThreadScreen() {
                           <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>
                             {formatMessageTime(item.createdAt)}
                           </span>
-                          {mine ? (
+                          {mine && item.status !== "scheduled" ? (
                             <MessageStatusTicks delivered={delivered} read={read} light={mine} />
                           ) : null}
                         </span>
@@ -503,6 +563,23 @@ export function ChatThreadScreen() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
                 </button>
+                {canScheduleMessage && draft.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScheduleError("");
+                      setScheduleOpen(true);
+                    }}
+                    disabled={sendMutation.isPending}
+                    className="ops-chat-icon-btn"
+                    aria-label="Send message later"
+                    title="Send later"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                ) : null}
                 <textarea
                   value={draft}
                   onChange={(e) => handleDraftChange(e.target.value)}
@@ -665,6 +742,62 @@ export function ChatThreadScreen() {
             ) : null}
           </div>
         </>
+      ) : null}
+
+      {scheduleOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setScheduleOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl p-4"
+            style={{ background: "var(--surface)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-lg font-semibold" style={{ color: "var(--text)" }}>
+              Send later
+            </h3>
+            <p className="mb-3 text-sm" style={{ color: "var(--text-muted)" }}>
+              Choose how many hours to wait. The recipient will not see the message until then.
+            </p>
+            <label className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text)" }}>
+              Hours
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={168}
+              step={1}
+              value={scheduleHours}
+              onChange={(e) => {
+                setScheduleHours(e.target.value);
+                setScheduleError("");
+              }}
+              className="ops-chat-composer__input w-full"
+              placeholder="e.g. 24"
+            />
+            <p className="mt-1.5 text-xs" style={{ color: "var(--text-dim)" }}>
+              1–168 hours (up to 7 days)
+            </p>
+            {scheduleError ? (
+              <p className="mt-2 text-xs text-red-400">{scheduleError}</p>
+            ) : null}
+            <div className="mt-4 flex justify-end gap-3">
+              <button type="button" onClick={() => setScheduleOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="font-semibold"
+                style={{ color: "var(--accent)" }}
+                disabled={sendMutation.isPending}
+                onClick={(e) => void handleSend(e, { sendLater: true })}
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {editTarget ? (

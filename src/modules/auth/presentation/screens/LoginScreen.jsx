@@ -4,10 +4,10 @@ import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/modules/auth/presentation/components/AuthLayout.jsx";
 import { TextField, PasswordField } from "@/modules/auth/presentation/components/TextField.jsx";
 import { Button } from "@/modules/auth/presentation/components/Button.jsx";
-import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
+// import { ApiEnvironmentSelect } from "@/modules/auth/presentation/components/ApiEnvironmentSelect.jsx";
 import { useAuth } from "@/modules/auth/presentation/hooks/useAuth.js";
 import { postLoginPath } from "@/shared/utils/postLoginPath.js";
-import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
+// import { getStoredApiEnvironment } from "@/shared/utils/apiEnvironment.js";
 
 export function LoginScreen() {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ export function LoginScreen() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
+  // const [apiEnvironment, setApiEnvironment] = useState(getStoredApiEnvironment);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -70,7 +70,8 @@ export function LoginScreen() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <ApiEnvironmentSelect value={apiEnvironment} onChange={setApiEnvironment} tone="dark" />
+        {/* Database picker disabled — always uses production. Restore with ApiEnvironmentSelect. */}
+        {/* <ApiEnvironmentSelect value={apiEnvironment} onChange={setApiEnvironment} tone="dark" /> */}
 
         <TextField
           tone="dark"

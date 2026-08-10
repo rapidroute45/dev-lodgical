@@ -41,7 +41,15 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   const navigate = useNavigate();
   const rootRef = useRef(null);
   const panelRef = useRef(null);
-  const { assignedCities, isCityScoped, routesQueryCity, routesQueryState, globalState } = useOpsNavScope();
+  const {
+    assignedCities,
+    isCityScoped,
+    requireAssigned,
+    routesQueryCity,
+    routesQueryState,
+    globalState,
+  } = useOpsNavScope();
+  const scopeOpts = requireAssigned ? { requireAssigned: true } : {};
 
   const [category, setCategory] = useState("cities");
   const [selectedCity, setSelectedCity] = useState(null);
@@ -82,8 +90,8 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   );
 
   const scopedCities = useMemo(
-    () => filterCitiesByScope(citiesQuery.data ?? [], assignedCities, globalState),
-    [citiesQuery.data, assignedCities, globalState]
+    () => filterCitiesByScope(citiesQuery.data ?? [], assignedCities, globalState, scopeOpts),
+    [citiesQuery.data, assignedCities, globalState, scopeOpts]
   );
 
   const filteredCities = useMemo(
@@ -93,16 +101,26 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
   const filteredTeams = useMemo(() => {
     let teams = teamsQuery.data ?? [];
     if (isCityScoped) {
-      const scopedRoutes = filterRoutesByScope(allRoutesQuery.data?.items ?? [], assignedCities, globalState);
+      const scopedRoutes = filterRoutesByScope(
+        allRoutesQuery.data?.items ?? [],
+        assignedCities,
+        globalState,
+        scopeOpts
+      );
       const teamIds = new Set(scopedRoutes.map((route) => route.teamId).filter(Boolean));
       teams = teams.filter((team) => teamIds.has(team.id));
     }
     return filterByQuery(teams, search, (t) => `${t.name ?? ""} ${t.code ?? ""}`);
-  }, [teamsQuery.data, allRoutesQuery.data, assignedCities, globalState, isCityScoped, search]);
+  }, [teamsQuery.data, allRoutesQuery.data, assignedCities, globalState, isCityScoped, search, scopeOpts]);
   const filteredRoutes = useMemo(() => {
-    const items = filterRoutesByScope(allRoutesQuery.data?.items ?? [], assignedCities, globalState);
+    const items = filterRoutesByScope(
+      allRoutesQuery.data?.items ?? [],
+      assignedCities,
+      globalState,
+      scopeOpts
+    );
     return filterByQuery(items, search, (r) => r.routeName ?? "Route");
-  }, [allRoutesQuery.data, assignedCities, globalState, search]);
+  }, [allRoutesQuery.data, assignedCities, globalState, search, scopeOpts]);
 
   function gotoRoute(id) {
     if (!id) return;
@@ -221,10 +239,10 @@ export function ScheduleNavMenu({ date, open, onToggle, onClose }) {
                 <div className="ops-menu__list">
                   {teamRoutesQuery.isLoading ? (
                     <MenuEmpty>Loading routes…</MenuEmpty>
-                  ) : filterRoutesByScope(teamRoutesQuery.data?.items ?? [], assignedCities, globalState).length === 0 ? (
+                  ) : filterRoutesByScope(teamRoutesQuery.data?.items ?? [], assignedCities, globalState, scopeOpts).length === 0 ? (
                     <MenuEmpty>No routes for this team on selected date.</MenuEmpty>
                   ) : (
-                    filterRoutesByScope(teamRoutesQuery.data?.items ?? [], assignedCities, globalState).map((r) => (
+                    filterRoutesByScope(teamRoutesQuery.data?.items ?? [], assignedCities, globalState, scopeOpts).map((r) => (
                       <RouteRow key={r.id} route={r} onClick={() => gotoRoute(r.id)} />
                     ))
                   )}

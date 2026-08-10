@@ -40,29 +40,43 @@ export const API_ENVIRONMENTS = {
   },
 };
 
+/**
+ * Locked to production DB for now.
+ * To restore the Test/Prod picker: reinstate storage-backed selection below and
+ * re-enable <ApiEnvironmentSelect /> on auth screens.
+ */
+const FORCED_API_ENVIRONMENT = "prod";
+
 export function getDefaultApiEnvironment() {
-  return import.meta.env.PROD ? "prod" : "test";
+  // return import.meta.env.PROD ? "prod" : "test";
+  return FORCED_API_ENVIRONMENT;
 }
 
 export function getStoredApiEnvironment() {
-  const stored = AppStorage.getItem(API_ENV_STORAGE_KEY);
-  if (stored === "prod" || stored === "test") return stored;
-  return getDefaultApiEnvironment();
+  // Previous behavior (restore when re-enabling the picker):
+  // const stored = AppStorage.getItem(API_ENV_STORAGE_KEY);
+  // if (stored === "prod" || stored === "test") return stored;
+  // return getDefaultApiEnvironment();
+  return FORCED_API_ENVIRONMENT;
 }
 
 export function setStoredApiEnvironment(environment) {
-  if (environment !== "prod" && environment !== "test") return;
-  AppStorage.setItem(API_ENV_STORAGE_KEY, environment);
+  // Locked to prod — ignore picker changes until the dropdown is restored.
+  // if (environment !== "prod" && environment !== "test") return;
+  // AppStorage.setItem(API_ENV_STORAGE_KEY, environment);
+  void environment;
+  AppStorage.setItem(API_ENV_STORAGE_KEY, FORCED_API_ENVIRONMENT);
 }
 
 export function getActiveApiEnvironmentConfig(environment = getStoredApiEnvironment()) {
-  return API_ENVIRONMENTS[environment] ?? API_ENVIRONMENTS.test;
+  return API_ENVIRONMENTS[environment] ?? API_ENVIRONMENTS.prod;
 }
 
 export function listApiEnvironments() {
   return [API_ENVIRONMENTS.test, API_ENVIRONMENTS.prod];
 }
 
-export function getDispatchDbEnvHeaderValue(environment = getStoredApiEnvironment()) {
-  return environment === "prod" ? "prod" : "test";
+export function getDispatchDbEnvHeaderValue(_environment = getStoredApiEnvironment()) {
+  // return environment === "prod" ? "prod" : "test";
+  return FORCED_API_ENVIRONMENT;
 }
