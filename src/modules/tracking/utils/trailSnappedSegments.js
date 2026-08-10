@@ -64,20 +64,32 @@ const GAP_BRIDGE_TRAIL_LINE = {
   ],
 };
 
+/** Solid blue chord used on completed routes so ops see one continuous track. */
+const COMPLETED_GAP_BRIDGE_LINE = {
+  strokeColor: "#2563eb",
+  strokeOpacity: 0.9,
+  strokeWeight: 5,
+};
+
+const SNAPPED_TRAIL_LINE = {
+  strokeColor: "#2563eb",
+  strokeOpacity: 0.9,
+  strokeWeight: 5,
+};
+
 /** Accepts a drawable segment or a bare `snapped` flag (legacy call sites). */
 export function trailSegmentPolylineOptions(segmentOrSnapped) {
   const isSegment = segmentOrSnapped !== null && typeof segmentOrSnapped === "object";
   if (isSegment && segmentOrSnapped.kind === TRAIL_SEGMENT_KIND_GAP) {
+    // Completed routes: straight solid blue joins (not pale dotted).
+    if (segmentOrSnapped.solid) return COMPLETED_GAP_BRIDGE_LINE;
     return GAP_BRIDGE_TRAIL_LINE;
   }
 
   const snapped = isSegment ? segmentOrSnapped.snapped : segmentOrSnapped;
-  if (snapped === false) {
+  // Completed maps: render unsnapped stretches as solid blue too (no grey dashes).
+  if (snapped === false && !(isSegment && segmentOrSnapped.forceSolid)) {
     return UNSNAPPED_TRAIL_LINE;
   }
-  return {
-    strokeColor: "#2563eb",
-    strokeOpacity: 0.9,
-    strokeWeight: 5,
-  };
+  return SNAPPED_TRAIL_LINE;
 }

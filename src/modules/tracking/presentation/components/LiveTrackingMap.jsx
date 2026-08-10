@@ -67,6 +67,8 @@ export function LiveTrackingMap({
   onSelectRoute,
   scopeCenter = null,
   className = "",
+  /** When false (completed route), hide the grey planned path and solid-join trail gaps. */
+  isLive = true,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -148,7 +150,7 @@ export function LiveTrackingMap({
       const drawableSegments = prepareDrawableTrailSegments(trail, {
         source: "LiveTrackingMap",
         routeId: selectedRouteId ?? null,
-        isLive: true,
+        isLive,
       });
       layersRef.current.trail.clearLayers();
       for (const segment of drawableSegments) {
@@ -206,7 +208,7 @@ export function LiveTrackingMap({
     }
 
     fitMapToPoints(map, points, scopeCenter);
-  }, [drivers, trail, routeStart, stops, pickup, selectedRouteId, onSelectRoute, scopeCenter]);
+  }, [drivers, trail, routeStart, stops, pickup, selectedRouteId, onSelectRoute, scopeCenter, isLive]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -230,6 +232,12 @@ export function LiveTrackingMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
+
+    // Completed routes: only show the driven blue track — no grey planned path.
+    if (!isLive) {
+      layersRef.current.planned.clearLayers();
+      return undefined;
+    }
 
     const pickupLat = pickup?.lat ?? pickup?.destinationLat;
     const pickupLng = pickup?.lng ?? pickup?.destinationLng;
@@ -274,7 +282,7 @@ export function LiveTrackingMap({
     return () => {
       cancelled = true;
     };
-  }, [pickup, stops]);
+  }, [pickup, stops, isLive]);
 
   return (
     <div

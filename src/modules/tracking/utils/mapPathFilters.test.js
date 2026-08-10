@@ -123,6 +123,23 @@ test("prepareDrawableTrailSegments bridges a GPS gap with a distinct gap segment
   assert.deepEqual(gaps[0].points[1], after.points[0]);
 });
 
+test("completed routes join gaps with solid straight blue lines", () => {
+  const drawable = prepareDrawableTrailSegments(trailWithOfflineGap(), {
+    source: "test",
+    isLive: false,
+  });
+
+  // One continuous polyline — holes become straight chords between consecutive fixes.
+  assert.equal(drawable.length, 1);
+  assert.equal(drawable[0].kind, "trail");
+  assert.equal(drawable[0].forceSolid, true);
+  assert.ok(drawable[0].points.length >= 2);
+
+  const style = trailSegmentPolylineOptions(drawable[0]);
+  assert.equal(style.strokeColor, "#2563eb");
+  assert.equal(style.icons, undefined);
+});
+
 test("prepareDrawableTrailSegments emits no gap bridge for a continuous trail", () => {
   const base = Date.parse("2026-07-03T10:00:00.000Z");
   const trail = [];

@@ -128,6 +128,10 @@ export function prepareTrailSegmentsForDisplay(trail, context = {}) {
 /**
  * Drawable trail segments for live + completed maps.
  * Uses raw GPS only (no planned-route reprojection) plus jump splitting for bad edges.
+ *
+ * Completed routes intentionally keep one continuous polyline: any missing stretch
+ * between consecutive fixes is a straight blue chord (no silent holes like the
+ * stub-near-driver vs rest-of-route gap).
  */
 export function prepareDrawableTrailSegments(trail, options = {}) {
   const { source = "map", isLive = true } = options;
@@ -137,6 +141,23 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
   );
 
   if (normalized.length === 0) return [];
+
+  // Completed: one solid blue path. Splitting + bridging still left holes when a
+  // short stub (e.g. near the driver marker) and the main run were separated by
+  // filtered single-point groups or snapped-gap thresholds.
+  if (!isLive) {
+    const completedPoints = prepareCompletedTrailPoints(normalized, { source });
+    if (completedPoints.length < 2) return [];
+    return [
+      {
+        points: completedPoints,
+        snapped: true,
+        forceSolid: true,
+        kind: "trail",
+        key: "completed-trail",
+      },
+    ];
+  }
 
   const snappedGroups = splitTrailBySnappedFlag(normalized);
   const drawable = [];
@@ -166,7 +187,10 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
     });
   });
 
-  const withGapBridges = insertGapBridgeSegments(drawable);
+  const withGapBridges = insertGapBridgeSegments(drawable, {
+    solidGaps: false,
+    minGapM: null,
+  });
 
   logGpsPipeline(
     "display_drawable",
@@ -176,6 +200,7 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
       snappedSegments: drawable.filter((segment) => segment.snapped).length,
       unsnappedSegments: drawable.filter((segment) => !segment.snapped).length,
       gapBridges: withGapBridges.length - drawable.length,
+      isLive,
     },
     { source, isLive }
   );
@@ -184,11 +209,40 @@ export function prepareDrawableTrailSegments(trail, options = {}) {
 }
 
 /**
+ * Keep chronological GPS for a completed route, drop only impossible spikes/speed
+ * outliers, and never split — the map polyline then straight-lines every hole.
+ */
+function prepareCompletedTrailPoints(normalized, context = {}) {
+  const spikeFiltered = filterTrailOutAndBackSpikes(normalized);
+  const speedFiltered = filterTrailSpeedOutliers(spikeFiltered);
+  const smoothed = smoothTrailForDisplay(speedFiltered, {
+    minSeparationM: MIN_SEPARATION_SNAPPED_M,
+  });
+
+  logGpsPipeline(
+    "display_completed_continuous",
+    {
+      in: normalized.length,
+      afterSpike: spikeFiltered.length,
+      afterSpeed: speedFiltered.length,
+      out: smoothed.length,
+    },
+    { ...context, isLive: false }
+  );
+
+  return smoothed;
+}
+
+/**
  * Bridge holes left by gap splitting with an explicit 2-point segment so ops can see
  * the driver moved between the fixes without implying we know the path taken.
+ * On completed routes (`solidGaps`), chords are solid blue straight lines.
  */
-function insertGapBridgeSegments(segments) {
+function insertGapBridgeSegments(segments, options = {}) {
   if (segments.length < 2) return segments;
+
+  const solidGaps = Boolean(options.solidGaps);
+  const minGapM = typeof options.minGapM === "number" ? options.minGapM : null;
 
   const bridged = [segments[0]];
   for (let index = 1; index < segments.length; index += 1) {
@@ -197,10 +251,16 @@ function insertGapBridgeSegments(segments) {
     const from = previous.points[previous.points.length - 1];
     const to = current.points[0];
 
-    if (exceedsTrailSegmentGap(from, to, TRAIL_DISPLAY_MAX_JUMP_M, TRAIL_SEGMENT_GAP_SEC)) {
+    const shouldBridge =
+      minGapM != null
+        ? haversineGapM(from, to) >= minGapM
+        : exceedsTrailSegmentGap(from, to, TRAIL_DISPLAY_MAX_JUMP_M, TRAIL_SEGMENT_GAP_SEC);
+
+    if (shouldBridge) {
       bridged.push({
         points: [from, to],
-        snapped: null,
+        snapped: solidGaps ? true : null,
+        solid: solidGaps,
         kind: TRAIL_SEGMENT_KIND_GAP,
         key: `gap-${index}`,
       });
@@ -210,6 +270,22 @@ function insertGapBridgeSegments(segments) {
   }
 
   return bridged;
+}
+
+function haversineGapM(from, to) {
+  if (!from || !to) return 0;
+  const lat1 = Number(from.lat);
+  const lng1 = Number(from.lng);
+  const lat2 = Number(to.lat);
+  const lng2 = Number(to.lng);
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return 0;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6_371_000 * Math.asin(Math.sqrt(a));
 }
 
 /**
@@ -233,6 +309,14 @@ export function trailSegmentLeafletOptions(segmentOrSnapped) {
   const snapped = isSegment ? segmentOrSnapped.snapped : segmentOrSnapped;
 
   if (kind === TRAIL_SEGMENT_KIND_GAP) {
+    if (isSegment && segmentOrSnapped.solid) {
+      return {
+        color: google.strokeColor,
+        weight: google.strokeWeight,
+        opacity: google.strokeOpacity,
+        dashArray: null,
+      };
+    }
     return {
       color: google.strokeColor,
       weight: google.strokeWeight,
@@ -240,7 +324,7 @@ export function trailSegmentLeafletOptions(segmentOrSnapped) {
       dashArray: "2 14",
     };
   }
-  if (snapped === false) {
+  if (snapped === false && !(isSegment && segmentOrSnapped.forceSolid)) {
     return {
       color: google.strokeColor,
       weight: google.strokeWeight,

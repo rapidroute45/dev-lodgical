@@ -297,14 +297,16 @@ function LiveRouteMapLayers({
   );
 
   const offRoutePlannedPath =
-    offRoute && trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
+    isLive && offRoute && trustedSegmentPolyline.length >= 2 ? trustedSegmentPolyline : [];
 
   const onRouteRemainingPath =
-    !offRoute && remainingPath.length >= 2
-      ? remainingPath
-      : !offRoute && trustedSegmentPolyline.length < 2 && plannedPath.length >= 2
-        ? plannedPath
-        : [];
+    !isLive
+      ? []
+      : !offRoute && remainingPath.length >= 2
+        ? remainingPath
+        : !offRoute && trustedSegmentPolyline.length < 2 && plannedPath.length >= 2
+          ? plannedPath
+          : [];
 
   const driverMarkerPoint = useMemo(() => {
     const resolved = resolveLiveDriverMarkerPoint(driverLocation, trail, { offRoute });
@@ -391,7 +393,7 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {!offRoute && onRouteRemainingPath.length >= 2 ? (
+      {!offRoute && isLive && onRouteRemainingPath.length >= 2 ? (
         <Polyline
           path={filterMapPathPoints(onRouteRemainingPath, routeAnchors)}
           strokeColor="#94a3b8"
@@ -400,7 +402,7 @@ function LiveRouteMapLayers({
         />
       ) : null}
 
-      {offRoute && offRoutePlannedPath.length >= 2 ? (
+      {offRoute && isLive && offRoutePlannedPath.length >= 2 ? (
         <Polyline
           path={filterMapPathPoints(offRoutePlannedPath, routeAnchors)}
           {...OFF_ROUTE_PLANNED_LINE}
@@ -474,6 +476,7 @@ export function RouteLiveGoogleMap({
               routeStart={trail?.length ? trail[0] : null}
               stops={dropoffs}
               pickup={pickup}
+              isLive={isLive}
             />
           </>
         ) : null}
@@ -539,19 +542,23 @@ export function RouteLiveGoogleMap({
           <span className="route-planning-map-legend-dot route-planning-map-legend-dot--dropoff" />
           Dropoffs — blue <strong>1, 2, 3…</strong>
         </span>
-        <span className="route-planning-map-legend-item">
-          <span
-            className="route-planning-map-legend-dot route-planning-map-legend-dot--driver"
-          />
-          Driver live — red pulsing marker
-        </span>
-        <span className="route-planning-map-legend-item">
-          <span
-            className="route-planning-map-legend-dot"
-            style={{ background: "#94a3b8" }}
-          />
-          Planned route ahead (grey)
-        </span>
+        {isLive ? (
+          <span className="route-planning-map-legend-item">
+            <span
+              className="route-planning-map-legend-dot route-planning-map-legend-dot--driver"
+            />
+            Driver live — red pulsing marker
+          </span>
+        ) : null}
+        {isLive ? (
+          <span className="route-planning-map-legend-item">
+            <span
+              className="route-planning-map-legend-dot"
+              style={{ background: "#94a3b8" }}
+            />
+            Planned route ahead (grey)
+          </span>
+        ) : null}
         <span className="route-planning-map-legend-item">
           <span
             className="route-planning-map-legend-dot"
@@ -559,17 +566,29 @@ export function RouteLiveGoogleMap({
           />
           Driver track — where they went (blue)
         </span>
-        <span className="route-planning-map-legend-item">
-          <span
-            className="route-planning-map-legend-dot"
-            style={{ background: "#60a5fa", opacity: 0.55 }}
-          />
-          GPS gap — moved, but path unknown (pale dotted)
-        </span>
-        <span className="route-planning-map-legend-item">
-          <span className="route-planning-map-legend-dot route-planning-map-legend-dot--planned-dashed" />
-          Planned route when off-track (dashed)
-        </span>
+        {isLive ? (
+          <>
+            <span className="route-planning-map-legend-item">
+              <span
+                className="route-planning-map-legend-dot"
+                style={{ background: "#60a5fa", opacity: 0.55 }}
+              />
+              GPS gap — moved, but path unknown (pale dotted)
+            </span>
+            <span className="route-planning-map-legend-item">
+              <span className="route-planning-map-legend-dot route-planning-map-legend-dot--planned-dashed" />
+              Planned route when off-track (dashed)
+            </span>
+          </>
+        ) : (
+          <span className="route-planning-map-legend-item">
+            <span
+              className="route-planning-map-legend-dot"
+              style={{ background: "#2563eb" }}
+            />
+            GPS gaps joined with a straight blue line
+          </span>
+        )}
       </div>
     </div>
   );
