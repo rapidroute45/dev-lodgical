@@ -46,6 +46,34 @@ function formatScheduledFor(iso) {
   });
 }
 
+function defaultScheduleDateTime() {
+  const d = new Date(Date.now() + 2 * 60_000);
+  d.setSeconds(0, 0);
+  return d;
+}
+
+function toDatetimeLocalValue(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function validateScheduledFor(date) {
+  const delayMs = date.getTime() - Date.now();
+  if (delayMs < 30_000) return "Pick a time at least 30 seconds from now.";
+  if (delayMs > 168 * 3_600_000) return "Cannot schedule more than 7 days ahead.";
+  return null;
+}
+
+function formatScheduleDateTimeLabel(date) {
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
@@ -93,7 +121,7 @@ export function ChatThreadScreen() {
   const [menu, setMenu] = useState(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [scheduleHours, setScheduleHours] = useState("24");
+  const [scheduleDateTime, setScheduleDateTime] = useState(defaultScheduleDateTime);
   const [scheduleError, setScheduleError] = useState("");
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft] = useState("");
@@ -110,6 +138,21 @@ export function ChatThreadScreen() {
   useEffect(() => {
     if (conversationId) joinConversation(conversationId);
   }, [conversationId, joinConversation]);
+
+  const shouldPollScheduled = messages.some(
+    (m) =>
+      m.status === "scheduled" &&
+      m.scheduledFor &&
+      new Date(m.scheduledFor).getTime() <= Date.now() + 15_000
+  );
+
+  useEffect(() => {
+    if (!shouldPollScheduled) return undefined;
+    const timer = setInterval(() => {
+      void refetch();
+    }, 5_000);
+    return () => clearInterval(timer);
+  }, [shouldPollScheduled, refetch]);
 
   const messageVirtualizer = useVirtualizer({
     count: messages.length,
@@ -158,13 +201,14 @@ export function ChatThreadScreen() {
     const body = draft.trim();
     if (!conversationId || !body || sendMutation.isPending) return;
 
-    let delayHours;
+    let scheduledFor;
     if (sendLater) {
-      delayHours = Math.floor(Number(scheduleHours));
-      if (!Number.isFinite(delayHours) || delayHours < 1 || delayHours > 168) {
-        setScheduleError("Enter a whole number of hours between 1 and 168.");
+      const validationError = validateScheduledFor(scheduleDateTime);
+      if (validationError) {
+        setScheduleError(validationError);
         return;
       }
+      scheduledFor = scheduleDateTime.toISOString();
     }
 
     setDraft("");
@@ -172,7 +216,12 @@ export function ChatThreadScreen() {
     setScheduleError("");
     emitTypingStop(conversationId);
     try {
-      await sendMutation.mutateAsync({ conversationId, body, sendLater, delayHours });
+      await sendMutation.mutateAsync({
+        conversationId,
+        body,
+        sendLater,
+        scheduledFor,
+      });
     } catch {
       setDraft(body);
     }
@@ -568,6 +617,7 @@ export function ChatThreadScreen() {
                     type="button"
                     onClick={() => {
                       setScheduleError("");
+                      setScheduleDateTime(defaultScheduleDateTime());
                       setScheduleOpen(true);
                     }}
                     disabled={sendMutation.isPending}
@@ -746,55 +796,86 @@ export function ChatThreadScreen() {
 
       {scheduleOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="ops-chat-schedule-backdrop"
           onClick={() => setScheduleOpen(false)}
+          role="presentation"
         >
           <div
-            className="w-full max-w-md rounded-xl p-4"
-            style={{ background: "var(--surface)" }}
+            className="ops-chat-schedule-modal"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chat-schedule-title"
           >
-            <h3 className="mb-2 text-lg font-semibold" style={{ color: "var(--text)" }}>
-              Send later
-            </h3>
-            <p className="mb-3 text-sm" style={{ color: "var(--text-muted)" }}>
-              Choose how many hours to wait. The recipient will not see the message until then.
-            </p>
-            <label className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text)" }}>
-              Hours
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={168}
-              step={1}
-              value={scheduleHours}
-              onChange={(e) => {
-                setScheduleHours(e.target.value);
-                setScheduleError("");
-              }}
-              className="ops-chat-composer__input w-full"
-              placeholder="e.g. 24"
-            />
-            <p className="mt-1.5 text-xs" style={{ color: "var(--text-dim)" }}>
-              1–168 hours (up to 7 days)
-            </p>
-            {scheduleError ? (
-              <p className="mt-2 text-xs text-red-400">{scheduleError}</p>
-            ) : null}
-            <div className="mt-4 flex justify-end gap-3">
-              <button type="button" onClick={() => setScheduleOpen(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="font-semibold"
-                style={{ color: "var(--accent)" }}
-                disabled={sendMutation.isPending}
-                onClick={(e) => void handleSend(e, { sendLater: true })}
-              >
-                Schedule
-              </button>
+            <div className="ops-chat-schedule-modal__hero">
+              <div className="ops-chat-schedule-modal__icon" aria-hidden="true">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 id="chat-schedule-title" className="ops-chat-schedule-modal__title">
+                Send later
+              </h3>
+              <p className="ops-chat-schedule-modal__hint">
+                Pick when the message should go out. The recipient will not see it until then.
+              </p>
+            </div>
+
+            <div className="ops-chat-schedule-modal__body">
+              <div className="ops-chat-schedule-modal__preview">
+                <span className="ops-chat-schedule-modal__preview-label">Scheduled for</span>
+                <span className="ops-chat-schedule-modal__preview-value">
+                  {formatScheduleDateTimeLabel(scheduleDateTime)}
+                </span>
+              </div>
+
+              <label htmlFor="chat-schedule-datetime" className="ops-chat-schedule-modal__label">
+                Date &amp; time
+              </label>
+              <input
+                id="chat-schedule-datetime"
+                type="datetime-local"
+                value={toDatetimeLocalValue(scheduleDateTime)}
+                min={toDatetimeLocalValue(new Date(Date.now() + 30_000))}
+                max={toDatetimeLocalValue(new Date(Date.now() + 168 * 3_600_000))}
+                onChange={(e) => {
+                  const next = new Date(e.target.value);
+                  if (!Number.isNaN(next.getTime())) {
+                    setScheduleDateTime(next);
+                  }
+                  setScheduleError("");
+                }}
+                className="ops-chat-schedule-modal__input"
+              />
+              <p className="ops-chat-schedule-modal__footnote">
+                Minimum 30 seconds from now, up to 7 days ahead.
+              </p>
+              {scheduleError ? (
+                <p className="ops-chat-schedule-modal__error" role="alert">
+                  {scheduleError}
+                </p>
+              ) : null}
+              <div className="ops-chat-schedule-modal__actions">
+                <button
+                  type="button"
+                  className="ops-chat-schedule-modal__btn"
+                  onClick={() => setScheduleOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="ops-chat-schedule-modal__btn ops-chat-schedule-modal__btn--primary"
+                  disabled={sendMutation.isPending}
+                  onClick={(e) => void handleSend(e, { sendLater: true })}
+                >
+                  Schedule message
+                </button>
+              </div>
             </div>
           </div>
         </div>

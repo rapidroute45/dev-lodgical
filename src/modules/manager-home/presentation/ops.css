@@ -1991,6 +1991,240 @@ button.ops-dateseg__label:hover {
   overflow-y: auto;
 }
 
+/* ---------- Chat schedule modal ---------- */
+.ops-chat-schedule-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(6px);
+  animation: ops-picker-fade 0.15s ease-out;
+}
+
+.ops-shell--light .ops-chat-schedule-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.ops-chat-schedule-modal {
+  width: 100%;
+  max-width: 26rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card-solid);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), var(--glow);
+  overflow: hidden;
+  animation: ops-picker-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ops-chat-schedule-modal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1.35rem 1.35rem 0.5rem;
+  text-align: center;
+}
+
+.ops-chat-schedule-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.ops-chat-schedule-modal__title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.ops-chat-schedule-modal__hint {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 20rem;
+}
+
+.ops-chat-schedule-modal__body {
+  padding: 0.85rem 1.35rem 1.35rem;
+}
+
+.ops-chat-schedule-modal__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, rgba(255, 255, 255, 0.03));
+}
+
+.ops-shell--light .ops-chat-schedule-modal__preview {
+  background: color-mix(in srgb, var(--accent) 7%, #f8fafc);
+}
+
+.ops-chat-schedule-modal__preview-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.ops-chat-schedule-modal__preview-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.35;
+}
+
+.ops-chat-schedule-modal__label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.ops-chat-schedule-modal__input {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ops-chat-schedule-modal__input:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ops-chat-schedule-modal__input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.ops-chat-schedule-modal__input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  filter: invert(0.85);
+}
+
+.ops-shell--light .ops-chat-schedule-modal__input {
+  background: #f8fafc;
+  color: var(--text);
+  color-scheme: light;
+}
+
+.ops-shell--light .ops-chat-schedule-modal__input:hover,
+.ops-shell--light .ops-chat-schedule-modal__input:focus {
+  background: #ffffff;
+}
+
+.ops-shell--light .ops-chat-schedule-modal__input::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.7;
+}
+
+.ops-chat-schedule-modal__footnote {
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ops-chat-schedule-modal__error {
+  margin-top: 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--rose);
+}
+
+.ops-chat-schedule-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+}
+
+.ops-chat-schedule-modal__btn {
+  min-height: 2.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ops-chat-schedule-modal__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--border-strong);
+}
+
+.ops-chat-schedule-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ops-chat-schedule-modal__btn--primary {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 88%, #0891b2),
+    color-mix(in srgb, var(--accent-2) 70%, #4f46e5)
+  );
+  color: #041018;
+  font-weight: 700;
+}
+
+.ops-chat-schedule-modal__btn--primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 95%, #0891b2),
+    color-mix(in srgb, var(--accent-2) 78%, #4f46e5)
+  );
+}
+
+.ops-shell--light .ops-chat-schedule-modal__btn {
+  background: #f8fafc;
+}
+
+.ops-shell--light .ops-chat-schedule-modal__btn:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+.ops-shell--light .ops-chat-schedule-modal__btn--primary {
+  color: #ffffff;
+}
+
 /* ---------- Ops PIN elevation modal ---------- */
 .ops-pin-modal {
   width: 100%;

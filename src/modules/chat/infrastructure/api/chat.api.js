@@ -35,8 +35,14 @@ export async function sendChatMessage(conversationId, body, options = {}) {
     body,
     sendLater: Boolean(options.sendLater),
   };
-  if (options.sendLater && options.delayHours != null) {
-    payload.delayHours = options.delayHours;
+  if (options.sendLater) {
+    if (options.scheduledFor) payload.scheduledFor = options.scheduledFor;
+    if (options.delayMs != null) payload.delayMs = options.delayMs;
+    if (options.delayValue != null && options.delayUnit) {
+      payload.delayValue = options.delayValue;
+      payload.delayUnit = options.delayUnit;
+    }
+    if (options.delayHours != null) payload.delayHours = options.delayHours;
   }
   const res = await api.post(`/chat/conversations/${conversationId}/messages`, payload);
   return res.data.data;

@@ -15,7 +15,11 @@ import {
 } from "@/modules/scheduling/infrastructure/api/scheduling.api.js";
 import { useCompleteRouteOpsMutation, useMarkRouteNotVerifiedMutation, useVerifyRouteDeliveryMutation } from "@/modules/scheduling/infrastructure/api/scheduling.queries.js";
 import { routeNameWithCategory } from "@/modules/scheduling/utils/routeDraft.js";
-import { walmartHoursForCategory } from "@/modules/scheduling/utils/walmartRouteHours.js";
+import {
+  isWalmartDepartureSynced,
+  walmartDepartureForRoute,
+  walmartHoursForCategory,
+} from "@/modules/scheduling/utils/walmartRouteHours.js";
 import {
   defaultDepartureFromArrival,
   departureFromArrivalAndHours,
@@ -330,18 +334,19 @@ export function RoutesSpreadsheetTable({
       }),
     };
 
-    const walmartHours = walmartHoursForCategory(nextCategory, {
+    const ctx = {
       storeName: scheduleStore?.storeName,
       routeName: patch.routeName ?? row.routeName,
       location: row.location,
-    });
-    if (walmartHours != null) {
-      const nextDeparture = departureFromArrivalAndHours(row.arrivalTime, walmartHours);
-      if (nextDeparture) {
-        patch.departureTime = nextDeparture;
-        patch.driverId = "";
-        patch.driverName = "";
-      }
+    };
+    const nextDeparture = walmartDepartureForRoute(
+      { routeCategory: nextCategory, arrivalTime: row.arrivalTime },
+      ctx
+    );
+    if (nextDeparture) {
+      patch.departureTime = nextDeparture;
+      patch.driverId = "";
+      patch.driverName = "";
     }
 
     patchRow(row.id, patch);
@@ -358,10 +363,24 @@ export function RoutesSpreadsheetTable({
     });
   }
 
+  function walmartContext(row) {
+    return {
+      storeName: scheduleStore?.storeName,
+      routeName: row.routeName,
+      location: row.location,
+    };
+  }
+
   function handleArrivalChange(row, arrivalTime) {
+    const ctx = walmartContext(row);
+    const walmartDeparture = walmartDepartureForRoute(
+      { routeCategory: row.routeCategory, arrivalTime },
+      ctx
+    );
     patchRow(row.id, {
       arrivalTime,
-      departureTime: defaultDepartureFromArrival(arrivalTime),
+      departureTime:
+        walmartDeparture ?? defaultDepartureFromArrival(arrivalTime),
       driverId: "",
       driverName: "",
     });
@@ -394,12 +413,11 @@ export function RoutesSpreadsheetTable({
     );
     if (actualHours != null) return { hours: actualHours, kind: "actual" };
 
-    const walmartHours = walmartHoursForCategory(row.routeCategory, {
-      storeName: scheduleStore?.storeName,
-      routeName: row.routeName,
-      location: row.location,
-    });
-    if (walmartHours != null) return { hours: walmartHours, kind: "walmart" };
+    const ctx = walmartContext(row);
+    const walmartHours = walmartHoursForCategory(row.routeCategory, ctx);
+    if (walmartHours != null && isWalmartDepartureSynced(row, ctx)) {
+      return { hours: walmartHours, kind: "walmart" };
+    }
 
     const plannedHours = plannedHoursFromWindow(row.arrivalTime, row.departureTime);
     return { hours: plannedHours, kind: "planned" };
@@ -428,34 +446,6 @@ export function RoutesSpreadsheetTable({
     }
     return null;
   }
-
-  useEffect(() => {
-    if (readOnly) return;
-    for (const row of rows) {
-      const walmartHours = walmartHoursForCategory(row.routeCategory, {
-        storeName: scheduleStore?.storeName,
-        routeName: row.routeName,
-        location: row.location,
-      });
-      if (walmartHours == null) continue;
-      const planned = plannedHoursFromWindow(row.arrivalTime, row.departureTime);
-      if (planned === walmartHours) continue;
-      const nextDeparture = departureFromArrivalAndHours(row.arrivalTime, walmartHours);
-      if (!nextDeparture || nextDeparture === row.departureTime) continue;
-      patchRow(row.id, {
-        departureTime: nextDeparture,
-        driverId: "",
-        driverName: "",
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    readOnly,
-    scheduleStore?.storeName,
-    rows
-      .map((row) => `${row.id}:${row.routeName}:${row.routeCategory}:${row.arrivalTime}:${row.departureTime}`)
-      .join(";"),
-  ]);
 
   useEffect(() => {
     if (readOnly) return;

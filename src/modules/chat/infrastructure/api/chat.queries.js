@@ -91,7 +91,12 @@ export function useCreateInternalConversationMutation() {
 function mergeSentMessage(qc, message) {
   qc.setQueryData(chatKeys.messages(message.conversationId), (old) => {
     if (!old) return [message];
-    if (old.some((m) => m.id === message.id)) return old;
+    const index = old.findIndex((m) => m.id === message.id);
+    if (index >= 0) {
+      const next = [...old];
+      next[index] = { ...next[index], ...message };
+      return next;
+    }
     return [...old, message];
   });
   void qc.invalidateQueries({ queryKey: chatKeys.conversations() });
@@ -100,8 +105,15 @@ function mergeSentMessage(qc, message) {
 export function useSendChatMessageMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ conversationId, body, sendLater, delayHours }) =>
-      sendChatMessage(conversationId, body, { sendLater, delayHours }),
+    mutationFn: ({ conversationId, body, sendLater, scheduledFor, delayHours, delayValue, delayUnit, delayMs }) =>
+      sendChatMessage(conversationId, body, {
+        sendLater,
+        scheduledFor,
+        delayHours,
+        delayValue,
+        delayUnit,
+        delayMs,
+      }),
     onSuccess: (message) => mergeSentMessage(qc, message),
   });
 }

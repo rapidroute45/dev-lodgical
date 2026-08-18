@@ -28,7 +28,12 @@ function resolveSocketUrl() {
 function appendMessage(qc, message) {
   qc.setQueryData(chatKeys.messages(message.conversationId), (old) => {
     if (!old) return [message];
-    if (old.some((m) => m.id === message.id)) return old;
+    const index = old.findIndex((m) => m.id === message.id);
+    if (index >= 0) {
+      const next = [...old];
+      next[index] = { ...next[index], ...message };
+      return next;
+    }
     return [...old, message];
   });
 }
