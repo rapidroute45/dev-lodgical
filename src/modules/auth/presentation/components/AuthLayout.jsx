@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import "@/modules/landing/presentation/landing.css";
 
 /**
@@ -116,10 +115,8 @@ function AuthLayoutDark({ side, badge, title, description, footerNote, children 
 
   return (
     <div className="auth-dark">
+      <div className="auth-dark__backdrop" aria-hidden="true" />
       <div className="auth-dark__mesh" aria-hidden="true" />
-      <Link to="/" className="auth-dark__brand auth-dark__brand--corner" aria-label="GBeyes home">
-        <img src="/logo-dark.png" alt="GBeyes" className="auth-dark__brand-logo" />
-      </Link>
       <div className="auth-dark__wrap landing__section">
         <div className="auth-dark__card grid md:grid-cols-2">
           {side === "left" ? [hero, form] : [form, hero]}

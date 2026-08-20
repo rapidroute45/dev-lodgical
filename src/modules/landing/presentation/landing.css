@@ -250,16 +250,31 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+.auth-dark__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/auth-background.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .auth-dark__mesh {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.22), transparent 35%),
-    radial-gradient(circle at 85% 10%, rgba(34, 211, 238, 0.16), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.12), transparent 40%),
-    var(--bg-deep);
+    linear-gradient(
+      180deg,
+      rgba(7, 11, 18, 0.62) 0%,
+      rgba(7, 11, 18, 0.78) 45%,
+      rgba(7, 11, 18, 0.92) 100%
+    ),
+    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.14), transparent 35%),
+    radial-gradient(circle at 85% 10%, rgba(34, 211, 238, 0.1), transparent 30%);
 }
 
 .auth-dark__wrap {
@@ -274,6 +289,8 @@
 }
 
 .auth-dark__card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 72rem;
   min-height: min(34rem, 88svh);
@@ -281,8 +298,10 @@
   border-radius: 1.25rem;
   border: 1px solid var(--border);
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
 }
 
 .auth-dark__hero {
@@ -395,26 +414,6 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-decoration: none;
-}
-
-.auth-dark__brand--corner {
-  position: fixed;
-  top: clamp(1rem, 2.5vw, 1.75rem);
-  left: clamp(1.25rem, 4vw, 2.5rem);
-  right: auto;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-.auth-dark__brand-logo {
-  height: 5.5rem;
-  width: 5.5rem;
-  max-width: min(5.5rem, 42vw);
-  border-radius: 1rem;
-  object-fit: contain;
-  box-shadow: 0 0 24px rgba(34, 211, 238, 0.25);
 }
 
 .auth-dark__link {
