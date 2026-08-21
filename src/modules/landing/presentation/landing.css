@@ -235,8 +235,8 @@
 /* ---------- Auth (login) — same Midnight Dispatch palette as landing ---------- */
 .auth-dark {
   --bg-deep: #070b12;
-  --bg-card: rgba(18, 27, 42, 0.72);
-  --border: rgba(148, 163, 184, 0.14);
+  --bg-card: rgba(7, 11, 18, 0.4);
+  --border: rgba(255, 255, 255, 0.35);
   --text: #e8eef7;
   --text-muted: #94a3b8;
   --accent: #22d3ee;
@@ -296,12 +296,11 @@
   min-height: min(34rem, 88svh);
   overflow: hidden;
   border-radius: 1.25rem;
-  border: 1px solid var(--border);
+  border: none;
   background: var(--bg-card);
   backdrop-filter: blur(16px);
-  box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
 }
 
 .auth-dark__hero {
@@ -314,18 +313,10 @@
   padding: 2.5rem;
   background: linear-gradient(
     145deg,
-    rgba(99, 102, 241, 0.18) 0%,
-    rgba(7, 11, 18, 0.95) 45%,
+    rgba(99, 102, 241, 0.12) 0%,
+    rgba(7, 11, 18, 0.08) 45%,
     rgba(34, 211, 238, 0.08) 100%
   );
-  border-right: 1px solid var(--border);
-}
-
-@media (max-width: 767px) {
-  .auth-dark__hero {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
 }
 
 .auth-dark__badge {
@@ -392,7 +383,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: rgba(7, 11, 18, 0.55);
+  background: transparent;
 }
 
 @media (min-width: 768px) {
